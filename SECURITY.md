@@ -111,6 +111,15 @@ Los perfiles profesionales, sus servicios, cobertura y disponibilidad son visibl
 ### 6. Profesional ve solicitudes solo si tiene match
 Un profesional no puede navegar todas las solicitudes del sistema. Solo ve aquellas donde el algoritmo de matching lo sugirió como candidato. Esto previene que profesionales contacten familias fuera de la plataforma.
 
+### 7. Protección de columnas sensibles vía triggers (no solo RLS)
+RLS restringe el acceso por **fila**: una política `update_own` que permite editar la propia fila permite, por defecto, editar *cualquier* columna de esa fila. Esto es insuficiente para tres campos críticos que una política de fila no puede acotar por sí sola:
+
+- `professional_profiles.verification_status` — un profesional podría auto-aprobarse
+- `residences.verified` — un dueño de residencia podría auto-verificarse
+- `bookings.status` hacia `confirmed`/`completed` — una familia podría auto-confirmarse o auto-completarse la reserva
+
+La migración `013_column_protection_triggers` agrega un `BEFORE UPDATE` trigger por cada caso que compara `OLD` vs `NEW` y lanza una excepción si el cambio de esa columna específica lo intenta alguien sin el rol correspondiente. Los tres triggers exceptúan `auth.role() = 'service_role'` para no bloquear procesos de servidor (webhooks, jobs internos). Esta es la técnica estándar en Postgres/Supabase para lograr protección a nivel de columna cuando RLS por sí solo no alcanza.
+
 ---
 
 ## Ejemplos de Queries
@@ -164,6 +173,26 @@ INSERT INTO matches (request_id, professional_id, score) VALUES ('...', '...', 1
 -- Usuario intenta ver notificaciones de otro usuario
 SELECT * FROM notifications WHERE user_id = 'otro-user-id';
 -- FILTRADO: la política fuerza user_id = auth_user_id(), retorna 0 filas
+```
+
+### Queries BLOQUEADAS por triggers de protección de columnas
+
+A diferencia de los ejemplos anteriores (bloqueados por RLS, resultado silencioso de 0 filas), estos casos SÍ generan un error explícito porque RLS permite la fila pero el trigger rechaza el cambio de columna:
+
+```sql
+-- Profesional intenta auto-aprobar su propia verificación
+UPDATE professional_profiles SET verification_status = 'approved' WHERE user_id = auth_user_id();
+-- BLOQUEADO: trg_protect_professional_verification_status lanza excepción
+-- (RLS lo dejaría pasar vía professional_profiles_update_own; el trigger lo impide)
+
+-- Dueño de residencia intenta auto-verificarse
+UPDATE residences SET verified = true WHERE owner_user_id = auth_user_id();
+-- BLOQUEADO: trg_protect_residence_verified lanza excepción
+
+-- Familia intenta confirmar o completar su propia reserva
+UPDATE bookings SET status = 'completed' WHERE family_user_id = auth_user_id();
+-- BLOQUEADO: trg_protect_booking_status_transition lanza excepción
+-- (la familia sí puede cancelar: status = 'cancelled' no está restringido)
 ```
 
 ---

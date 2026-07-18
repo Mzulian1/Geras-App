@@ -270,6 +270,34 @@ Catálogo de servicios por profesión. Incluye precios base de referencia en CLP
 - **Retorno**: `TRIGGER`
 - **Tabla que dispara**: `reviews` (AFTER INSERT OR UPDATE)
 
+### Funciones de protección de columnas (migración 013)
+
+RLS restringe el acceso por **fila**, no por **columna**. Una política `update_own` que permite editar la propia fila permite, por defecto, editar cualquier columna de esa fila — incluyendo campos que la regla de negocio reserva a otra parte (admin, o la contraparte de una transacción). Estas tres funciones cierran esa brecha mediante un `BEFORE UPDATE` trigger que compara `OLD` vs `NEW` y bloquea la transición si quien ejecuta la sesión no tiene el rol adecuado. Las tres exceptúan `auth.role() = 'service_role'` para no bloquear procesos de servidor.
+
+#### `protect_professional_verification_status()`
+
+- **Propósito**: Impedir que un profesional cambie su propio `verification_status` (auto-aprobación)
+- **Parámetros**: Ninguno (trigger function)
+- **Retorno**: `TRIGGER` — lanza excepción si `NEW.verification_status <> OLD.verification_status` y quien ejecuta no es `admin` ni `service_role`
+- **Tabla que dispara**: `professional_profiles` (BEFORE UPDATE)
+- **Seguridad**: Usa `auth_user_role()` (SECURITY DEFINER) para resolver el rol sin depender de RLS sobre `users`
+
+#### `protect_residence_verified()`
+
+- **Propósito**: Impedir que el dueño de una residencia cambie su propio campo `verified` (auto-verificación)
+- **Parámetros**: Ninguno (trigger function)
+- **Retorno**: `TRIGGER` — lanza excepción si `NEW.verified <> OLD.verified` y quien ejecuta no es `admin` ni `service_role`
+- **Tabla que dispara**: `residences` (BEFORE UPDATE)
+- **Seguridad**: Misma lógica que `protect_professional_verification_status()`
+
+#### `protect_booking_status_transition()`
+
+- **Propósito**: Impedir que la familia cambie el `status` de su propia reserva a `confirmed` o `completed` (esas transiciones son responsabilidad del profesional)
+- **Parámetros**: Ninguno (trigger function)
+- **Retorno**: `TRIGGER` — lanza excepción si `NEW.status` cambia hacia `confirmed`/`completed` y quien ejecuta no es `professional` ni `admin` ni `service_role`
+- **Tabla que dispara**: `bookings` (BEFORE UPDATE)
+- **Nota**: La cancelación (`status = 'cancelled'`) no está restringida por este trigger — tanto familia como profesional pueden cancelar su propia reserva vía las políticas RLS existentes
+
 ---
 
 ## Vistas
@@ -346,3 +374,6 @@ Catálogo de servicios por profesión. Incluye precios base de referencia en CLP
 | 008 | `008_rls_bookings_reviews_residences_payments_notifications` | Políticas RLS: bookings, reviews, residences, residence_images, residence_services, payments, notifications |
 | 009 | `009_rls_catalog_tables` | Políticas RLS: comunas, professions, services (catálogos públicos) |
 | 010 | `010_rls_enable_catalog` | Habilitar RLS en tablas de catálogo |
+| 011 | `011_security_hardening` | Vistas a SECURITY INVOKER, `search_path` fijo en funciones, revoke de `anon`, extensión `unaccent` a schema `extensions` |
+| 012 | `012_revoke_function_permissions` | Revocar EXECUTE de funciones sensibles para `anon`/`authenticated`/`PUBLIC` |
+| 013 | `013_column_protection_triggers` | Triggers que protegen columnas admin-only (`verification_status`, `verified`) y la transición de `bookings.status` a `confirmed`/`completed` |
