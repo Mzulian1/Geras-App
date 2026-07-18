@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "Geras - Familias",
+    "slug": "geras-familia",
+    "version": "0.0.1",
+    "orientation": "portrait",
+    "scheme": "geras-familia",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#ffffff"
+        }
+      ]
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "cl.geras.familia"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "cl.geras.familia"
+    }
+  }
+}
