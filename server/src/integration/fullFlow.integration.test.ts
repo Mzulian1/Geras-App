@@ -646,27 +646,11 @@ describe.skipIf(!RUN_REMOTE_INTEGRATION)("Integración remota: flujo completo Ge
   // estándar de Supabase para testear RLS (set_config +
   // SET LOCAL ROLE authenticated dentro de una transacción).
   // ------------------------------------------------------------
-  describe("RLS: aislamiento entre familias", () => {
-    it("una familia no puede leer los care_recipients de otra", async () => {
-      const { data: otherFamily } = await supabaseAdmin
-        .from("users")
-        .insert({ clerk_id: `qa_rls_other_${RUN_ID}`, email: `qa.geras.rls.other.${RUN_ID}@example.com`, role: "family" })
-        .select("id")
-        .single();
-
-      const { data: rows, error } = await supabaseAdmin.rpc("exec_qa_rls_check" as never, {} as never).then(
-        () => ({ data: null, error: null }),
-        () => ({ data: null, error: null })
-      );
-      // No existe una RPC genérica de "ejecutar SQL arbitrario" del
-      // lado del cliente supabase-js (correctamente, no debería
-      // existir) — esta verificación puntual de aislamiento entre
-      // familias se documenta y ejecuta vía mcp__supabase__execute_sql
-      // en la sesión de trabajo, no desde este archivo. Se deja el
-      // cleanup del usuario de control acá.
-      void rows;
-      void error;
-      await supabaseAdmin.from("users").delete().eq("id", otherFamily!.id);
-    });
-  });
+  // Pruebas de RLS puras (familia no puede leer datos de otra familia,
+  // no puede elevar su rol, profesional no puede autoaprobarse, nadie
+  // puede tocar precio/comisión desde el cliente) requieren un cliente
+  // autenticado como ese usuario real, no service_role. Sin conexión
+  // Postgres directa en este entorno (solo claves REST), se ejecutan
+  // vía mcp__supabase__execute_sql en la sesión de trabajo — ver el
+  // informe final — en vez de como código muerto acá.
 });
