@@ -24,6 +24,12 @@
 -- match podría reservar el mismo bloque apenas el profesional marca
 -- que va en camino. Se reemplaza la constraint (no se puede ALTER la
 -- cláusula WHERE de una EXCLUDE existente).
+--
+-- Reutiliza booking_time_range() (función IMMUTABLE creada en la
+-- migración 020) en vez de repetir tstzrange(scheduled_at, scheduled_at
+-- + ...) inline: ese operador timestamptz + interval es STABLE, no
+-- IMMUTABLE, y Postgres rechaza con 42P17 cualquier expresión no
+-- inmutable dentro de un EXCLUDE/índice (mismo bug ya corregido en 020).
 -- ------------------------------------------------------------
 ALTER TABLE bookings DROP CONSTRAINT bookings_no_overlap;
 
@@ -31,7 +37,7 @@ ALTER TABLE bookings
   ADD CONSTRAINT bookings_no_overlap
   EXCLUDE USING gist (
     professional_id WITH =,
-    tstzrange(scheduled_at, scheduled_at + (duration_minutes || ' minutes')::interval, '[)') WITH &&
+    booking_time_range(scheduled_at, duration_minutes) WITH &&
   ) WHERE (status IN ('pending', 'confirmed', 'en_route', 'in_progress'));
 
 -- ------------------------------------------------------------

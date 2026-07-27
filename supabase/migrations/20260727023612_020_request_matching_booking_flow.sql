@@ -29,14 +29,33 @@ CREATE INDEX idx_service_requests_care_recipient ON service_requests(care_recipi
 -- cualquier fila que ya exista, sin importar la carrera. btree_gist
 -- permite mezclar igualdad (professional_id) con solapamiento de
 -- rango (tstzrange) en una misma EXCLUDE.
+--
+-- Postgres exige que toda expresión usada en un índice (incluida la
+-- de un EXCLUDE) sea IMMUTABLE. El operador `timestamptz + interval`
+-- está marcado STABLE (depende del GUC TimeZone, porque un intervalo
+-- puede traer componentes de mes/año calendario-dependientes) y por
+-- eso `tstzrange(scheduled_at, scheduled_at + ... , '[)')` falla con
+-- 42P17 si se escribe inline. Acá el intervalo es siempre en minutos
+-- puros (sin mes/año), así que el resultado es realmente independiente
+-- de la zona horaria; se envuelve en una función SQL marcada IMMUTABLE
+-- para poder usarla en el índice — patrón estándar de Postgres para
+-- este caso (ver docs de EXCLUDE constraints con rangos de tiempo).
 -- ------------------------------------------------------------
 CREATE EXTENSION IF NOT EXISTS btree_gist;
+
+CREATE OR REPLACE FUNCTION booking_time_range(p_scheduled_at TIMESTAMPTZ, p_duration_minutes INTEGER)
+RETURNS TSTZRANGE
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT tstzrange(p_scheduled_at, p_scheduled_at + (p_duration_minutes || ' minutes')::interval, '[)');
+$$;
 
 ALTER TABLE bookings
   ADD CONSTRAINT bookings_no_overlap
   EXCLUDE USING gist (
     professional_id WITH =,
-    tstzrange(scheduled_at, scheduled_at + (duration_minutes || ' minutes')::interval, '[)') WITH &&
+    booking_time_range(scheduled_at, duration_minutes) WITH &&
   ) WHERE (status IN ('pending', 'confirmed'));
 
 -- ------------------------------------------------------------
@@ -127,11 +146,15 @@ REVOKE ALL ON FUNCTION log_booking_status_change() FROM PUBLIC;
 --     dejaron de estar en 'suggested' (cuánto tardó en reaccionar
 --     históricamente). Sin historial, se asigna un puntaje neutral.
 -- ------------------------------------------------------------
+-- Nota: con SET search_path = '' (abajo), Postgres no resuelve tipos
+-- sin calificar — el enum day_of_week debe escribirse public.day_of_week
+-- en el DECLARE y en el cast ::public.day_of_week; sin esto la función
+-- falla con "type day_of_week does not exist" al crearla.
 CREATE OR REPLACE FUNCTION generate_matches(request_id UUID)
 RETURNS TABLE (professional_id UUID, score INTEGER) AS $$
 DECLARE
   req RECORD;
-  req_day day_of_week;
+  req_day public.day_of_week;
   req_start TIMESTAMPTZ;
   req_end TIMESTAMPTZ;
 BEGIN
@@ -148,7 +171,7 @@ BEGIN
     WHEN 5 THEN 'friday'
     WHEN 6 THEN 'saturday'
     WHEN 7 THEN 'sunday'
-  END::day_of_week;
+  END::public.day_of_week;
 
   req_start := (req.preferred_date + req.requested_time)::timestamptz;
   req_end := req_start + (COALESCE(req.duration_minutes, 60) || ' minutes')::interval;
@@ -260,7 +283,7 @@ DECLARE
   chosen_price INTEGER;
   fee INTEGER;
   new_booking_id UUID;
-  req_day day_of_week;
+  req_day public.day_of_week;
   req_start TIMESTAMPTZ;
 BEGIN
   SELECT * INTO req FROM public.service_requests WHERE id = p_request_id FOR UPDATE;
@@ -295,7 +318,7 @@ BEGIN
   req_day := CASE EXTRACT(ISODOW FROM req.preferred_date)::int
     WHEN 1 THEN 'monday' WHEN 2 THEN 'tuesday' WHEN 3 THEN 'wednesday'
     WHEN 4 THEN 'thursday' WHEN 5 THEN 'friday' WHEN 6 THEN 'saturday' WHEN 7 THEN 'sunday'
-  END::day_of_week;
+  END::public.day_of_week;
 
   IF NOT EXISTS (
     SELECT 1 FROM public.professional_availability pa

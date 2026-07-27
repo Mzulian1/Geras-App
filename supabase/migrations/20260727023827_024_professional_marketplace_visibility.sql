@@ -104,15 +104,25 @@ REVOKE ALL ON FUNCTION admin_set_professional_accepting_requests(UUID, BOOLEAN, 
 -- admin_professionals_view también expone accepting_requests (Admin
 -- necesita verlo y filtrar por él) — mismas columnas que la migración
 -- 011 más esta una.
+--
+-- CREATE OR REPLACE VIEW exige que las columnas existentes conserven
+-- posición y nombre (solo se puede AGREGAR al final) — Postgres
+-- rechaza con 42P16 si una columna nueva se inserta en medio de la
+-- lista, porque eso renombra posicionalmente todo lo que viene
+-- después (acá, "base_comuna" pasaba a la posición de
+-- "accepting_requests"). Por eso accepting_requests va al final,
+-- después de coverage_comunas, no junto a "active" como en el orden
+-- "lógico" original.
 CREATE OR REPLACE VIEW admin_professionals_view
 WITH (security_invoker = true) AS
 SELECT pp.id, pp.full_name, u.email, u.phone, pr.name AS profession_name,
   pr.category AS profession_category, pp.years_experience, pp.verification_status,
-  pp.average_rating, pp.total_reviews, pp.active, pp.accepting_requests, c.name AS base_comuna, pp.created_at,
+  pp.average_rating, pp.total_reviews, pp.active, c.name AS base_comuna, pp.created_at,
   (SELECT COUNT(*) FROM professional_documents pd WHERE pd.professional_id = pp.id AND pd.status = 'pending') AS pending_documents,
   (SELECT COUNT(*) FROM professional_documents pd WHERE pd.professional_id = pp.id) AS total_documents,
   (SELECT COUNT(*) FROM professional_services ps WHERE ps.professional_id = pp.id AND ps.active = TRUE) AS active_services,
-  (SELECT ARRAY_AGG(c2.name) FROM professional_coverage pc JOIN comunas c2 ON c2.id = pc.comuna_id WHERE pc.professional_id = pp.id) AS coverage_comunas
+  (SELECT ARRAY_AGG(c2.name) FROM professional_coverage pc JOIN comunas c2 ON c2.id = pc.comuna_id WHERE pc.professional_id = pp.id) AS coverage_comunas,
+  pp.accepting_requests
 FROM professional_profiles pp
 JOIN users u ON u.id = pp.user_id
 JOIN professions pr ON pr.id = pp.profession_id
