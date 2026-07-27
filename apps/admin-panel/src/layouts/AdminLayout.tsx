@@ -8,6 +8,8 @@ import {
   CalendarCheck,
   UserCog,
   Settings,
+  ListChecks,
+  MessageSquareText,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -24,7 +26,9 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/profesionales", label: "Profesionales", icon: Users },
+  { to: "/servicios", label: "Servicios", icon: ListChecks },
   { to: "/residencias", label: "Residencias", icon: Building2 },
+  { to: "/solicitudes-residencias", label: "Solicitudes de residencias", icon: MessageSquareText },
   { to: "/solicitudes", label: "Solicitudes", icon: ClipboardList },
   { to: "/reservas", label: "Reservas", icon: CalendarCheck },
   { to: "/usuarios", label: "Usuarios", icon: UserCog },

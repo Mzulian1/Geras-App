@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Eye } from "lucide-react";
 import { useProfessionals } from "@/hooks/useProfessionals";
-import { useToggleProfessionalActive } from "@/hooks/useProfessionalMutations";
-import { useProfessions, useComunas } from "@/hooks/useCatalogs";
+import { useToggleProfessionalActive, useSetProfessionalPublished } from "@/hooks/useProfessionalMutations";
+import { useProfessions, useComunas, useServices } from "@/hooks/useCatalogs";
 import { VerificationBadge } from "@/components/professionals/VerificationBadge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -31,18 +31,29 @@ const STATUS_OPTIONS: { value: VerificationStatus | "all"; label: string }[] = [
 export function ProfessionalsListPage() {
   const [status, setStatus] = useState<VerificationStatus | "all">("all");
   const [professionName, setProfessionName] = useState<string>("all");
+  const [category, setCategory] = useState<string>("all");
   const [comunaName, setComunaName] = useState<string>("all");
+  const [serviceId, setServiceId] = useState<string>("all");
   const [search, setSearch] = useState("");
 
   const { data: professionals, isLoading } = useProfessionals({
     verificationStatus: status,
     professionName,
+    category,
     comunaName,
+    serviceId: serviceId === "all" ? "all" : Number(serviceId),
     search: search || undefined,
   });
   const { data: professions } = useProfessions();
   const { data: comunas } = useComunas();
+  const { data: services } = useServices();
   const toggleActive = useToggleProfessionalActive();
+  const setPublished = useSetProfessionalPublished();
+
+  const categories = useMemo(
+    () => [...new Set((professions ?? []).map((p) => p.category))],
+    [professions]
+  );
 
   return (
     <div className="space-y-6">
@@ -78,6 +89,24 @@ export function ProfessionalsListPage() {
               ))}
             </SelectContent>
           </Select>
+          <Select value={category} onValueChange={setCategory}>
+            <SelectTrigger className="w-48"><SelectValue placeholder="Tipo / categoría" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los tipos</SelectItem>
+              {categories.map((c) => (
+                <SelectItem key={c} value={c}>{c}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={serviceId} onValueChange={setServiceId}>
+            <SelectTrigger className="w-48"><SelectValue placeholder="Servicio" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los servicios</SelectItem>
+              {services?.map((s) => (
+                <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select value={comunaName} onValueChange={setComunaName}>
             <SelectTrigger className="w-48"><SelectValue placeholder="Comuna" /></SelectTrigger>
             <SelectContent>
@@ -102,6 +131,7 @@ export function ProfessionalsListPage() {
                 <TableHead>Docs. pendientes</TableHead>
                 <TableHead>Rating</TableHead>
                 <TableHead>Activo</TableHead>
+                <TableHead>Publicado</TableHead>
                 <TableHead>Registro</TableHead>
                 <TableHead />
               </TableRow>
@@ -110,12 +140,12 @@ export function ProfessionalsListPage() {
               {isLoading &&
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell colSpan={9}><Skeleton className="h-6 w-full" /></TableCell>
+                    <TableCell colSpan={10}><Skeleton className="h-6 w-full" /></TableCell>
                   </TableRow>
                 ))}
               {!isLoading && professionals?.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-muted-foreground">
+                  <TableCell colSpan={10} className="text-center text-muted-foreground">
                     No hay profesionales que coincidan con los filtros.
                   </TableCell>
                 </TableRow>
@@ -132,6 +162,12 @@ export function ProfessionalsListPage() {
                     <Switch
                       checked={!!p.active}
                       onCheckedChange={(checked) => p.id && toggleActive.mutate({ id: p.id, active: checked })}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Switch
+                      checked={!!p.accepting_requests}
+                      onCheckedChange={(checked) => p.id && setPublished.mutate({ id: p.id, published: checked })}
                     />
                   </TableCell>
                   <TableCell>{formatDate(p.created_at)}</TableCell>

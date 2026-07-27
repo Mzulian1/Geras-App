@@ -6,8 +6,11 @@ import { AccessDeniedPage } from "@/pages/AccessDeniedPage";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { ProfessionalsListPage } from "@/pages/ProfessionalsListPage";
 import { ProfessionalDetailPage } from "@/pages/ProfessionalDetailPage";
+import { ServicesPage } from "@/pages/ServicesPage";
 import { ResidencesListPage } from "@/pages/ResidencesListPage";
 import { ResidenceFormPage } from "@/pages/ResidenceFormPage";
+import { ResidenceInquiriesListPage } from "@/pages/ResidenceInquiriesListPage";
+import { ResidenceInquiryDetailPage } from "@/pages/ResidenceInquiryDetailPage";
 import { ServiceRequestsListPage } from "@/pages/ServiceRequestsListPage";
 import { ServiceRequestDetailPage } from "@/pages/ServiceRequestDetailPage";
 import { BookingsListPage } from "@/pages/BookingsListPage";
@@ -31,9 +34,12 @@ export function App() {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/profesionales" element={<ProfessionalsListPage />} />
           <Route path="/profesionales/:id" element={<ProfessionalDetailPage />} />
+          <Route path="/servicios" element={<ServicesPage />} />
           <Route path="/residencias" element={<ResidencesListPage />} />
           <Route path="/residencias/nueva" element={<ResidenceFormPage />} />
           <Route path="/residencias/:id" element={<ResidenceFormPage />} />
+          <Route path="/solicitudes-residencias" element={<ResidenceInquiriesListPage />} />
+          <Route path="/solicitudes-residencias/:id" element={<ResidenceInquiryDetailPage />} />
           <Route path="/solicitudes" element={<ServiceRequestsListPage />} />
           <Route path="/solicitudes/:id" element={<ServiceRequestDetailPage />} />
           <Route path="/reservas" element={<BookingsListPage />} />

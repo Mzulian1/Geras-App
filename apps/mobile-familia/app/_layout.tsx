@@ -1,25 +1,30 @@
-// Layout raíz de Expo Router: aquí se montan los providers globales
-// (Clerk, React Query) una sola vez para todo el árbol de rutas.
-// Todavía no hay pantallas reales — solo la infraestructura para que
-// `expo start` levante la app.
+// Layout raíz de Expo Router: monta los providers globales (Clerk,
+// React Query) una sola vez para todo el árbol de rutas. La navegación
+// real vive en los grupos (public) y (protected); acá solo se resuelve
+// la carga inicial de Clerk (ClerkLoading) antes de montar cualquiera
+// de los dos grupos.
 import "../global.css";
 
 import { Slot } from "expo-router";
-import { ClerkProvider, ClerkLoaded } from "@clerk/clerk-expo";
+import { ClerkProvider, ClerkLoaded, ClerkLoading } from "@clerk/clerk-expo";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createQueryClient } from "@geras/shared";
-import { CLERK_PUBLISHABLE_KEY, tokenCache } from "../src/lib/clerk";
+import { CLERK_PUBLISHABLE_KEY, tokenCache } from "@/lib/clerk";
+import { LoadingScreen } from "@/components/LoadingScreen";
 
 const queryClient = createQueryClient();
 
 export default function RootLayout() {
   return (
     <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
-      <ClerkLoaded>
-        <QueryClientProvider client={queryClient}>
+      <QueryClientProvider client={queryClient}>
+        <ClerkLoading>
+          <LoadingScreen />
+        </ClerkLoading>
+        <ClerkLoaded>
           <Slot />
-        </QueryClientProvider>
-      </ClerkLoaded>
+        </ClerkLoaded>
+      </QueryClientProvider>
     </ClerkProvider>
   );
 }

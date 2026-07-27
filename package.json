@@ -10,6 +10,7 @@
     "dev": "turbo dev",
     "build": "turbo build",
     "lint": "turbo lint",
+    "test": "turbo test",
     "clean": "turbo clean",
     "dev:mobile-familia": "turbo dev --filter=mobile-familia",
     "dev:mobile-profesional": "turbo dev --filter=mobile-profesional",
@@ -20,8 +21,27 @@
     "turbo": "^2.5.0",
     "typescript": "^5.8.0"
   },
+  "overrides": {
+    "metro": "0.81.5",
+    "metro-config": "0.81.5",
+    "metro-core": "0.81.5",
+    "metro-runtime": "0.81.5",
+    "metro-resolver": "0.81.5",
+    "metro-source-map": "0.81.5",
+    "metro-transform-worker": "0.81.5",
+    "metro-babel-transformer": "0.81.5",
+    "metro-cache": "0.81.5",
+    "metro-cache-key": "0.81.5",
+    "metro-file-map": "0.81.5",
+    "metro-symbolicate": "0.81.5",
+    "metro-transform-plugins": "0.81.5",
+    "expo-font": "13.0.4"
+  },
   "packageManager": "npm@10.8.0",
   "engines": {
     "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "comment-json": "^5.0.0"
   }
 }

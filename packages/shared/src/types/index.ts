@@ -24,10 +24,14 @@ export type PaymentStatus = Enums<"payment_status">;
 export type UrgencyLevel = Enums<"urgency_level">;
 export type DayOfWeek = Enums<"day_of_week">;
 export type RiskLevel = Enums<"risk_level">;
+export type MobilityLevel = Enums<"mobility_level">;
+export type ResidenceInquiryType = Enums<"residence_inquiry_type">;
+export type ResidenceInquiryStatus = Enums<"residence_inquiry_status">;
 
 // --- Filas de tablas más usadas por las apps (atajo sobre Tables<...>) ---
 export type User = Tables<"users">;
 export type FamilyProfile = Tables<"family_profiles">;
+export type CareRecipient = Tables<"care_recipients">;
 export type ProfessionalProfile = Tables<"professional_profiles">;
 export type ProfessionalDocument = Tables<"professional_documents">;
 export type ProfessionalService = Tables<"professional_services">;
@@ -36,10 +40,15 @@ export type ProfessionalAvailability = Tables<"professional_availability">;
 export type ServiceRequest = Tables<"service_requests">;
 export type Match = Tables<"matches">;
 export type Booking = Tables<"bookings">;
+export type BookingStatusHistory = Tables<"booking_status_history">;
 export type Review = Tables<"reviews">;
 export type Residence = Tables<"residences">;
 export type ResidenceImage = Tables<"residence_images">;
 export type ResidenceService = Tables<"residence_services">;
+export type ResidenceRoomType = Tables<"residence_room_types">;
+export type ResidenceStatusHistory = Tables<"residence_status_history">;
+export type ResidenceInquiry = Tables<"residence_inquiries">;
+export type ResidenceInquiryStatusHistory = Tables<"residence_inquiry_status_history">;
 export type Payment = Tables<"payments">;
 export type Notification = Tables<"notifications">;
 export type Comuna = Tables<"comunas">;
@@ -48,6 +57,8 @@ export type Service = Tables<"services">;
 export type PlatformConfig = Tables<"platform_config">;
 export type PlatformConfigHistory = Tables<"platform_config_history">;
 export type ProfessionalStatusHistory = Tables<"professional_status_history">;
+export type ProfessionalActiveHistory = Tables<"professional_active_history">;
+export type ProfessionalVisibilityHistory = Tables<"professional_visibility_history">;
 
 // --- Vistas ---
 export type PublicProfessionalView = Database["public"]["Views"]["public_professionals_view"]["Row"];

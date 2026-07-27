@@ -109,11 +109,12 @@ export function useProfessionalReviews(id: string | undefined) {
 }
 
 /**
- * Historial de cambios de verification_status, poblado por el
- * trigger log_professional_status_change() — nunca por el cliente.
- * `users(email)` identifica al admin que hizo el cambio (no hay un
- * campo "nombre" en `users`, solo email/rol; el nombre real vive en
- * Clerk, no en esta tabla).
+ * Historial de cambios de verification_status, poblado por el trigger
+ * log_professional_status_change() — nunca por el cliente. Desde la
+ * migración 018 también incluye el motivo (obligatorio para rechazos)
+ * que el server pasa vía RPC. `users(email)` identifica al admin que
+ * hizo el cambio (no hay un campo "nombre" en `users`, solo email/rol;
+ * el nombre real vive en Clerk, no en esta tabla).
  */
 export function useProfessionalStatusHistory(id: string | undefined) {
   return useQuery({
@@ -124,6 +125,65 @@ export function useProfessionalStatusHistory(id: string | undefined) {
         .select("*, users(email)")
         .eq("professional_id", id!)
         .order("changed_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id,
+  });
+}
+
+/**
+ * Historial de cambios de professional_profiles.active (suspender/
+ * reactivar), poblado por log_professional_active_change() — migración
+ * 018. Antes de esa migración no existía ningún registro de auditoría
+ * para esta acción.
+ */
+export function useProfessionalActiveHistory(id: string | undefined) {
+  return useQuery({
+    queryKey: ["professional-active-history", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("professional_active_history")
+        .select("*, users(email)")
+        .eq("professional_id", id!)
+        .order("changed_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id,
+  });
+}
+
+/**
+ * Historial de accepting_requests (publicar/despublicar), poblado por
+ * log_professional_visibility_change() — Fase 2 (migración 024).
+ */
+export function useProfessionalVisibilityHistory(id: string | undefined) {
+  return useQuery({
+    queryKey: ["professional-visibility-history", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("professional_visibility_history")
+        .select("*, users(email)")
+        .eq("professional_id", id!)
+        .order("changed_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!id,
+  });
+}
+
+/** Reservas del profesional (Fase 2: "ver solicitudes, reservas y evaluaciones asociadas"). */
+export function useProfessionalBookings(id: string | undefined) {
+  return useQuery({
+    queryKey: ["professional-detail", id, "bookings"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("*, services(name), users!bookings_family_user_id_fkey(email)")
+        .eq("professional_id", id!)
+        .order("scheduled_at", { ascending: false });
       if (error) throw error;
       return data;
     },

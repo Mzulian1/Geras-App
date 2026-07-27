@@ -1,30 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import type { Service, Profession, Comuna } from "@geras/shared";
-
-/**
- * Edita un servicio (nombre, descripción, rango de precio sugerido,
- * duración, activo). Los rangos de precio se reflejan de inmediato en
- * PriceRangeIndicator (detalle de profesional) porque ambos leen la
- * misma tabla, sin caché intermedio.
- */
-export function useUpdateService() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (service: Partial<Service> & { id: number }) => {
-      const { id, ...updates } = service;
-      const { error } = await supabase.from("services").update(updates).eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["services-with-profession"] });
-      queryClient.invalidateQueries({ queryKey: ["services"] });
-      toast.success("Servicio actualizado");
-    },
-    onError: (error) => toast.error("No se pudo guardar el servicio", { description: error.message }),
-  });
-}
+import type { Profession, Comuna } from "@geras/shared";
 
 /** Edita una profesión (nombre, categoría, nivel de riesgo, activa). */
 export function useUpdateProfession() {
@@ -75,4 +52,4 @@ export function useCreateComuna() {
   });
 }
 
-export type { Service, Profession, Comuna };
+export type { Profession, Comuna };

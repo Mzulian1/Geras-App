@@ -28,6 +28,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      booking_status_history: {
+        Row: {
+          booking_id: string
+          changed_at: string | null
+          changed_by: string | null
+          id: string
+          new_status: Database["public"]["Enums"]["booking_status"]
+          note: string | null
+          old_status: Database["public"]["Enums"]["booking_status"] | null
+        }
+        Insert: {
+          booking_id: string
+          changed_at?: string | null
+          changed_by?: string | null
+          id?: string
+          new_status: Database["public"]["Enums"]["booking_status"]
+          note?: string | null
+          old_status?: Database["public"]["Enums"]["booking_status"] | null
+        }
+        Update: {
+          booking_id?: string
+          changed_at?: string | null
+          changed_by?: string | null
+          id?: string
+          new_status?: Database["public"]["Enums"]["booking_status"]
+          note?: string | null
+          old_status?: Database["public"]["Enums"]["booking_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_status_history_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "booking_status_history_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bookings: {
         Row: {
           created_at: string
@@ -115,6 +160,75 @@ export type Database = {
             columns: ["service_id"]
             isOneToOne: false
             referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      care_recipients: {
+        Row: {
+          birth_date: string
+          comuna_id: number | null
+          consent_given: boolean
+          consent_given_at: string | null
+          created_at: string
+          emergency_contact_name: string
+          emergency_contact_phone: string
+          family_user_id: string
+          full_name: string
+          general_needs: string | null
+          id: string
+          mobility_level: Database["public"]["Enums"]["mobility_level"]
+          notes: string | null
+          relationship_to_family: string
+          updated_at: string
+        }
+        Insert: {
+          birth_date: string
+          comuna_id?: number | null
+          consent_given?: boolean
+          consent_given_at?: string | null
+          created_at?: string
+          emergency_contact_name: string
+          emergency_contact_phone: string
+          family_user_id: string
+          full_name: string
+          general_needs?: string | null
+          id?: string
+          mobility_level?: Database["public"]["Enums"]["mobility_level"]
+          notes?: string | null
+          relationship_to_family: string
+          updated_at?: string
+        }
+        Update: {
+          birth_date?: string
+          comuna_id?: number | null
+          consent_given?: boolean
+          consent_given_at?: string | null
+          created_at?: string
+          emergency_contact_name?: string
+          emergency_contact_phone?: string
+          family_user_id?: string
+          full_name?: string
+          general_needs?: string | null
+          id?: string
+          mobility_level?: Database["public"]["Enums"]["mobility_level"]
+          notes?: string | null
+          relationship_to_family?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "care_recipients_comuna_id_fkey"
+            columns: ["comuna_id"]
+            isOneToOne: false
+            referencedRelation: "comunas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "care_recipients_family_user_id_fkey"
+            columns: ["family_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -394,6 +508,65 @@ export type Database = {
           },
         ]
       }
+      professional_active_history: {
+        Row: {
+          changed_at: string | null
+          changed_by: string | null
+          id: string
+          new_active: boolean
+          note: string | null
+          old_active: boolean | null
+          professional_id: string
+        }
+        Insert: {
+          changed_at?: string | null
+          changed_by?: string | null
+          id?: string
+          new_active: boolean
+          note?: string | null
+          old_active?: boolean | null
+          professional_id: string
+        }
+        Update: {
+          changed_at?: string | null
+          changed_by?: string | null
+          id?: string
+          new_active?: boolean
+          note?: string | null
+          old_active?: boolean | null
+          professional_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_active_history_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_active_history_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "admin_professionals_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_active_history_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_active_history_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "public_professionals_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       professional_availability: {
         Row: {
           active: boolean
@@ -566,6 +739,7 @@ export type Database = {
       }
       professional_profiles: {
         Row: {
+          accepting_requests: boolean
           active: boolean
           average_rating: number | null
           base_comuna_id: number | null
@@ -582,6 +756,7 @@ export type Database = {
           years_experience: number | null
         }
         Insert: {
+          accepting_requests?: boolean
           active?: boolean
           average_rating?: number | null
           base_comuna_id?: number | null
@@ -598,6 +773,7 @@ export type Database = {
           years_experience?: number | null
         }
         Update: {
+          accepting_requests?: boolean
           active?: boolean
           average_rating?: number | null
           base_comuna_id?: number | null
@@ -755,6 +931,65 @@ export type Database = {
           },
         ]
       }
+      professional_visibility_history: {
+        Row: {
+          changed_at: string | null
+          changed_by: string | null
+          id: string
+          new_accepting_requests: boolean
+          note: string | null
+          old_accepting_requests: boolean | null
+          professional_id: string
+        }
+        Insert: {
+          changed_at?: string | null
+          changed_by?: string | null
+          id?: string
+          new_accepting_requests: boolean
+          note?: string | null
+          old_accepting_requests?: boolean | null
+          professional_id: string
+        }
+        Update: {
+          changed_at?: string | null
+          changed_by?: string | null
+          id?: string
+          new_accepting_requests?: boolean
+          note?: string | null
+          old_accepting_requests?: boolean | null
+          professional_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_visibility_history_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_visibility_history_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "admin_professionals_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_visibility_history_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "professional_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_visibility_history_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "public_professionals_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       professions: {
         Row: {
           active: boolean
@@ -790,24 +1025,30 @@ export type Database = {
       }
       residence_images: {
         Row: {
+          alt_text: string | null
           caption: string | null
           created_at: string
+          deleted_at: string | null
           id: string
           residence_id: string
           sort_order: number
           url: string
         }
         Insert: {
+          alt_text?: string | null
           caption?: string | null
           created_at?: string
+          deleted_at?: string | null
           id?: string
           residence_id: string
           sort_order?: number
           url: string
         }
         Update: {
+          alt_text?: string | null
           caption?: string | null
           created_at?: string
+          deleted_at?: string | null
           id?: string
           residence_id?: string
           sort_order?: number
@@ -823,22 +1064,197 @@ export type Database = {
           },
         ]
       }
+      residence_inquiries: {
+        Row: {
+          assigned_to: string | null
+          care_recipient_id: string | null
+          contact_email: string | null
+          contact_name: string
+          contact_phone: string
+          consent_given: boolean
+          created_at: string
+          family_user_id: string
+          id: string
+          inquiry_type: Database["public"]["Enums"]["residence_inquiry_type"]
+          internal_notes: string | null
+          message: string | null
+          preferred_date: string | null
+          preferred_time: string | null
+          residence_id: string
+          status: Database["public"]["Enums"]["residence_inquiry_status"]
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          care_recipient_id?: string | null
+          contact_email?: string | null
+          contact_name: string
+          contact_phone: string
+          consent_given: boolean
+          created_at?: string
+          family_user_id: string
+          id?: string
+          inquiry_type: Database["public"]["Enums"]["residence_inquiry_type"]
+          internal_notes?: string | null
+          message?: string | null
+          preferred_date?: string | null
+          preferred_time?: string | null
+          residence_id: string
+          status?: Database["public"]["Enums"]["residence_inquiry_status"]
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          care_recipient_id?: string | null
+          contact_email?: string | null
+          contact_name?: string
+          contact_phone?: string
+          consent_given?: boolean
+          created_at?: string
+          family_user_id?: string
+          id?: string
+          inquiry_type?: Database["public"]["Enums"]["residence_inquiry_type"]
+          internal_notes?: string | null
+          message?: string | null
+          preferred_date?: string | null
+          preferred_time?: string | null
+          residence_id?: string
+          status?: Database["public"]["Enums"]["residence_inquiry_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "residence_inquiries_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "residence_inquiries_care_recipient_id_fkey"
+            columns: ["care_recipient_id"]
+            isOneToOne: false
+            referencedRelation: "care_recipients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "residence_inquiries_family_user_id_fkey"
+            columns: ["family_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "residence_inquiries_residence_id_fkey"
+            columns: ["residence_id"]
+            isOneToOne: false
+            referencedRelation: "residences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      residence_inquiry_status_history: {
+        Row: {
+          changed_at: string | null
+          changed_by: string | null
+          id: string
+          inquiry_id: string
+          new_status: Database["public"]["Enums"]["residence_inquiry_status"]
+          note: string | null
+          old_status: Database["public"]["Enums"]["residence_inquiry_status"] | null
+        }
+        Insert: {
+          changed_at?: string | null
+          changed_by?: string | null
+          id?: string
+          inquiry_id: string
+          new_status: Database["public"]["Enums"]["residence_inquiry_status"]
+          note?: string | null
+          old_status?: Database["public"]["Enums"]["residence_inquiry_status"] | null
+        }
+        Update: {
+          changed_at?: string | null
+          changed_by?: string | null
+          id?: string
+          inquiry_id?: string
+          new_status?: Database["public"]["Enums"]["residence_inquiry_status"]
+          note?: string | null
+          old_status?: Database["public"]["Enums"]["residence_inquiry_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "residence_inquiry_status_history_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "residence_inquiry_status_history_inquiry_id_fkey"
+            columns: ["inquiry_id"]
+            isOneToOne: false
+            referencedRelation: "residence_inquiries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      residence_room_types: {
+        Row: {
+          active: boolean
+          capacity: number | null
+          created_at: string
+          id: string
+          name: string
+          price: number | null
+          residence_id: string
+        }
+        Insert: {
+          active?: boolean
+          capacity?: number | null
+          created_at?: string
+          id?: string
+          name: string
+          price?: number | null
+          residence_id: string
+        }
+        Update: {
+          active?: boolean
+          capacity?: number | null
+          created_at?: string
+          id?: string
+          name?: string
+          price?: number | null
+          residence_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "residence_room_types_residence_id_fkey"
+            columns: ["residence_id"]
+            isOneToOne: false
+            referencedRelation: "residences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       residence_services: {
         Row: {
           description: string | null
           id: string
+          kind: string
           name: string
           residence_id: string
         }
         Insert: {
           description?: string | null
           id?: string
+          kind?: string
           name: string
           residence_id: string
         }
         Update: {
           description?: string | null
           id?: string
+          kind?: string
           name?: string
           residence_id?: string
         }
@@ -852,22 +1268,76 @@ export type Database = {
           },
         ]
       }
+      residence_status_history: {
+        Row: {
+          changed_at: string | null
+          changed_by: string | null
+          field_name: string
+          id: string
+          new_value: boolean
+          note: string | null
+          old_value: boolean | null
+          residence_id: string
+        }
+        Insert: {
+          changed_at?: string | null
+          changed_by?: string | null
+          field_name: string
+          id?: string
+          new_value: boolean
+          note?: string | null
+          old_value?: boolean | null
+          residence_id: string
+        }
+        Update: {
+          changed_at?: string | null
+          changed_by?: string | null
+          field_name?: string
+          id?: string
+          new_value?: boolean
+          note?: string | null
+          old_value?: boolean | null
+          residence_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "residence_status_history_changed_by_fkey"
+            columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "residence_status_history_residence_id_fkey"
+            columns: ["residence_id"]
+            isOneToOne: false
+            referencedRelation: "residences"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       residences: {
         Row: {
           active: boolean
           address: string
+          admission_mobility_levels: Database["public"]["Enums"]["mobility_level"][] | null
           available_slots: number | null
           capacity: number | null
           comuna_id: number
           created_at: string
           description: string | null
           email: string | null
+          entry_conditions: string | null
           id: string
+          latitude: number | null
+          longitude: number | null
           name: string
           owner_user_id: string | null
           phone: string | null
           price_from: number | null
           price_to: number | null
+          published: boolean
+          residence_type: string | null
           soma_integrated: boolean
           updated_at: string
           verified: boolean
@@ -876,18 +1346,24 @@ export type Database = {
         Insert: {
           active?: boolean
           address: string
+          admission_mobility_levels?: Database["public"]["Enums"]["mobility_level"][] | null
           available_slots?: number | null
           capacity?: number | null
           comuna_id: number
           created_at?: string
           description?: string | null
           email?: string | null
+          entry_conditions?: string | null
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           name: string
           owner_user_id?: string | null
           phone?: string | null
           price_from?: number | null
           price_to?: number | null
+          published?: boolean
+          residence_type?: string | null
           soma_integrated?: boolean
           updated_at?: string
           verified?: boolean
@@ -896,18 +1372,24 @@ export type Database = {
         Update: {
           active?: boolean
           address?: string
+          admission_mobility_levels?: Database["public"]["Enums"]["mobility_level"][] | null
           available_slots?: number | null
           capacity?: number | null
           comuna_id?: number
           created_at?: string
           description?: string | null
           email?: string | null
+          entry_conditions?: string | null
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           name?: string
           owner_user_id?: string | null
           phone?: string | null
           price_from?: number | null
           price_to?: number | null
+          published?: boolean
+          residence_type?: string | null
           soma_integrated?: boolean
           updated_at?: string
           verified?: boolean
@@ -1000,14 +1482,17 @@ export type Database = {
         Row: {
           budget_max: number | null
           budget_min: number | null
+          care_recipient_id: string | null
           comuna_id: number
           created_at: string
           description: string | null
+          duration_minutes: number
           family_user_id: string
           frequency: string | null
           gender_pref: string | null
           id: string
           preferred_date: string | null
+          requested_time: string | null
           service_id: number
           status: Database["public"]["Enums"]["request_status"]
           updated_at: string
@@ -1016,14 +1501,17 @@ export type Database = {
         Insert: {
           budget_max?: number | null
           budget_min?: number | null
+          care_recipient_id?: string | null
           comuna_id: number
           created_at?: string
           description?: string | null
+          duration_minutes?: number
           family_user_id: string
           frequency?: string | null
           gender_pref?: string | null
           id?: string
           preferred_date?: string | null
+          requested_time?: string | null
           service_id: number
           status?: Database["public"]["Enums"]["request_status"]
           updated_at?: string
@@ -1032,20 +1520,30 @@ export type Database = {
         Update: {
           budget_max?: number | null
           budget_min?: number | null
+          care_recipient_id?: string | null
           comuna_id?: number
           created_at?: string
           description?: string | null
+          duration_minutes?: number
           family_user_id?: string
           frequency?: string | null
           gender_pref?: string | null
           id?: string
           preferred_date?: string | null
+          requested_time?: string | null
           service_id?: number
           status?: Database["public"]["Enums"]["request_status"]
           updated_at?: string
           urgency_level?: Database["public"]["Enums"]["urgency_level"]
         }
         Relationships: [
+          {
+            foreignKeyName: "service_requests_care_recipient_id_fkey"
+            columns: ["care_recipient_id"]
+            isOneToOne: false
+            referencedRelation: "care_recipients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "service_requests_comuna_id_fkey"
             columns: ["comuna_id"]
@@ -1076,7 +1574,9 @@ export type Database = {
           base_price_min: number | null
           created_at: string
           description: string | null
+          display_order: number
           duration_minutes: number
+          icon: string | null
           id: number
           name: string
           profession_id: number
@@ -1087,7 +1587,9 @@ export type Database = {
           base_price_min?: number | null
           created_at?: string
           description?: string | null
+          display_order?: number
           duration_minutes?: number
+          icon?: string | null
           id?: number
           name: string
           profession_id: number
@@ -1098,7 +1600,9 @@ export type Database = {
           base_price_min?: number | null
           created_at?: string
           description?: string | null
+          display_order?: number
           duration_minutes?: number
+          icon?: string | null
           id?: number
           name?: string
           profession_id?: number
@@ -1151,11 +1655,20 @@ export type Database = {
       admin_metrics_view: {
         Row: {
           active_bookings: number | null
+          active_professionals: number | null
           active_residences: number | null
+          bookings_pending: number | null
           completed_bookings: number | null
           completed_requests: number | null
           pending_verification: number | null
           platform_avg_rating: number | null
+          residence_inquiries_total: number | null
+          residence_visits_pending: number | null
+          residences_draft: number | null
+          residences_published: number | null
+          services_completed: number | null
+          services_in_progress: number | null
+          suspended_professionals: number | null
           total_families: number | null
           total_professionals: number | null
           total_requests: number | null
@@ -1165,6 +1678,7 @@ export type Database = {
       }
       admin_professionals_view: {
         Row: {
+          accepting_requests: boolean | null
           active: boolean | null
           active_services: number | null
           average_rating: number | null
@@ -1210,6 +1724,63 @@ export type Database = {
       }
     }
     Functions: {
+      accept_booking: {
+        Args: { p_actor_user_id?: string; p_booking_id: string; p_note?: string }
+        Returns: undefined
+      }
+      admin_set_professional_accepting_requests: {
+        Args: { p_accepting_requests: boolean; p_note?: string; p_professional_id: string }
+        Returns: undefined
+      }
+      admin_set_professional_active: {
+        Args: { p_active: boolean; p_note?: string; p_professional_id: string }
+        Returns: undefined
+      }
+      admin_change_residence_inquiry_status: {
+        Args: {
+          p_actor_user_id?: string
+          p_inquiry_id: string
+          p_new_status: Database["public"]["Enums"]["residence_inquiry_status"]
+          p_note?: string
+        }
+        Returns: undefined
+      }
+      admin_assign_residence_inquiry: {
+        Args: { p_actor_user_id?: string; p_assigned_to: string; p_inquiry_id: string; p_note?: string }
+        Returns: undefined
+      }
+      admin_add_residence_inquiry_note: {
+        Args: { p_actor_user_id?: string; p_inquiry_id: string; p_note: string }
+        Returns: undefined
+      }
+      admin_publish_residence: {
+        Args: { p_actor_user_id?: string; p_note?: string; p_residence_id: string }
+        Returns: undefined
+      }
+      admin_unpublish_residence: {
+        Args: { p_actor_user_id?: string; p_note?: string; p_residence_id: string }
+        Returns: undefined
+      }
+      admin_suspend_residence: {
+        Args: { p_actor_user_id?: string; p_note?: string; p_residence_id: string }
+        Returns: undefined
+      }
+      admin_reactivate_residence: {
+        Args: { p_actor_user_id?: string; p_note?: string; p_residence_id: string }
+        Returns: undefined
+      }
+      admin_set_residence_verified: {
+        Args: { p_actor_user_id?: string; p_note?: string; p_residence_id: string; p_verified: boolean }
+        Returns: undefined
+      }
+      admin_set_verification_status: {
+        Args: {
+          p_new_status: Database["public"]["Enums"]["verification_status"]
+          p_note?: string
+          p_professional_id: string
+        }
+        Returns: undefined
+      }
       auth_user_id: { Args: never; Returns: string }
       auth_user_role: {
         Args: never
@@ -1219,6 +1790,38 @@ export type Database = {
         Args: { fee_pct?: number; price: number }
         Returns: number
       }
+      cancel_booking: {
+        Args: { p_actor_user_id?: string; p_booking_id: string; p_note?: string }
+        Returns: undefined
+      }
+      complete_booking_service: {
+        Args: { p_actor_user_id?: string; p_booking_id: string; p_note?: string }
+        Returns: undefined
+      }
+      confirm_booking_completion: {
+        Args: { p_actor_user_id?: string; p_booking_id: string; p_note?: string }
+        Returns: undefined
+      }
+      create_booking_from_match: {
+        Args: { p_professional_id: string; p_request_id: string }
+        Returns: string
+      }
+      create_residence_inquiry: {
+        Args: {
+          p_care_recipient_id?: string
+          p_consent_given?: boolean
+          p_contact_email?: string
+          p_contact_name: string
+          p_contact_phone: string
+          p_family_user_id: string
+          p_inquiry_type: Database["public"]["Enums"]["residence_inquiry_type"]
+          p_message?: string
+          p_preferred_date?: string
+          p_preferred_time?: string
+          p_residence_id: string
+        }
+        Returns: string
+      }
       generate_matches: {
         Args: { request_id: string }
         Returns: {
@@ -1226,13 +1829,36 @@ export type Database = {
           score: number
         }[]
       }
+      mark_booking_en_route: {
+        Args: { p_actor_user_id?: string; p_booking_id: string; p_note?: string }
+        Returns: undefined
+      }
       process_request_matches: {
         Args: { p_request_id: string }
         Returns: number
       }
+      reject_booking: {
+        Args: { p_actor_user_id?: string; p_booking_id: string; p_note?: string }
+        Returns: undefined
+      }
+      start_booking_service: {
+        Args: { p_actor_user_id?: string; p_booking_id: string; p_note?: string }
+        Returns: undefined
+      }
+      submit_booking_review: {
+        Args: { p_booking_id: string; p_comment?: string; p_rating: number }
+        Returns: string
+      }
     }
     Enums: {
-      booking_status: "pending" | "confirmed" | "completed" | "cancelled"
+      booking_status:
+        | "pending"
+        | "confirmed"
+        | "en_route"
+        | "in_progress"
+        | "professional_completed"
+        | "completed"
+        | "cancelled"
       day_of_week:
         | "monday"
         | "tuesday"
@@ -1255,7 +1881,16 @@ export type Database = {
         | "contacted"
         | "accepted"
         | "rejected"
+      mobility_level: "independent" | "needs_assistance" | "wheelchair" | "bedridden"
       payment_status: "pending" | "paid" | "refunded" | "failed"
+      residence_inquiry_status:
+        | "new"
+        | "contacted"
+        | "visit_scheduled"
+        | "in_follow_up"
+        | "closed"
+        | "discarded"
+      residence_inquiry_type: "information" | "visit"
       request_status:
         | "created"
         | "reviewing"
@@ -1398,7 +2033,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      booking_status: ["pending", "confirmed", "completed", "cancelled"],
+      booking_status: [
+        "pending",
+        "confirmed",
+        "en_route",
+        "in_progress",
+        "professional_completed",
+        "completed",
+        "cancelled",
+      ],
       day_of_week: [
         "monday",
         "tuesday",
@@ -1424,7 +2067,17 @@ export const Constants = {
         "accepted",
         "rejected",
       ],
+      mobility_level: ["independent", "needs_assistance", "wheelchair", "bedridden"],
       payment_status: ["pending", "paid", "refunded", "failed"],
+      residence_inquiry_status: [
+        "new",
+        "contacted",
+        "visit_scheduled",
+        "in_follow_up",
+        "closed",
+        "discarded",
+      ],
+      residence_inquiry_type: ["information", "visit"],
       request_status: [
         "created",
         "reviewing",

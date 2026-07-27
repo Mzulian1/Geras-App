@@ -18,8 +18,9 @@ import { formatCLP } from "@/lib/format";
 export function ResidencesListPage() {
   const [comunaId, setComunaId] = useState<number | "all">("all");
   const [verified, setVerified] = useState<"all" | "verified" | "unverified">("all");
+  const [published, setPublished] = useState<"all" | "published" | "draft">("all");
 
-  const { data: residences, isLoading } = useResidences({ comunaId, verified });
+  const { data: residences, isLoading } = useResidences({ comunaId, verified, published });
   const { data: comunas } = useComunas();
 
   return (
@@ -55,6 +56,14 @@ export function ResidencesListPage() {
               <SelectItem value="unverified">Sin verificar</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={published} onValueChange={(v) => setPublished(v as typeof published)}>
+            <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Publicadas y borradores</SelectItem>
+              <SelectItem value="published">Publicadas</SelectItem>
+              <SelectItem value="draft">Borradores</SelectItem>
+            </SelectContent>
+          </Select>
         </CardContent>
       </Card>
 
@@ -67,6 +76,7 @@ export function ResidencesListPage() {
                 <TableHead>Comuna</TableHead>
                 <TableHead>Precio desde</TableHead>
                 <TableHead>Cupos</TableHead>
+                <TableHead>Publicada</TableHead>
                 <TableHead>Verificada</TableHead>
                 <TableHead>Activa</TableHead>
                 <TableHead />
@@ -90,6 +100,7 @@ export function ResidencesListPage() {
                   <TableCell>{r.comunas?.name}</TableCell>
                   <TableCell>{formatCLP(r.price_from)}</TableCell>
                   <TableCell>{r.available_slots ?? "—"} / {r.capacity ?? "—"}</TableCell>
+                  <TableCell><Badge variant={r.published ? "success" : "outline"}>{r.published ? "Publicada" : "Borrador"}</Badge></TableCell>
                   <TableCell><Badge variant={r.verified ? "success" : "outline"}>{r.verified ? "Verificada" : "Sin verificar"}</Badge></TableCell>
                   <TableCell><Badge variant={r.active ? "success" : "outline"}>{r.active ? "Activa" : "Inactiva"}</Badge></TableCell>
                   <TableCell>

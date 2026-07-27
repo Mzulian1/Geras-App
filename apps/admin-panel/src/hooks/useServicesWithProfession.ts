@@ -2,11 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 
 /**
- * Servicios con el nombre de su profesión embebido, para agruparlos
- * en el tab Servicios de /configuracion. Los rangos de precio que se
- * editan acá (base_price_min/max) son los que lee
- * PriceRangeIndicator en el detalle de cada profesional — el cambio
- * es inmediato porque ambas pantallas leen la misma tabla `services`.
+ * Servicios con nombre/categoría de su profesión embebidos, ordenados
+ * por `display_order` — el mismo orden que ve Mobile Familia en su
+ * vitrina. Escrituras van todas por el server (useServiceMutations),
+ * esto es solo lectura para la pantalla /servicios.
  */
 export function useServicesWithProfession() {
   return useQuery({
@@ -14,8 +13,8 @@ export function useServicesWithProfession() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("services")
-        .select("*, professions(name)")
-        .order("profession_id")
+        .select("*, professions(name, category)")
+        .order("display_order")
         .order("name");
       if (error) throw error;
       return data;

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Star, MapPin, Ban } from "lucide-react";
 import {
@@ -8,18 +9,30 @@ import {
   useProfessionalDocuments,
   useProfessionalReviews,
   useProfessionalStatusHistory,
+  useProfessionalActiveHistory,
+  useProfessionalBookings,
 } from "@/hooks/useProfessionalDetail";
-import { useUpdateVerificationStatus, useToggleProfessionalActive } from "@/hooks/useProfessionalMutations";
+import {
+  useApproveProfessional,
+  useRejectProfessional,
+  useToggleProfessionalActive,
+  useSetProfessionalPublished,
+} from "@/hooks/useProfessionalMutations";
 import { VerificationBadge } from "@/components/professionals/VerificationBadge";
 import { PriceRangeIndicator } from "@/components/professionals/PriceRangeIndicator";
 import { DocumentCard } from "@/components/professionals/DocumentCard";
 import { StatusHistoryTimeline } from "@/components/professionals/StatusHistoryTimeline";
+import { ActiveHistoryTimeline } from "@/components/professionals/ActiveHistoryTimeline";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { formatCLP, formatDate } from "@/lib/format";
-import type { DayOfWeek } from "@geras/shared";
+import { BOOKING_STATUS_LABELS } from "@/lib/statusLabels";
+import { ApiError } from "@/lib/apiClient";
+import type { DayOfWeek, OnboardingStepStatus } from "@geras/shared";
 
 const DAY_LABELS: Record<DayOfWeek, string> = {
   monday: "Lunes",
@@ -30,6 +43,39 @@ const DAY_LABELS: Record<DayOfWeek, string> = {
   saturday: "Sábado",
   sunday: "Domingo",
 };
+
+const STEP_LABELS: Record<keyof OnboardingStepStatus, string> = {
+  personal: "Datos personales",
+  experience: "Experiencia y descripción",
+  services: "Servicios ofrecidos",
+  coverage: "Comunas de cobertura",
+  availability: "Disponibilidad semanal",
+  documents: "Documentos exigidos",
+};
+
+/** Arma un mensaje legible a partir del error real del server (no un texto genérico). */
+function describeActionError(error: unknown): string {
+  if (error instanceof ApiError) {
+    const steps = (error.details as { steps?: OnboardingStepStatus } | undefined)?.steps;
+    if (steps) {
+      const missing = (Object.keys(steps) as (keyof OnboardingStepStatus)[])
+        .filter((key) => !steps[key])
+        .map((key) => STEP_LABELS[key]);
+      if (missing.length > 0) {
+        return `${error.message}: ${missing.join(", ")}`;
+      }
+    }
+    return error.message;
+  }
+  return error instanceof Error ? error.message : "Ocurrió un error inesperado";
+}
+
+type ActionDialog =
+  | { type: "approve" }
+  | { type: "reject" }
+  | { type: "toggle-active"; nextActive: boolean }
+  | { type: "toggle-publish"; nextPublished: boolean }
+  | null;
 
 /**
  * Pantalla /profesionales/:id — la más importante del panel: perfil
@@ -48,9 +94,16 @@ export function ProfessionalDetailPage() {
   const { data: documents } = useProfessionalDocuments(id);
   const { data: reviews } = useProfessionalReviews(id);
   const { data: statusHistory } = useProfessionalStatusHistory(id);
+  const { data: activeHistory } = useProfessionalActiveHistory(id);
+  const { data: bookings } = useProfessionalBookings(id);
 
-  const updateStatus = useUpdateVerificationStatus();
+  const approveProfessional = useApproveProfessional();
+  const rejectProfessional = useRejectProfessional();
   const toggleActive = useToggleProfessionalActive();
+  const setPublished = useSetProfessionalPublished();
+
+  const [dialog, setDialog] = useState<ActionDialog>(null);
+  const [note, setNote] = useState("");
 
   if (profileLoading) {
     return <Skeleton className="h-96 w-full" />;
@@ -59,6 +112,35 @@ export function ProfessionalDetailPage() {
   if (!profile) {
     return <p className="text-muted-foreground">Profesional no encontrado.</p>;
   }
+
+  function closeDialog() {
+    setDialog(null);
+    setNote("");
+  }
+
+  function confirmDialog() {
+    if (!dialog || !profile) return;
+    if (dialog.type === "approve") {
+      approveProfessional.mutate({ id: profile.id, note: note.trim() || undefined }, { onSuccess: closeDialog });
+    } else if (dialog.type === "reject") {
+      if (!note.trim()) return;
+      rejectProfessional.mutate({ id: profile.id, reason: note.trim() }, { onSuccess: closeDialog });
+    } else if (dialog.type === "toggle-active") {
+      toggleActive.mutate(
+        { id: profile.id, active: dialog.nextActive, note: note.trim() || undefined },
+        { onSuccess: closeDialog }
+      );
+    } else {
+      setPublished.mutate(
+        { id: profile.id, published: dialog.nextPublished, note: note.trim() || undefined },
+        { onSuccess: closeDialog }
+      );
+    }
+  }
+
+  const dialogPending =
+    approveProfessional.isPending || rejectProfessional.isPending || toggleActive.isPending || setPublished.isPending;
+  const actionError = approveProfessional.error ?? rejectProfessional.error ?? toggleActive.error ?? setPublished.error;
 
   return (
     <div className="space-y-6">
@@ -81,11 +163,15 @@ export function ProfessionalDetailPage() {
               <h1 className="text-xl font-bold">{profile.full_name}</h1>
               <p className="text-sm text-muted-foreground">
                 {profile.professions?.name} · {profile.years_experience ?? 0} años de experiencia
+                {profile.comunas?.name ? ` · ${profile.comunas.name}` : ""}
               </p>
               <div className="mt-2 flex items-center gap-2">
                 <VerificationBadge status={profile.verification_status} />
                 <Badge variant={profile.active ? "success" : "outline"}>
                   {profile.active ? "Activo" : "Inactivo"}
+                </Badge>
+                <Badge variant={profile.accepting_requests ? "success" : "secondary"}>
+                  {profile.accepting_requests ? "Publicado" : "Despublicado"}
                 </Badge>
                 {profile.average_rating && (
                   <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
@@ -98,29 +184,28 @@ export function ProfessionalDetailPage() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-2">
-            <Button
-              variant="default"
-              disabled={updateStatus.isPending}
-              onClick={() => updateStatus.mutate({ id: profile.id, status: "approved" })}
-            >
-              Aprobar perfil
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={updateStatus.isPending}
-              onClick={() => updateStatus.mutate({ id: profile.id, status: "rejected" })}
-            >
-              Rechazar perfil
-            </Button>
-            <Button
-              variant="outline"
-              disabled={toggleActive.isPending}
-              onClick={() => toggleActive.mutate({ id: profile.id, active: !profile.active })}
-            >
-              <Ban className="mr-1 h-4 w-4" />
-              {profile.active ? "Suspender" : "Reactivar"}
-            </Button>
+          <div className="flex flex-col items-end gap-2">
+            <div className="flex flex-col gap-2">
+              <Button variant="default" onClick={() => setDialog({ type: "approve" })}>
+                Aprobar perfil
+              </Button>
+              <Button variant="destructive" onClick={() => setDialog({ type: "reject" })}>
+                Rechazar perfil
+              </Button>
+              <Button variant="outline" onClick={() => setDialog({ type: "toggle-active", nextActive: !profile.active })}>
+                <Ban className="mr-1 h-4 w-4" />
+                {profile.active ? "Suspender" : "Reactivar"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setDialog({ type: "toggle-publish", nextPublished: !profile.accepting_requests })}
+              >
+                {profile.accepting_requests ? "Despublicar" : "Publicar"}
+              </Button>
+            </div>
+            {actionError && (
+              <p className="max-w-xs text-right text-xs text-destructive">{describeActionError(actionError)}</p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -210,26 +295,104 @@ export function ProfessionalDetailPage() {
           </CardContent>
         </Card>
 
-        {/* Reviews */}
+        {/* Historial de activo/suspendido */}
         <Card>
-          <CardHeader><CardTitle>Reviews recibidas</CardTitle></CardHeader>
-          <CardContent className="space-y-3">
-            {reviews?.length ? (
-              reviews.map((r) => (
-                <div key={r.id} className="rounded-md border p-3 text-sm">
-                  <div className="flex items-center gap-1 font-medium">
-                    <Star className="h-3.5 w-3.5 fill-current text-amber-500" /> {r.rating} / 5
-                  </div>
-                  {r.comment && <p className="mt-1 text-muted-foreground">{r.comment}</p>}
-                  <p className="mt-1 text-xs text-muted-foreground">{formatDate(r.created_at)}</p>
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-muted-foreground">Sin reviews todavía.</p>
-            )}
+          <CardHeader><CardTitle>Historial de suspensión</CardTitle></CardHeader>
+          <CardContent>
+            <ActiveHistoryTimeline entries={activeHistory ?? []} />
           </CardContent>
         </Card>
       </div>
+
+      {/* Reservas (Fase 2: actividad del profesional visible para Admin) */}
+      <Card>
+        <CardHeader><CardTitle>Reservas</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          {bookings?.length ? (
+            bookings.map((b) => (
+              <div key={b.id} className="flex items-center justify-between rounded-md border p-3 text-sm">
+                <div>
+                  <p className="font-medium">{b.services?.name}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatDate(b.scheduled_at)} · {b.users?.email}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="font-medium">{formatCLP(b.price)}</p>
+                  <Badge variant={BOOKING_STATUS_LABELS[b.status]?.variant ?? "outline"}>
+                    {BOOKING_STATUS_LABELS[b.status]?.label ?? b.status}
+                  </Badge>
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="text-sm text-muted-foreground">Sin reservas todavía.</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Reviews */}
+      <Card>
+        <CardHeader><CardTitle>Reviews recibidas</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          {reviews?.length ? (
+            reviews.map((r) => (
+              <div key={r.id} className="rounded-md border p-3 text-sm">
+                <div className="flex items-center gap-1 font-medium">
+                  <Star className="h-3.5 w-3.5 fill-current text-amber-500" /> {r.rating} / 5
+                </div>
+                {r.comment && <p className="mt-1 text-muted-foreground">{r.comment}</p>}
+                <p className="mt-1 text-xs text-muted-foreground">{formatDate(r.created_at)}</p>
+              </div>
+            ))
+          ) : (
+            <p className="text-sm text-muted-foreground">Sin reviews todavía.</p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Confirmación de acciones sensibles sobre el perfil */}
+      <Dialog open={dialog !== null} onOpenChange={(open) => !open && closeDialog()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {dialog?.type === "approve" && "Aprobar perfil"}
+              {dialog?.type === "reject" && "Rechazar perfil"}
+              {dialog?.type === "toggle-active" && (dialog.nextActive ? "Reactivar profesional" : "Suspender profesional")}
+              {dialog?.type === "toggle-publish" && (dialog.nextPublished ? "Publicar perfil" : "Despublicar perfil")}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {dialog?.type === "approve" && `${profile.full_name} pasará a estar aprobado y visible para las familias.`}
+            {dialog?.type === "reject" && `Cuéntale a ${profile.full_name} por qué se rechaza su perfil — es obligatorio.`}
+            {dialog?.type === "toggle-active" &&
+              (dialog.nextActive
+                ? `${profile.full_name} volverá a aparecer públicamente.`
+                : `${profile.full_name} dejará de aparecer públicamente de inmediato.`)}
+            {dialog?.type === "toggle-publish" &&
+              (dialog.nextPublished
+                ? `${profile.full_name} volverá a aparecer en el marketplace de Mobile Familia.`
+                : `${profile.full_name} dejará de aparecer en el marketplace, sin perder su verificación.`)}
+          </p>
+          <Textarea
+            placeholder={dialog?.type === "reject" ? "Motivo del rechazo (obligatorio)" : "Nota interna (opcional)"}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={closeDialog}>
+              Cancelar
+            </Button>
+            <Button
+              variant={dialog?.type === "reject" ? "destructive" : "default"}
+              onClick={confirmDialog}
+              disabled={dialogPending || (dialog?.type === "reject" && !note.trim())}
+            >
+              Confirmar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

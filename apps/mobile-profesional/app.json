@@ -16,7 +16,8 @@
           "icon": "./assets/notification-icon.png",
           "color": "#ffffff"
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "ios": {
       "supportsTablet": false,
@@ -28,6 +29,10 @@
         "backgroundColor": "#ffffff"
       },
       "package": "cl.geras.profesional"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "server"
     }
   }
 }
