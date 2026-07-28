@@ -104,7 +104,7 @@ export function ResidencesListPage() {
                   <TableCell><Badge variant={r.verified ? "success" : "outline"}>{r.verified ? "Verificada" : "Sin verificar"}</Badge></TableCell>
                   <TableCell><Badge variant={r.active ? "success" : "outline"}>{r.active ? "Activa" : "Inactiva"}</Badge></TableCell>
                   <TableCell>
-                    <Button asChild variant="ghost" size="icon">
+                    <Button asChild variant="ghost" size="icon" aria-label="Ver detalle de la residencia">
                       <Link to={`/residencias/${r.id}`}><Eye className="h-4 w-4" /></Link>
                     </Button>
                   </TableCell>

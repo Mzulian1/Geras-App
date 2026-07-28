@@ -141,7 +141,7 @@ export function ResidenceInquiriesListPage() {
                   <TableCell>{inq.users?.email ?? "Sin asignar"}</TableCell>
                   <TableCell>{formatDate(inq.created_at)}</TableCell>
                   <TableCell>
-                    <Button asChild variant="ghost" size="icon">
+                    <Button asChild variant="ghost" size="icon" aria-label="Ver detalle de la solicitud">
                       <Link to={`/solicitudes-residencias/${inq.id}`}><Eye className="h-4 w-4" /></Link>
                     </Button>
                   </TableCell>

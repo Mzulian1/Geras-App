@@ -66,7 +66,7 @@ export function ServiceRequestsListPage() {
                   <TableCell><Badge variant={URGENCY_LABELS[r.urgency_level].variant}>{URGENCY_LABELS[r.urgency_level].label}</Badge></TableCell>
                   <TableCell><Badge variant={REQUEST_STATUS_LABELS[r.status].variant}>{REQUEST_STATUS_LABELS[r.status].label}</Badge></TableCell>
                   <TableCell>
-                    <Button asChild variant="ghost" size="icon">
+                    <Button asChild variant="ghost" size="icon" aria-label="Ver detalle de la solicitud">
                       <Link to={`/solicitudes/${r.id}`}><Eye className="h-4 w-4" /></Link>
                     </Button>
                   </TableCell>

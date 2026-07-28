@@ -29,9 +29,10 @@ import { Link } from "react-router-dom";
 /**
  * Pantalla / — centro operacional del panel. Todo viene de
  * admin_metrics_view (una sola query, migraciones 011/027) más
- * platform_config para la comisión vigente. Cada tarjeta enlaza a la
- * sección correspondiente; "Alertas operativas" se calcula en el
- * cliente a partir de las mismas métricas reales (sin datos simulados).
+ * platform_config para la comisión vigente. Reordenado (Fase 10) para
+ * priorizar lo que requiere acción — profesionales por aprobar,
+ * reservas en curso, visitas nuevas, alertas — por sobre los totales
+ * decorativos, que ahora viven en "Resumen general" más abajo.
  */
 export function DashboardPage() {
   const { data: metrics } = useAdminMetrics();
@@ -60,108 +61,6 @@ export function DashboardPage() {
         <p className="text-sm text-muted-foreground">Centro operacional de la plataforma Geras</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard title="Familias registradas" value={metrics?.total_families ?? undefined} icon={Users} to="/usuarios" />
-        <MetricCard
-          title="Profesionales registrados"
-          value={metrics?.total_professionals ?? undefined}
-          icon={HeartHandshake}
-          to="/profesionales"
-        />
-        <MetricCard
-          title="Profesionales verificados"
-          value={metrics?.verified_professionals ?? undefined}
-          icon={ShieldCheck}
-          hint={metrics ? `${metrics.pending_verification ?? 0} pendientes de verificación` : undefined}
-          to="/profesionales"
-        />
-        <MetricCard
-          title="Profesionales activos"
-          value={metrics?.active_professionals ?? undefined}
-          icon={CheckCircle2}
-          to="/profesionales"
-        />
-        <MetricCard
-          title="Prestadores suspendidos"
-          value={metrics?.suspended_professionals ?? undefined}
-          icon={ShieldOff}
-          to="/profesionales"
-        />
-        <MetricCard
-          title="Solicitudes de servicio"
-          value={metrics?.total_requests ?? undefined}
-          icon={ClipboardList}
-          hint={metrics ? `${metrics.completed_requests ?? 0} completadas` : undefined}
-          to="/solicitudes"
-        />
-        <MetricCard
-          title="Reservas pendientes"
-          value={metrics?.bookings_pending ?? undefined}
-          icon={Hourglass}
-          hint="Esperando respuesta del profesional"
-          to="/reservas"
-        />
-        <MetricCard
-          title="Reservas confirmadas"
-          value={metrics?.active_bookings ?? undefined}
-          icon={CalendarCheck}
-          to="/reservas"
-        />
-        <MetricCard
-          title="Servicios en curso"
-          value={metrics?.services_in_progress ?? undefined}
-          icon={Wrench}
-          hint="En camino, iniciados o por confirmar"
-          to="/reservas"
-        />
-        <MetricCard
-          title="Servicios completados"
-          value={metrics?.services_completed ?? undefined}
-          icon={BookOpenCheck}
-          to="/reservas"
-        />
-        <MetricCard
-          title="Residencias publicadas"
-          value={metrics?.residences_published ?? undefined}
-          icon={Building2}
-          to="/residencias"
-        />
-        <MetricCard
-          title="Residencias en borrador"
-          value={metrics?.residences_draft ?? undefined}
-          icon={FileEdit}
-          to="/residencias"
-        />
-        <MetricCard
-          title="Solicitudes de residencias"
-          value={metrics?.residence_inquiries_total ?? undefined}
-          icon={MessageSquareText}
-          to="/solicitudes-residencias"
-        />
-        <MetricCard
-          title="Visitas pendientes"
-          value={metrics?.residence_visits_pending ?? undefined}
-          icon={CalendarClock}
-          to="/solicitudes-residencias"
-        />
-        <MetricCard
-          title="Rating promedio"
-          value={
-            metrics?.platform_avg_rating !== null && metrics?.platform_avg_rating !== undefined
-              ? `${metrics.platform_avg_rating} / 5`
-              : undefined
-          }
-          icon={Star}
-        />
-        <MetricCard
-          title="Comisión vigente"
-          value={commission ? formatPercent(commission.value) : undefined}
-          icon={Percent}
-          hint="Editable en Configuración > Comisión"
-          to="/configuracion"
-        />
-      </div>
-
       {alerts.length > 0 && (
         <Card className="border-amber-300">
           <CardHeader className="flex flex-row items-center gap-2 space-y-0">
@@ -178,16 +77,128 @@ export function DashboardPage() {
         </Card>
       )}
 
+      <div className="space-y-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Requiere tu atención</h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <MetricCard
+            title="Profesionales por aprobar"
+            value={metrics?.pending_verification ?? undefined}
+            icon={Hourglass}
+            hint="Esperando revisión de documentos"
+            to="/profesionales"
+          />
+          <MetricCard
+            title="Reservas pendientes"
+            value={metrics?.bookings_pending ?? undefined}
+            icon={ClipboardList}
+            hint="Esperando respuesta del profesional"
+            to="/reservas"
+          />
+          <MetricCard
+            title="Reservas en curso"
+            value={metrics?.services_in_progress ?? undefined}
+            icon={Wrench}
+            hint="En camino, iniciadas o por confirmar"
+            to="/reservas"
+          />
+          <MetricCard
+            title="Visitas de residencia nuevas"
+            value={metrics?.residence_visits_pending ?? undefined}
+            icon={CalendarClock}
+            hint="Sin coordinar todavía"
+            to="/solicitudes-residencias"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Resumen general</h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <MetricCard title="Familias registradas" value={metrics?.total_families ?? undefined} icon={Users} to="/usuarios" />
+          <MetricCard
+            title="Profesionales registrados"
+            value={metrics?.total_professionals ?? undefined}
+            icon={HeartHandshake}
+            to="/profesionales"
+          />
+          <MetricCard
+            title="Profesionales verificados"
+            value={metrics?.verified_professionals ?? undefined}
+            icon={ShieldCheck}
+            to="/profesionales"
+          />
+          <MetricCard
+            title="Profesionales activos"
+            value={metrics?.active_professionals ?? undefined}
+            icon={CheckCircle2}
+            to="/profesionales"
+          />
+          <MetricCard
+            title="Prestadores suspendidos"
+            value={metrics?.suspended_professionals ?? undefined}
+            icon={ShieldOff}
+            to="/profesionales"
+          />
+          <MetricCard
+            title="Solicitudes de servicio"
+            value={metrics?.total_requests ?? undefined}
+            icon={ClipboardList}
+            hint={metrics ? `${metrics.completed_requests ?? 0} completadas` : undefined}
+            to="/solicitudes"
+          />
+          <MetricCard title="Reservas confirmadas" value={metrics?.active_bookings ?? undefined} icon={CalendarCheck} to="/reservas" />
+          <MetricCard title="Servicios completados" value={metrics?.services_completed ?? undefined} icon={BookOpenCheck} to="/reservas" />
+          <MetricCard title="Residencias publicadas" value={metrics?.residences_published ?? undefined} icon={Building2} to="/residencias" />
+          <MetricCard title="Residencias en borrador" value={metrics?.residences_draft ?? undefined} icon={FileEdit} to="/residencias" />
+          <MetricCard
+            title="Solicitudes de residencias"
+            value={metrics?.residence_inquiries_total ?? undefined}
+            icon={MessageSquareText}
+            to="/solicitudes-residencias"
+          />
+          <MetricCard
+            title="Rating promedio"
+            value={
+              metrics?.platform_avg_rating !== null && metrics?.platform_avg_rating !== undefined
+                ? `${metrics.platform_avg_rating} / 5`
+                : undefined
+            }
+            icon={Star}
+          />
+          <MetricCard
+            title="Comisión vigente"
+            value={commission ? formatPercent(commission.value) : undefined}
+            icon={Percent}
+            hint="Editable en Configuración > Comisión"
+            to="/configuracion"
+          />
+        </div>
+      </div>
+
       <Card>
-        <CardHeader><CardTitle>Accesos directos</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>Accesos directos</CardTitle>
+        </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
-          <Button asChild variant="outline" size="sm"><Link to="/profesionales">Revisar profesionales</Link></Button>
-          <Button asChild variant="outline" size="sm"><Link to="/reservas">Gestionar reservas</Link></Button>
-          <Button asChild variant="outline" size="sm"><Link to="/solicitudes">Revisar solicitudes</Link></Button>
-          <Button asChild variant="outline" size="sm"><Link to="/residencias/nueva">Publicar residencia</Link></Button>
-          <Button asChild variant="outline" size="sm"><Link to="/solicitudes-residencias">Gestionar visitas</Link></Button>
           <Button asChild variant="outline" size="sm">
-            <Link to="/configuracion"><Settings className="mr-1 h-3.5 w-3.5" /> Configuración</Link>
+            <Link to="/profesionales">Revisar profesionales</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/reservas">Gestionar reservas</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/solicitudes">Revisar solicitudes</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/residencias/nueva">Publicar residencia</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/solicitudes-residencias">Gestionar visitas</Link>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/configuracion">
+              <Settings className="mr-1 h-3.5 w-3.5" /> Configuración
+            </Link>
           </Button>
         </CardContent>
       </Card>

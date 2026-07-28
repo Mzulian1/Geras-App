@@ -172,7 +172,7 @@ export function ProfessionalsListPage() {
                   </TableCell>
                   <TableCell>{formatDate(p.created_at)}</TableCell>
                   <TableCell>
-                    <Button asChild variant="ghost" size="icon">
+                    <Button asChild variant="ghost" size="icon" aria-label="Ver detalle del profesional">
                       <Link to={`/profesionales/${p.id}`}><Eye className="h-4 w-4" /></Link>
                     </Button>
                   </TableCell>
