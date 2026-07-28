@@ -4,6 +4,10 @@ import { callServerApi } from "@/lib/apiClient";
 
 // Lectura directa vía RLS (bookings_select_professional) — es solo
 // mirar las reservas propias, sin ninguna regla de negocio adicional.
+// Trae TODOS los estados (incluye completed/cancelled) porque la tab
+// "Reservas" (Fase 4) necesita también el filtro "Finalizadas" — la
+// query antes solo pedía los estados activos porque nada más los
+// necesitaba todavía.
 export function useProfessionalBookings(professionalId: string | undefined) {
   return useQuery({
     queryKey: ["professional-bookings", professionalId],
@@ -12,7 +16,6 @@ export function useProfessionalBookings(professionalId: string | undefined) {
         .from("bookings")
         .select("*, services(name)")
         .eq("professional_id", professionalId!)
-        .in("status", ["pending", "confirmed", "en_route", "in_progress", "professional_completed"])
         .order("scheduled_at", { ascending: true });
       if (error) throw error;
       return data;
