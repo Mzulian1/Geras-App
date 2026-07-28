@@ -1,15 +1,16 @@
 import { useMemo, useState } from "react";
 import { router } from "expo-router";
-import { FlatList, Pressable, Text, View } from "react-native";
+import { FlatList, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { dayOfWeekSchema } from "@geras/shared";
 import type { DayOfWeek, PublicProfessionalView } from "@geras/shared";
+import { Card, EmptyState, LoadingState, StatusBadge, useGerasTheme } from "@geras/ui";
 import { usePublicProfessionals } from "@/hooks/usePublicProfessionals";
 import { useComunasCatalog, useServicesCatalog } from "@/hooks/useCatalogs";
 import { useCareRecipient } from "@/hooks/useCareRecipients";
 import { useSelectedRecipientStore } from "@/state/selectedRecipientStore";
 import { useSelectedServiceStore } from "@/state/selectedServiceStore";
 import { SelectChips } from "@/components/SelectChips";
-import { LoadingScreen } from "@/components/LoadingScreen";
 
 const DAY_LABELS: Record<DayOfWeek, string> = {
   monday: "Lun",
@@ -54,6 +55,7 @@ function minPriceOf(item: PublicProfessionalView): number | null {
 // (migración 024). Filtrar/ordenar en memoria es correcto para el
 // tamaño de dataset de un marketplace en etapa MVP.
 export default function ProfessionalsScreen() {
+  const theme = useGerasTheme();
   const professionalsQuery = usePublicProfessionals();
   const servicesQuery = useServicesCatalog();
   const comunasQuery = useComunasCatalog();
@@ -99,96 +101,118 @@ export default function ProfessionalsScreen() {
   }, [professionalsQuery.data, comunaName, category, minRating, serviceId, day, sort]);
 
   if (professionalsQuery.isPending || servicesQuery.isPending || comunasQuery.isPending) {
-    return <LoadingScreen />;
+    return <LoadingState variant="card" rows={4} />;
   }
 
   function renderProfessional({ item }: { item: PublicProfessionalView }) {
     const services = (item.services as unknown as ServiceEntry[] | null) ?? [];
+    const priceFrom = minPriceOf(item);
     return (
-      <Pressable
-        className="mb-3 gap-1 rounded-lg border border-gray-200 p-4"
-        onPress={() => router.push(`/professionals/${item.id}`)}
-      >
-        <Text className="text-lg font-semibold">{item.full_name}</Text>
-        <Text className="text-sm text-gray-600">
-          {item.profession_name} · {item.base_comuna ?? "Sin comuna"}
-        </Text>
-        {item.average_rating ? (
-          <Text className="text-sm text-gray-600">
-            ★ {item.average_rating} ({item.total_reviews} reseñas)
-          </Text>
-        ) : null}
-        {services.length > 0 && (
-          <Text className="text-xs text-gray-500">
-            {services.map((s) => `${s.service_name} ($${s.price.toLocaleString("es-CL")})`).join(" · ")}
-          </Text>
-        )}
-      </Pressable>
+      <Card onPress={() => router.push(`/professionals/${item.id}`)} accessibilityLabel={item.full_name ?? "Profesional"}>
+        <View style={{ flexDirection: "row", gap: 12 }}>
+          <View
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 24,
+              backgroundColor: theme.primarySoft,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Ionicons name="person" size={22} color={theme.primary} />
+          </View>
+          <View style={{ flex: 1, gap: 4 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+              <Text style={{ fontSize: 16, fontWeight: "600", color: theme.textPrimary, flexShrink: 1 }} numberOfLines={1}>
+                {item.full_name}
+              </Text>
+              <StatusBadge kind="verification" value="approved" />
+            </View>
+            <Text style={{ fontSize: 14, color: theme.textSecondary }}>
+              {item.profession_name} · {item.base_comuna ?? "Sin comuna"}
+            </Text>
+            {item.average_rating ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <Ionicons name="star" size={14} color={theme.warning} />
+                <Text style={{ fontSize: 14, color: theme.textSecondary }}>
+                  {item.average_rating} ({item.total_reviews} reseñas)
+                </Text>
+              </View>
+            ) : null}
+            {services.length > 0 ? (
+              <Text style={{ fontSize: 13, color: theme.textSecondary }} numberOfLines={1}>
+                {services.map((s) => s.service_name).join(" · ")}
+              </Text>
+            ) : null}
+            {priceFrom ? (
+              <Text style={{ fontSize: 14, fontWeight: "600", color: theme.textPrimary, marginTop: 2 }}>
+                Desde ${priceFrom.toLocaleString("es-CL")}
+              </Text>
+            ) : null}
+            <Text style={{ fontSize: 13, fontWeight: "600", color: theme.primary, marginTop: 2 }}>Ver perfil</Text>
+          </View>
+        </View>
+      </Card>
     );
   }
 
   return (
-    <View className="flex-1 bg-white px-6 pt-16">
-      <Text className="text-2xl font-bold">Profesionales</Text>
-      {recipientQuery.data ? (
-        <Text className="mb-2 text-sm text-gray-600">Buscando para {recipientQuery.data.full_name}</Text>
-      ) : (
-        <Text className="mb-2 text-sm text-gray-600">Explorando profesionales disponibles</Text>
-      )}
-
-      <FlatList
-        className="flex-1 pt-2"
-        data={filtered}
-        keyExtractor={(item) => item.id ?? item.full_name ?? Math.random().toString()}
-        renderItem={renderProfessional}
-        ListHeaderComponent={
-          <View className="gap-3 border-b border-gray-100 pb-4 mb-2">
-            <SelectChips
-              label="Categoría"
-              options={categories.map((c) => ({ value: c, label: c }))}
-              selected={category ? [category] : []}
-              onToggle={(value) => setCategory(category === value ? null : value)}
-            />
-            <SelectChips
-              label="Servicio"
-              options={(servicesQuery.data ?? []).map((service) => ({ value: service.id, label: service.name }))}
-              selected={serviceId ? [serviceId] : []}
-              onToggle={(value) => setServiceId(serviceId === value ? null : value)}
-            />
-            <SelectChips
-              label="Comuna"
-              options={(comunasQuery.data ?? []).map((comuna) => ({ value: comuna.name, label: comuna.name }))}
-              selected={comunaName ? [comunaName] : []}
-              onToggle={(value) => setComunaName(comunaName === value ? null : value)}
-            />
-            <SelectChips
-              label="Disponibilidad"
-              options={dayOfWeekSchema.options.map((value) => ({ value, label: DAY_LABELS[value] }))}
-              selected={day ? [day] : []}
-              onToggle={(value) => setDay(day === value ? null : value)}
-            />
-            <SelectChips
-              label="Evaluación mínima"
-              options={[
-                { value: 3, label: "3+" },
-                { value: 4, label: "4+" },
-                { value: 4.5, label: "4.5+" },
-              ]}
-              selected={minRating ? [minRating] : []}
-              onToggle={(value) => setMinRating(minRating === value ? null : value)}
-            />
-            <SelectChips
-              label="Ordenar por"
-              options={[...SORT_OPTIONS]}
-              selected={[sort]}
-              onToggle={(value) => setSort(value)}
-            />
-          </View>
-        }
-        ListEmptyComponent={
-          <Text className="pt-4 text-center text-gray-500">No hay profesionales que coincidan con estos filtros.</Text>
-        }
-      />
-    </View>
+    <FlatList
+      style={{ flex: 1 }}
+      data={filtered}
+      keyExtractor={(item) => item.id ?? item.full_name ?? Math.random().toString()}
+      contentContainerStyle={{ gap: 12, paddingBottom: 24 }}
+      ListHeaderComponent={
+        <View style={{ gap: 12, paddingBottom: 16, marginBottom: 4, borderBottomWidth: 1, borderBottomColor: theme.borderSoft }}>
+          {recipientQuery.data ? (
+            <Text style={{ fontSize: 14, color: theme.textSecondary }}>Buscando para {recipientQuery.data.full_name}</Text>
+          ) : null}
+          <SelectChips
+            label="Categoría"
+            options={categories.map((c) => ({ value: c, label: c }))}
+            selected={category ? [category] : []}
+            onToggle={(value) => setCategory(category === value ? null : value)}
+          />
+          <SelectChips
+            label="Servicio"
+            options={(servicesQuery.data ?? []).map((service) => ({ value: service.id, label: service.name }))}
+            selected={serviceId ? [serviceId] : []}
+            onToggle={(value) => setServiceId(serviceId === value ? null : value)}
+          />
+          <SelectChips
+            label="Comuna"
+            options={(comunasQuery.data ?? []).map((comuna) => ({ value: comuna.name, label: comuna.name }))}
+            selected={comunaName ? [comunaName] : []}
+            onToggle={(value) => setComunaName(comunaName === value ? null : value)}
+          />
+          <SelectChips
+            label="Disponibilidad"
+            options={dayOfWeekSchema.options.map((value) => ({ value, label: DAY_LABELS[value] }))}
+            selected={day ? [day] : []}
+            onToggle={(value) => setDay(day === value ? null : value)}
+          />
+          <SelectChips
+            label="Evaluación mínima"
+            options={[
+              { value: 3, label: "3+" },
+              { value: 4, label: "4+" },
+              { value: 4.5, label: "4.5+" },
+            ]}
+            selected={minRating ? [minRating] : []}
+            onToggle={(value) => setMinRating(minRating === value ? null : value)}
+          />
+          <SelectChips label="Ordenar por" options={[...SORT_OPTIONS]} selected={[sort]} onToggle={(value) => setSort(value)} />
+        </View>
+      }
+      renderItem={renderProfessional}
+      ListEmptyComponent={
+        <EmptyState
+          icon="people-outline"
+          title="No hay profesionales que coincidan"
+          description="Prueba ajustando los filtros de categoría, comuna o disponibilidad."
+        />
+      }
+    />
   );
 }

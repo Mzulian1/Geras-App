@@ -1,9 +1,21 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import type { DayOfWeek } from "@geras/shared";
+import {
+  AppHeader,
+  BottomActionBar,
+  Card,
+  FilterChip,
+  InfoRow,
+  LoadingState,
+  PrimaryButton,
+  Screen,
+  StatusBadge,
+  useGerasTheme,
+} from "@geras/ui";
 import { usePublicProfessional } from "@/hooks/usePublicProfessionals";
 import { useSelectedServiceStore } from "@/state/selectedServiceStore";
-import { LoadingScreen } from "@/components/LoadingScreen";
 
 const DAY_LABELS: Record<DayOfWeek, string> = {
   monday: "Lunes",
@@ -28,27 +40,34 @@ interface AvailabilityEntry {
   end: string;
 }
 
-// Perfil público (Fase 2): servicios, experiencia, cobertura,
-// disponibilidad, precio, calificaciones y estado verificado — nunca
-// RUT/documentos/dirección/teléfono ni correo privados, ni
-// observaciones administrativas (ninguno de esos campos existe
-// siquiera en public_professionals_view, así que no hay riesgo de
-// exponerlos por accidente).
+// Perfil público (Fase 2 / Fase 5 "Detalle del profesional"): servicios,
+// experiencia, cobertura, disponibilidad, precio, calificaciones y
+// estado verificado — nunca RUT/documentos/dirección/teléfono ni
+// correo privados (ninguno de esos campos existe en
+// public_professionals_view, así que no hay riesgo de exponerlos).
 export default function ProfessionalPublicProfileScreen() {
+  const theme = useGerasTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const professionalQuery = usePublicProfessional(id);
   const setSelectedServiceId = useSelectedServiceStore((s) => s.setSelectedServiceId);
 
-  if (professionalQuery.isPending) return <LoadingScreen />;
+  if (professionalQuery.isPending) {
+    return (
+      <Screen>
+        <LoadingState variant="text" />
+      </Screen>
+    );
+  }
 
   const professional = professionalQuery.data;
   if (!professional) {
     return (
-      <View className="flex-1 items-center justify-center bg-white px-6">
-        <Text className="text-center text-base text-gray-600">
+      <Screen scroll={false} padded={false}>
+        <AppHeader title="Profesional" onBack={() => router.back()} />
+        <Text style={{ fontSize: 15, color: theme.textSecondary, textAlign: "center", marginTop: 24 }}>
           Este profesional ya no está disponible.
         </Text>
-      </View>
+      </Screen>
     );
   }
 
@@ -62,80 +81,91 @@ export default function ProfessionalPublicProfileScreen() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-white">
-      <View className="gap-4 px-6 pb-10 pt-16">
-        <View>
-          <Text className="text-2xl font-bold">{professional.full_name}</Text>
-          <Text className="text-sm text-gray-600">
+    <Screen
+      scroll
+      padded={false}
+      footer={
+        <BottomActionBar primary={<PrimaryButton label="Solicitar servicio" onPress={startRequest} fullWidth />} />
+      }
+    >
+      <AppHeader title="Detalle del profesional" onBack={() => router.back()} />
+      <View style={{ padding: 16, gap: 20 }}>
+        <View style={{ gap: 6 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Text style={{ fontSize: 22, fontWeight: "700", color: theme.textPrimary, flexShrink: 1 }}>
+              {professional.full_name}
+            </Text>
+            {professional.verification_status === "approved" ? <StatusBadge kind="verification" value="approved" /> : null}
+          </View>
+          <Text style={{ fontSize: 15, color: theme.textSecondary }}>
             {professional.profession_name} · {professional.base_comuna ?? "Sin comuna"}
           </Text>
-          {professional.verification_status === "approved" ? (
-            <View className="mt-1 self-start rounded-full bg-green-100 px-2 py-0.5">
-              <Text className="text-xs font-medium text-green-800">Verificado por Geras</Text>
+          {professional.average_rating ? (
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+              <Ionicons name="star" size={16} color={theme.warning} />
+              <Text style={{ fontSize: 15, color: theme.textSecondary }}>
+                {professional.average_rating} · {professional.total_reviews} reseñas
+              </Text>
             </View>
-          ) : null}
-        </View>
-
-        {professional.average_rating ? (
-          <Text className="text-base text-gray-700">
-            ★ {professional.average_rating} · {professional.total_reviews} reseñas
-          </Text>
-        ) : (
-          <Text className="text-sm text-gray-500">Todavía sin reseñas</Text>
-        )}
-
-        {professional.bio ? <Text className="text-base text-gray-600">{professional.bio}</Text> : null}
-        {professional.years_experience ? (
-          <Text className="text-sm text-gray-600">{professional.years_experience} años de experiencia</Text>
-        ) : null}
-
-        <View className="gap-2">
-          <Text className="text-lg font-semibold">Servicios y precios</Text>
-          {services.length > 0 ? (
-            services.map((s) => (
-              <View key={s.service_id} className="flex-row justify-between rounded-lg border border-gray-200 p-3">
-                <Text className="text-sm text-gray-700">{s.service_name}</Text>
-                <Text className="text-sm font-semibold">${s.price.toLocaleString("es-CL")}</Text>
-              </View>
-            ))
           ) : (
-            <Text className="text-sm text-gray-500">Sin servicios publicados.</Text>
+            <Text style={{ fontSize: 14, color: theme.textSecondary }}>Todavía sin reseñas</Text>
           )}
         </View>
 
-        <View className="gap-2">
-          <Text className="text-lg font-semibold">Cobertura</Text>
-          <View className="flex-row flex-wrap gap-2">
-            {coverage.length > 0 ? (
-              coverage.map((c) => (
-                <View key={c} className="rounded-full border border-gray-300 px-3 py-1">
-                  <Text className="text-sm text-gray-700">{c}</Text>
+        {professional.bio || professional.years_experience ? (
+          <Card>
+            {professional.bio ? <Text style={{ fontSize: 15, color: theme.textPrimary, lineHeight: 22 }}>{professional.bio}</Text> : null}
+            {professional.years_experience ? (
+              <Text style={{ fontSize: 14, color: theme.textSecondary, marginTop: professional.bio ? 8 : 0 }}>
+                {professional.years_experience} años de experiencia
+              </Text>
+            ) : null}
+          </Card>
+        ) : null}
+
+        <View style={{ gap: 10 }}>
+          <Text style={{ fontSize: 18, fontWeight: "600", color: theme.textPrimary }}>Servicios y precios</Text>
+          {services.length > 0 ? (
+            <Card>
+              {services.map((s, index) => (
+                <View key={s.service_id}>
+                  {index > 0 ? <View style={{ height: 1, backgroundColor: theme.borderSoft, marginVertical: 8 }} /> : null}
+                  <InfoRow label={s.service_name} value={`$${s.price.toLocaleString("es-CL")}`} />
                 </View>
-              ))
+              ))}
+            </Card>
+          ) : (
+            <Text style={{ fontSize: 14, color: theme.textSecondary }}>Sin servicios publicados.</Text>
+          )}
+        </View>
+
+        <View style={{ gap: 10 }}>
+          <Text style={{ fontSize: 18, fontWeight: "600", color: theme.textPrimary }}>Cobertura</Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+            {coverage.length > 0 ? (
+              coverage.map((c) => <FilterChip key={c} label={c} selected={false} onPress={() => {}} />)
             ) : (
-              <Text className="text-sm text-gray-500">Sin comunas configuradas.</Text>
+              <Text style={{ fontSize: 14, color: theme.textSecondary }}>Sin comunas configuradas.</Text>
             )}
           </View>
         </View>
 
-        <View className="gap-2">
-          <Text className="text-lg font-semibold">Disponibilidad</Text>
+        <View style={{ gap: 10 }}>
+          <Text style={{ fontSize: 18, fontWeight: "600", color: theme.textPrimary }}>Disponibilidad</Text>
           {availability.length > 0 ? (
-            availability.map((a, i) => (
-              <View key={`${a.day}-${i}`} className="flex-row justify-between">
-                <Text className="text-sm text-gray-700">{DAY_LABELS[a.day]}</Text>
-                <Text className="text-sm text-gray-500">{a.start} – {a.end}</Text>
-              </View>
-            ))
+            <Card>
+              {availability.map((a, i) => (
+                <View key={`${a.day}-${i}`}>
+                  {i > 0 ? <View style={{ height: 1, backgroundColor: theme.borderSoft, marginVertical: 8 }} /> : null}
+                  <InfoRow label={DAY_LABELS[a.day]} value={`${a.start} – ${a.end}`} />
+                </View>
+              ))}
+            </Card>
           ) : (
-            <Text className="text-sm text-gray-500">Sin horarios configurados.</Text>
+            <Text style={{ fontSize: 14, color: theme.textSecondary }}>Sin horarios configurados.</Text>
           )}
         </View>
-
-        <Pressable className="mt-4 items-center justify-center rounded-lg bg-black py-3" onPress={startRequest}>
-          <Text className="font-semibold text-white">Solicitar servicio</Text>
-        </Pressable>
       </View>
-    </ScrollView>
+    </Screen>
   );
 }

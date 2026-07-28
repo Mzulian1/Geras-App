@@ -1,57 +1,83 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { router } from "expo-router";
-import { FlatList, Pressable, Text, View } from "react-native";
-import { BOOKING_STATUS_LABELS } from "@geras/shared";
+import { FlatList, Text, View } from "react-native";
+import type { BookingStatus, RequestStatus, ResidenceInquiryStatus } from "@geras/shared";
+import {
+  Card,
+  EmptyState,
+  FilterChip,
+  LoadingState,
+  Screen,
+  StatusBadge,
+  useGerasTheme,
+} from "@geras/ui";
 import { useFamilyBootstrap } from "@/hooks/useFamilyBootstrap";
 import { useMyServiceRequests } from "@/hooks/useMyRequests";
 import { useMyResidenceInquiries } from "@/hooks/useResidenceInquiries";
-import { LoadingScreen } from "@/components/LoadingScreen";
 
-const REQUEST_STATUS_LABELS: Record<string, string> = {
-  created: "Creada",
-  reviewing: "En revisión",
-  sent_to_professionals: "Buscando profesionales",
-  professional_interested: "Profesional interesado",
-  accepted: "Profesional elegido",
-  scheduled: "Agendada",
-  completed: "Completada",
-  cancelled: "Cancelada",
-  evaluated: "Evaluada",
-};
+type ActivityFilter = "ongoing" | "pending" | "done";
 
-const INQUIRY_STATUS_LABELS: Record<string, string> = {
-  new: "Enviada",
-  contacted: "Contactado por la residencia",
-  visit_scheduled: "Visita agendada",
-  in_follow_up: "En seguimiento",
-  closed: "Cerrada",
-  discarded: "Descartada",
-};
+type ActivityBadge =
+  | { kind: "booking"; value: BookingStatus }
+  | { kind: "request"; value: RequestStatus }
+  | { kind: "residenceInquiry"; value: ResidenceInquiryStatus };
 
-interface ListItem {
+interface ActivityItem {
   id: string;
   title: string;
-  statusLabel: string;
+  subtitle: string;
+  badge: ActivityBadge;
+  filter: ActivityFilter;
   createdAt: string;
   onPress: () => void;
 }
 
-// Tab "Solicitudes": historial unificado de solicitudes de servicio
-// (con su reserva, si ya la hay) Y solicitudes de residencia (Fase 5)
-// — un solo listado en vez de dos pantallas separadas.
-export default function SolicitudesScreen() {
+const ONGOING_BOOKING: BookingStatus[] = ["pending", "confirmed", "en_route", "in_progress", "professional_completed"];
+const DONE_BOOKING: BookingStatus[] = ["completed", "cancelled"];
+const PENDING_REQUEST: RequestStatus[] = ["created", "reviewing", "sent_to_professionals", "professional_interested"];
+const DONE_REQUEST: RequestStatus[] = ["completed", "cancelled", "evaluated"];
+const PENDING_INQUIRY: ResidenceInquiryStatus[] = ["new", "contacted", "in_follow_up"];
+const DONE_INQUIRY: ResidenceInquiryStatus[] = ["closed", "discarded"];
+
+const FILTERS: { key: ActivityFilter; label: string }[] = [
+  { key: "ongoing", label: "En curso" },
+  { key: "pending", label: "Pendientes" },
+  { key: "done", label: "Finalizadas" },
+];
+
+// Tab "Actividad" (Fase 3): historial unificado de solicitudes de
+// servicio + sus reservas + solicitudes de residencia, con filtros por
+// estado en vez de una lista plana. Reemplaza a la antigua tab
+// "Solicitudes" — misma data, misma navegación de detalle.
+export default function ActividadScreen() {
+  const theme = useGerasTheme();
+  const [filter, setFilter] = useState<ActivityFilter>("ongoing");
   const bootstrap = useFamilyBootstrap();
   const businessUserId = bootstrap.status === "ready" ? bootstrap.businessUser.id : undefined;
   const requestsQuery = useMyServiceRequests(businessUserId);
   const inquiriesQuery = useMyResidenceInquiries(businessUserId);
 
-  const items = useMemo<ListItem[]>(() => {
-    const serviceItems: ListItem[] = (requestsQuery.data ?? []).map((item) => {
+  const items = useMemo<ActivityItem[]>(() => {
+    const serviceItems: ActivityItem[] = (requestsQuery.data ?? []).map((item) => {
       const booking = item.bookings?.[0];
+      const activityFilter: ActivityFilter = booking
+        ? ONGOING_BOOKING.includes(booking.status)
+          ? "ongoing"
+          : DONE_BOOKING.includes(booking.status)
+            ? "done"
+            : "ongoing"
+        : PENDING_REQUEST.includes(item.status)
+          ? "pending"
+          : DONE_REQUEST.includes(item.status)
+            ? "done"
+            : "ongoing";
+
       return {
         id: `request-${item.id}`,
         title: item.services?.name ?? "Servicio",
-        statusLabel: booking ? BOOKING_STATUS_LABELS[booking.status] ?? booking.status : REQUEST_STATUS_LABELS[item.status] ?? item.status,
+        subtitle: "Solicitud de servicio",
+        badge: booking ? { kind: "booking", value: booking.status } : { kind: "request", value: item.status },
+        filter: activityFilter,
         createdAt: item.created_at,
         onPress: () =>
           booking
@@ -60,10 +86,12 @@ export default function SolicitudesScreen() {
       };
     });
 
-    const residenceItems: ListItem[] = (inquiriesQuery.data ?? []).map((item) => ({
+    const residenceItems: ActivityItem[] = (inquiriesQuery.data ?? []).map((item) => ({
       id: `inquiry-${item.id}`,
-      title: `${item.residences?.name ?? "Residencia"} (${item.inquiry_type === "visit" ? "visita" : "información"})`,
-      statusLabel: INQUIRY_STATUS_LABELS[item.status] ?? item.status,
+      title: item.residences?.name ?? "Residencia",
+      subtitle: item.inquiry_type === "visit" ? "Solicitud de visita" : "Solicitud de información",
+      badge: { kind: "residenceInquiry", value: item.status },
+      filter: PENDING_INQUIRY.includes(item.status) ? "pending" : DONE_INQUIRY.includes(item.status) ? "done" : "ongoing",
       createdAt: item.created_at,
       onPress: () => router.push(`/residencias/${item.residence_id}`),
     }));
@@ -71,27 +99,74 @@ export default function SolicitudesScreen() {
     return [...serviceItems, ...residenceItems].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }, [requestsQuery.data, inquiriesQuery.data]);
 
-  if (bootstrap.status !== "ready" || requestsQuery.isPending || inquiriesQuery.isPending) return <LoadingScreen />;
+  const filteredItems = items.filter((item) => item.filter === filter);
+  const isLoading = bootstrap.status !== "ready" || requestsQuery.isPending || inquiriesQuery.isPending;
 
   return (
-    <View className="flex-1 bg-white px-6 pt-16">
-      <Text className="text-2xl font-bold">Tus solicitudes</Text>
-      <Text className="mb-4 text-sm text-gray-600">Solicitudes de servicio, reservas y contactos con residencias.</Text>
+    <Screen scroll={false} contentContainerStyle={{ gap: 16 }}>
+      <View style={{ gap: 4 }}>
+        <Text style={{ fontSize: 24, fontWeight: "700", color: theme.textPrimary }}>Actividad</Text>
+        <Text style={{ fontSize: 14, color: theme.textSecondary }}>
+          Tus solicitudes, reservas y contactos con residencias, en un solo lugar.
+        </Text>
+      </View>
 
-      <FlatList
-        className="flex-1"
-        data={items}
-        keyExtractor={(item) => item.id}
-        ListEmptyComponent={
-          <Text className="pt-4 text-center text-gray-500">Todavía no tienes solicitudes. Empieza desde Servicios o Residencias.</Text>
-        }
-        renderItem={({ item }) => (
-          <Pressable className="mb-3 gap-1 rounded-lg border border-gray-200 p-4" onPress={item.onPress}>
-            <Text className="text-base font-semibold">{item.title}</Text>
-            <Text className="text-sm text-gray-600">{item.statusLabel}</Text>
-          </Pressable>
-        )}
-      />
-    </View>
+      <View style={{ flexDirection: "row", gap: 8 }}>
+        {FILTERS.map((item) => (
+          <FilterChip key={item.key} label={item.label} selected={filter === item.key} onPress={() => setFilter(item.key)} />
+        ))}
+      </View>
+
+      {isLoading ? (
+        <LoadingState variant="card" rows={3} />
+      ) : filteredItems.length === 0 ? (
+        <EmptyState
+          icon="pulse-outline"
+          title={emptyTitle(filter)}
+          description={emptyDescription(filter)}
+          actionLabel={filter === "pending" ? "Explorar servicios" : undefined}
+          onAction={filter === "pending" ? () => router.push("/explorar") : undefined}
+        />
+      ) : (
+        <FlatList
+          data={filteredItems}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ gap: 12, paddingBottom: 24 }}
+          renderItem={({ item }) => (
+            <Card onPress={item.onPress} accessibilityLabel={item.title}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={{ fontSize: 16, fontWeight: "600", color: theme.textPrimary }}>{item.title}</Text>
+                  <Text style={{ fontSize: 14, color: theme.textSecondary }}>{item.subtitle}</Text>
+                </View>
+                <StatusBadge kind={item.badge.kind as "booking"} value={item.badge.value as BookingStatus} />
+              </View>
+            </Card>
+          )}
+        />
+      )}
+    </Screen>
   );
+}
+
+function emptyTitle(filter: ActivityFilter): string {
+  switch (filter) {
+    case "ongoing":
+      return "No tienes actividad en curso";
+    case "pending":
+      return "No tienes solicitudes pendientes";
+    case "done":
+      return "Todavía no tienes actividad finalizada";
+  }
+}
+
+function emptyDescription(filter: ActivityFilter): string {
+  switch (filter) {
+    case "ongoing":
+      return "Cuando un profesional acepte tu solicitud o agendes una visita, aparecerá aquí.";
+    case "pending":
+      return "Cuando envíes una solicitud de servicio o de residencia, aparecerá aquí mientras esperas respuesta.";
+    case "done":
+      return "Tus solicitudes y reservas completadas o canceladas van a aparecer acá.";
+  }
 }

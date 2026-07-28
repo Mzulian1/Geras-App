@@ -1,102 +1,134 @@
+import { useMemo } from "react";
 import { router } from "expo-router";
-import { FlatList, Pressable, ScrollView, Text, View } from "react-native";
+import { FlatList, Text, View } from "react-native";
+import { useUser } from "@clerk/clerk-expo";
+import type { BookingStatus } from "@geras/shared";
+import { Card, LoadingState, PrimaryButton, Screen, SectionHeader, StatusBadge, useGerasTheme } from "@geras/ui";
 import { useServicesShowcase, type ServiceShowcaseEntry } from "@/hooks/useCatalogs";
-import { LoadingScreen } from "@/components/LoadingScreen";
+import { useFamilyBootstrap } from "@/hooks/useFamilyBootstrap";
+import { useMyServiceRequests } from "@/hooks/useMyRequests";
 
-// Fase 1: pantalla inicial de Mobile Familia — vitrina general de
-// Geras (servicios destacados agrupados por categoría, ya no la lista
-// de personas mayores, que se movió a Perfil) más accesos directos a
-// los otros buscadores. Los datos salen de `services`
-// (display_order/active configurados en Admin) vía useServicesShowcase.
+const ONGOING_BOOKING: BookingStatus[] = ["pending", "confirmed", "en_route", "in_progress", "professional_completed"];
+
+// Tab "Inicio" (Fase 3): saludo, buscador rápido hacia Explorar,
+// servicios destacados y la solicitud/reserva activa más relevante (si
+// hay alguna) — reemplaza los accesos directos genéricos de antes por
+// contenido que de verdad depende del estado de la familia.
 export default function InicioScreen() {
+  const theme = useGerasTheme();
+  const { user } = useUser();
   const servicesQuery = useServicesShowcase();
+  const bootstrap = useFamilyBootstrap();
+  const businessUserId = bootstrap.status === "ready" ? bootstrap.businessUser.id : undefined;
+  const requestsQuery = useMyServiceRequests(businessUserId);
 
-  if (servicesQuery.isPending) return <LoadingScreen />;
+  const activeRequest = useMemo(() => {
+    const requests = requestsQuery.data ?? [];
+    return requests.find((item) => {
+      const booking = item.bookings?.[0];
+      return booking ? ONGOING_BOOKING.includes(booking.status) : ["created", "reviewing", "sent_to_professionals", "professional_interested"].includes(item.status);
+    });
+  }, [requestsQuery.data]);
+
+  if (servicesQuery.isPending) {
+    return (
+      <Screen>
+        <LoadingState variant="text" />
+      </Screen>
+    );
+  }
 
   const services = servicesQuery.data ?? [];
   const featured = services.slice(0, 5);
-  const categories = [...new Set(services.map((s) => s.professions?.category).filter((c): c is string => !!c))];
+  const firstName = user?.firstName ?? "";
 
   function goToServiceDetail(service: ServiceShowcaseEntry) {
     router.push(`/servicios/${service.id}`);
   }
 
   return (
-    <ScrollView className="flex-1 bg-white">
-      <View className="gap-6 px-6 pb-10 pt-16">
-        <View className="gap-2">
-          <Text className="text-2xl font-bold">Geras</Text>
-          <Text className="text-base text-gray-600">
-            Encuentra profesionales y residencias de confianza para el cuidado de tu familia.
-          </Text>
-        </View>
+    <Screen contentContainerStyle={{ gap: 24 }}>
+      <View style={{ gap: 4 }}>
+        <Text style={{ fontSize: 24, fontWeight: "700", color: theme.textPrimary }}>
+          {firstName ? `Hola, ${firstName}` : "Hola"}
+        </Text>
+        <Text style={{ fontSize: 15, color: theme.textSecondary }}>
+          Encuentra profesionales y residencias de confianza para el cuidado de tu familia.
+        </Text>
+      </View>
 
-        <View className="flex-row flex-wrap gap-3">
-          <Pressable
-            className="flex-1 items-center justify-center rounded-lg bg-black py-3"
-            onPress={() => router.push("/professionals")}
-          >
-            <Text className="font-semibold text-white">Buscar profesionales</Text>
-          </Pressable>
-          <Pressable
-            className="flex-1 items-center justify-center rounded-lg border border-gray-300 py-3"
-            onPress={() => router.push("/residencias")}
-          >
-            <Text className="font-semibold text-gray-800">Buscar residencias</Text>
-          </Pressable>
-        </View>
-
-        <Pressable
-          className="items-center justify-center rounded-lg border border-gray-300 py-3"
-          onPress={() => router.push("/solicitudes")}
-        >
-          <Text className="font-semibold text-gray-800">Mis solicitudes y reservas</Text>
-        </Pressable>
-
-        {categories.length > 0 ? (
-          <View className="gap-2">
-            <Text className="text-lg font-semibold">Categorías</Text>
-            <View className="flex-row flex-wrap gap-2">
-              {categories.map((category) => (
-                <View key={category} className="rounded-full border border-gray-300 px-3 py-1.5">
-                  <Text className="text-sm text-gray-700">{category}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        ) : null}
-
-        <View className="gap-2">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-lg font-semibold">Servicios destacados</Text>
-            <Pressable onPress={() => router.push("/servicios")}>
-              <Text className="text-sm font-medium text-black underline">Ver todos</Text>
-            </Pressable>
-          </View>
-          <FlatList
-            data={featured}
-            keyExtractor={(item) => String(item.id)}
-            scrollEnabled={false}
-            ListEmptyComponent={<Text className="text-gray-500">Todavía no hay servicios publicados.</Text>}
-            renderItem={({ item }) => (
-              <Pressable
-                className="mb-3 gap-1 rounded-lg border border-gray-200 p-4"
-                onPress={() => goToServiceDetail(item)}
-              >
-                <Text className="text-base font-semibold">{item.name}</Text>
-                {item.professions?.category ? (
-                  <Text className="text-xs text-gray-500">{item.professions.category}</Text>
-                ) : null}
-                {item.description ? (
-                  <Text className="text-sm text-gray-600" numberOfLines={2}>
-                    {item.description}
-                  </Text>
-                ) : null}
-              </Pressable>
-            )}
-          />
+      <View style={{ flexDirection: "row", gap: 12 }}>
+        <View style={{ flex: 1 }}>
+          <PrimaryButton label="Buscar profesionales" onPress={() => router.push("/explorar?segment=profesionales")} fullWidth />
         </View>
       </View>
-    </ScrollView>
+
+      {activeRequest ? (
+        <View style={{ gap: 12 }}>
+          <SectionHeader title="Tu solicitud activa" actionLabel="Ver toda tu actividad" onAction={() => router.push("/actividad")} />
+          <Card
+            onPress={() => {
+              const booking = activeRequest.bookings?.[0];
+              router.push(
+                booking ? `/requests/${activeRequest.id}/confirmation?bookingId=${booking.id}` : `/requests/${activeRequest.id}/matches`
+              );
+            }}
+            accessibilityLabel="Ver tu solicitud activa"
+          >
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={{ fontSize: 16, fontWeight: "600", color: theme.textPrimary }}>
+                  {activeRequest.services?.name ?? "Servicio"}
+                </Text>
+                <Text style={{ fontSize: 14, color: theme.textSecondary }}>Toca para ver el detalle</Text>
+              </View>
+              {activeRequest.bookings?.[0] ? (
+                <StatusBadge kind="booking" value={activeRequest.bookings[0].status} />
+              ) : (
+                <StatusBadge kind="request" value={activeRequest.status} />
+              )}
+            </View>
+          </Card>
+        </View>
+      ) : null}
+
+      <View style={{ gap: 12 }}>
+        <SectionHeader title="Accesos rápidos" />
+        <View style={{ flexDirection: "row", gap: 12 }}>
+          <Card onPress={() => router.push("/explorar?segment=residencias")} accessibilityLabel="Buscar residencias" style={{ flex: 1 }}>
+            <Text style={{ fontSize: 15, fontWeight: "600", color: theme.textPrimary }}>Residencias</Text>
+            <Text style={{ fontSize: 13, color: theme.textSecondary, marginTop: 2 }}>Ver opciones verificadas</Text>
+          </Card>
+          <Card onPress={() => router.push("/actividad")} accessibilityLabel="Ver mi actividad" style={{ flex: 1 }}>
+            <Text style={{ fontSize: 15, fontWeight: "600", color: theme.textPrimary }}>Actividad</Text>
+            <Text style={{ fontSize: 13, color: theme.textSecondary, marginTop: 2 }}>Solicitudes y reservas</Text>
+          </Card>
+        </View>
+      </View>
+
+      <View style={{ gap: 12 }}>
+        <SectionHeader title="Servicios destacados" actionLabel="Ver todos" onAction={() => router.push("/explorar?segment=servicios")} />
+        <FlatList
+          data={featured}
+          keyExtractor={(item) => String(item.id)}
+          scrollEnabled={false}
+          ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+          ListEmptyComponent={<Text style={{ color: theme.textSecondary }}>Todavía no hay servicios publicados.</Text>}
+          renderItem={({ item }) => (
+            <Card onPress={() => goToServiceDetail(item)} accessibilityLabel={item.name}>
+              <Text style={{ fontSize: 16, fontWeight: "600", color: theme.textPrimary }}>{item.name}</Text>
+              {item.professions?.category ? (
+                <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>{item.professions.category}</Text>
+              ) : null}
+              {item.description ? (
+                <Text style={{ fontSize: 14, color: theme.textSecondary, marginTop: 4 }} numberOfLines={2}>
+                  {item.description}
+                </Text>
+              ) : null}
+            </Card>
+          )}
+        />
+      </View>
+    </Screen>
   );
 }

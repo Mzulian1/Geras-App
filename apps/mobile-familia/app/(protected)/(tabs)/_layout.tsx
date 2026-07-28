@@ -1,40 +1,52 @@
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useGerasTheme } from "@geras/ui";
 
-// Navegación principal de la familia: Inicio, Servicios, Profesionales,
-// Residencias, Solicitudes, Perfil — un grupo `(tabs)` transparente
-// para la URL (professionals/servicios/etc. mantienen su ruta de
-// siempre). "recipients/*" y "requests/*" quedan FUERA de este grupo
-// (en (protected)/_layout.tsx) a propósito: son pantallas de flujo que
-// se empujan encima y ocultan la tab bar, no destinos de navegación
-// principal.
+// Navegación principal de Familia (Fase 3): 4 destinos visibles —
+// Inicio, Explorar, Actividad, Perfil. Servicios/Profesionales/
+// Residencias siguen existiendo como rutas reales (mismos archivos,
+// mismos filtros, mismas rutas de detalle) — `href: null` las saca de
+// la barra sin sacarlas del navegador, así "Explorar" puede
+// reutilizarlas tal cual mediante un selector segmentado sin mover ni
+// un archivo. "Actividad" reemplaza a la antigua tab "Solicitudes"
+// (mismo contenido, ahora también con reservas agrupadas por estado).
 export default function TabsLayout() {
+  const theme = useGerasTheme();
+
   return (
-    <Tabs screenOptions={{ headerShown: false, tabBarActiveTintColor: "#000000" }}>
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: theme.primary,
+        tabBarInactiveTintColor: theme.textSecondary,
+        tabBarStyle: { borderTopColor: theme.borderSoft, backgroundColor: theme.surface },
+        tabBarLabelStyle: { fontSize: 12, fontWeight: "600" },
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{ title: "Inicio", tabBarIcon: ({ color, size }) => <Ionicons name="home" color={color} size={size} /> }}
       />
       <Tabs.Screen
-        name="servicios"
-        options={{ title: "Servicios", tabBarIcon: ({ color, size }) => <Ionicons name="grid" color={color} size={size} /> }}
+        name="explorar"
+        options={{ title: "Explorar", tabBarIcon: ({ color, size }) => <Ionicons name="search" color={color} size={size} /> }}
       />
       <Tabs.Screen
-        name="professionals"
-        options={{ title: "Profesionales", tabBarIcon: ({ color, size }) => <Ionicons name="people" color={color} size={size} /> }}
-      />
-      <Tabs.Screen
-        name="residencias"
-        options={{ title: "Residencias", tabBarIcon: ({ color, size }) => <Ionicons name="business" color={color} size={size} /> }}
-      />
-      <Tabs.Screen
-        name="solicitudes"
-        options={{ title: "Solicitudes", tabBarIcon: ({ color, size }) => <Ionicons name="document-text" color={color} size={size} /> }}
+        name="actividad"
+        options={{
+          title: "Actividad",
+          tabBarIcon: ({ color, size }) => <Ionicons name="pulse" color={color} size={size} />,
+        }}
       />
       <Tabs.Screen
         name="perfil"
         options={{ title: "Perfil", tabBarIcon: ({ color, size }) => <Ionicons name="person" color={color} size={size} /> }}
       />
+
+      {/* Rutas reales, sin botón propio en la barra — accesibles vía router.push desde Explorar/Actividad/Inicio. */}
+      <Tabs.Screen name="servicios" options={{ href: null }} />
+      <Tabs.Screen name="professionals" options={{ href: null }} />
+      <Tabs.Screen name="residencias" options={{ href: null }} />
     </Tabs>
   );
 }
