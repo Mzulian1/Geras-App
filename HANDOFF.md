@@ -62,27 +62,29 @@ Con `react-native-safe-area-context` como `dependency` normal de `packages/ui`, 
 
 La causa raíz real es que una librería de UI compartida en un monorepo RN **no debería declarar `react`/`react-native`/módulos nativos como `dependencies` normales** — debe declararlos como `peerDependencies`, para que nunca instale su propia copia y siempre use la de la app que la consume. Este es el fix correcto y definitivo, no otro parche de overrides.
 
-### Bloqueado / pendiente de verificar (esto es lo primero a retomar)
+### ✅ Confirmado tras pausar: el fix de `peerDependencies` funcionó
 
-Se estaba corriendo una **reinstalación limpia completa** (`rm -rf node_modules apps/*/node_modules packages/*/node_modules server/node_modules package-lock.json && npm install`) para probar si el cambio de `packages/ui` a `peerDependencies` elimina por completo la copia física duplicada de `react-native-safe-area-context` (y de paso `react`, `react-native`, `expo`, etc.) bajo `packages/ui/node_modules`. **Esta instalación fue interrumpida al pausar la sesión — no confiar en su resultado, volver a correrla limpia desde cero.**
+La reinstalación limpia que había quedado corriendo en background terminó (exit 0, 1400 paquetes) y **`packages/ui/node_modules` ya no tiene NINGUNA copia física propia** de React/RN/safe-area-context/expo/etc. `npx expo-doctor` en `mobile-familia` pasó a **17/18**, y el único check que falla ahora es "no duplicate dependencies" con una lista mucho más corta, **100% de terceros, ninguno originado en `packages/ui`**:
 
-Antes de esta última prueba, `expo-doctor` mostraba **17/18** en ambas apps (solo falla el check de "no duplicate dependencies"). De los duplicados listados, dos categorías:
+```
+react@19.1.0 (raíz) vs react@19.2.8 (nativewind/node_modules)
+react-dom@19.1.0 (raíz, x2) vs react-dom@18.3.1 (raíz — admin-panel, esperado)
+react-native@0.81.5 (raíz) vs react-native@0.86.2 (nativewind/node_modules)
+react-native-reanimated@4.1.7 vs 4.5.3 (nativewind/node_modules)
+react-native-worklets@0.5.1 vs 0.11.3 (nativewind/node_modules)
+expo-application@7.0.8 duplicado mismo-versión (expo-auth-session vs expo-notifications) — inofensivo
+```
 
-1. **Controlables por nosotros** (deberían desaparecer con el fix de `peerDependencies`): `@expo/vector-icons`, `expo`, `expo-asset`, `expo-constants`, `expo-font`, `react`, `react-native`, `react-native-safe-area-context` — todos con copia física en `packages/ui/node_modules` además de la copia hoisteada en la raíz.
-2. **Fuera de nuestro control, de terceros** (no deberían bloquear la entrega, pero documentar):
-   - `react@18.3.1` / `react-dom@18.3.1` en la raíz — es la copia legítima de **admin-panel** (Vite/web, React 18 a propósito, no relacionado con mobile).
-   - `react@19.2.8`, `react-native@0.86.2`, `react-native-reanimated@4.5.3`, `react-native-worklets@0.11.3` anidados dentro de `nativewind/node_modules/` — copias internas de la propia tooling de nativewind (Babel/Metro plugin), no deberían llegar al bundle si el código de la app nunca importa directamente esos paquetes.
-   - Todo el árbol `@solana/wallet-adapter-react`, `@solana-mobile/*` — viene de que `@clerk/clerk-js` (dependencia de `@clerk/clerk-expo`) soporta opcionalmente login con wallet Web3/Solana; nosotros no usamos esa función de Clerk, así que ese código no debería quedar en el bundle final (verificar igual en el export).
+Todo lo que queda es tooling interna de `nativewind` (su propio Babel/Metro plugin, no debería llegar al bundle de la app ya que el código de la app nunca importa esos paquetes directamente) más la copia de React 18 esperada de `admin-panel`. El árbol de `@solana/wallet-adapter-react`/`@solana-mobile/*` (Web3 login opcional de Clerk, que no usamos) ya ni siquiera aparece en esta corrida. **No se llegó a correr `expo-doctor` en `mobile-profesional` todavía — hacerlo primero al retomar.**
 
-### Próximos pasos exactos al retomar
+### Próximos pasos exactos al retomar (ya NO hace falta reinstalar desde cero)
 
-1. `cd C:/Geras-App && rm -rf node_modules apps/*/node_modules packages/*/node_modules server/node_modules package-lock.json && npm install` (reinstalación limpia, ~9-11 min, correr en background y esperar notificación).
-2. `npx expo-doctor` en `apps/mobile-familia` y `apps/mobile-profesional` — objetivo: que la lista de duplicados baje a solo los de terceros (categoría 2 arriba). Si `packages/ui/node_modules` sigue apareciendo, investigar si falta algo en la config de npm workspaces (posible opción: `npm dedupe` explícito, o revisar si hace falta el flag `--install-links` o similar).
-3. `npx tsc --noEmit` en ambas apps (ya pasaba limpio en la corrida anterior con la versión previa del código, pero repetir tras el reinstall).
-4. `npx expo export --platform android|ios|web --output-dir dist-test-<plataforma>` en ambas apps (limpiar los `dist-test-*` después, no commitear). Prestar atención especial a iOS (fue el que falló en Etapa A) y usar `--clear` si se alterna entre apps.
-5. `npm ls react-native-safe-area-context` — confirmar una sola versión, idealmente sin duplicado físico bajo `packages/ui`.
-6. Si todo pasa: commit con el mensaje exacto pedido por el usuario: `chore: upgrade mobile apps to Expo SDK 54` (revisar `git diff` primero, especialmente el cambio de arquitectura de `packages/ui/package.json` para que el mensaje de commit lo explique igual que se hizo en el de Etapa A).
-7. Seguir con la sección 2 del plan original (arrancar Expo Go, entregar QR) — tarea #3 de la lista.
+1. `cd C:/Geras-App/apps/mobile-profesional && npx expo-doctor` — confirmar que da el mismo resultado (17/18, mismos duplicados de terceros) que `mobile-familia`.
+2. `npx tsc --noEmit` en ambas apps.
+3. `npx expo export --platform android|ios|web --output-dir dist-test-<plataforma>` en ambas apps (limpiar los `dist-test-*` después, no commitear). Prestar atención especial a iOS (fue el que falló en Etapa A) y usar `--clear` si se alterna entre apps.
+4. `npm ls react-native-safe-area-context` — confirmar una sola versión, sin duplicado físico bajo `packages/ui` (ya se ve resuelto, pero confirmar formalmente).
+5. Si todo pasa: **amendear o reemplazar el commit WIP `df46c23`** (`wip: Expo SDK 54 upgrade in progress, not yet validated`) por el commit final pedido por el usuario: `chore: upgrade mobile apps to Expo SDK 54` — incluir el `package-lock.json` regenerado (no estaba en el WIP) y explicar el cambio de arquitectura de `packages/ui/package.json` en el mensaje, igual que se hizo en el de Etapa A. Confirmar con el usuario antes de reescribir el commit si ya hizo algo más encima.
+6. Seguir con la sección 2 del plan original (arrancar Expo Go, entregar QR) — tarea #3 de la lista.
 
 ## Notas de contexto del proyecto (por si se perdió memoria de sesión)
 
