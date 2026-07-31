@@ -156,6 +156,42 @@ en `createNode` de `RNSScreen`. Resuelto con `"react-native-screens": "4.16.0"` 
 **Regla para lo que viene**: ante cualquier duplicado de un módulo **nativo** que reporte
 `expo-doctor`, forzar la versión que fija el SDK. No asumir que es cosmético.
 
+## Login con Google: estado verificado
+
+**Funciona end-to-end**, verificado en el dispositivo el 2026-07-31:
+
+```
+03:39:04  Clerk crea fundacionochohuellas@gmail.com via oauth_google
+          con unsafe_metadata {"role":"family"}
+03:39:15  server: clerk_user_synced (selfDeclaredRole: family)
+03:39:15  server: clerk_user_synced_on_demand (created: true)
+03:39:15  POST /api/v1/me/sync -> 200
+```
+
+Esto confirma de una sola pasada las dos piezas que estaban sin probar: el flujo SSO de Google
+y el fallback de sincronización bajo demanda.
+
+**CORRECCIÓN a lo dicho en el commit `1fab745`**: ahí se afirma que el atributo `password`
+marcado como `required` impide crear cuentas nuevas por Google (`missing_requirements`).
+**Es falso.** El `required` aplica al flujo de email/contraseña; el `sign_up` de la instancia
+está en modo `progressive`, que permite completar altas sociales sin contraseña. No hace falta
+cambiar ese toggle en el dashboard de Clerk. El manejo de `missing_requirements` que quedó en
+`GoogleSignInButton` no molesta, pero no es el escenario que se creía.
+
+Sigue siendo válida la otra sugerencia: activar **Email verification code** en Clerk permitiría
+ingresar con email + código sin contraseña, que para adultos mayores es mejor que recordar una
+clave. Es una mejora de UX, no un bloqueo.
+
+### Roles y apps: por diseño, un admin NO entra a las apps móviles
+
+`useFamilyBootstrap` y `useProfessionalBootstrap` rechazan cualquier rol que no sea el suyo
+(`wrong-role`). Un usuario admin que intente entrar a la app de familias ve "esta app es solo
+para familias". **Es deliberado, no un bug** — se evaluó relajarlo y el usuario prefirió
+mantener la restricción y probar con una cuenta aparte.
+
+Cuentas de prueba actuales: `fundacionochohuellas@gmail.com` (family, entra por Google) para las
+apps móviles; `mzulian@casasenior.cl` y `zulianmartin.n@gmail.com` (admin) para el panel.
+
 ## Webhook de Clerk: por qué no funciona en desarrollo
 
 Síntoma: creás una cuenta y la app queda para siempre en "Sincronizando tu cuenta".
