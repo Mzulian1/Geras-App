@@ -8,13 +8,22 @@ const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY as string;
 
 // getClerkInstance() es el equivalente RN de window.Clerk en el admin-panel:
 // accede a la instancia ya inicializada por <ClerkProvider> sin pasar por un
-// hook de React. El callback se invoca en cada request de supabase-js, para
-// ese momento ClerkProvider ya montó, así que la instancia existe. Sin esto,
-// toda request viaja como `anon` sin importar que el usuario esté logueado
-// en Clerk, y RLS bloquea todo.
+// hook de React. Sin esto, toda request viaja como `anon` sin importar que el
+// usuario esté logueado en Clerk, y RLS bloquea todo.
+//
+// El callback NO se invoca solo "en cada request": supabase-js también lo llama
+// una vez desde el constructor de SupabaseClient para fijar el token inicial de
+// Realtime. En ese momento <ClerkProvider> todavía no montó y getClerkInstance()
+// devuelve undefined, así que hay que tolerarlo y devolver null — de lo contrario
+// el módulo revienta al importarse ("Cannot read properties of undefined
+// (reading 'session')"). Las requests posteriores sí encuentran la instancia.
 export const supabase = getSupabaseClient(supabaseUrl, supabaseAnonKey, {
   accessToken: async () => {
-    const token = await getClerkInstance().session?.getToken();
-    return token ?? null;
+    try {
+      const token = await getClerkInstance()?.session?.getToken();
+      return token ?? null;
+    } catch {
+      return null;
+    }
   },
 });
