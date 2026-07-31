@@ -1,10 +1,15 @@
 import { useState } from "react";
-import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { Link, router } from "expo-router";
 import { useSignIn } from "@clerk/clerk-expo";
 import { getClerkErrorMessage } from "@/lib/clerkError";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 
+// Mismo criterio de accesibilidad que en mobile-familia (ver comentario
+// allá): Google primero por ser el camino sin contraseña, etiquetas
+// visibles arriba de cada campo, áreas táctiles de 48px+ y tipografía
+// grande. Acá el usuario es el profesional, no el adulto mayor, pero se
+// mantiene la misma pauta por consistencia entre las dos apps.
 export default function SignInScreen() {
   const { isLoaded, signIn, setActive } = useSignIn();
   const [email, setEmail] = useState("");
@@ -32,56 +37,86 @@ export default function SignInScreen() {
   }
 
   return (
-    <View className="flex-1 justify-center gap-4 bg-white px-6">
-      <Text className="text-2xl font-bold">Geras Profesionales</Text>
-      <Text className="text-base text-gray-600">Inicia sesión para continuar</Text>
+    <ScrollView
+      className="flex-1 bg-white"
+      contentContainerClassName="grow justify-center gap-5 px-6 py-10"
+      keyboardShouldPersistTaps="handled"
+    >
+      <View className="gap-2">
+        <Text className="text-3xl font-bold text-gray-900">Geras Profesionales</Text>
+        <Text className="text-lg text-gray-600">Ingresa para continuar</Text>
+      </View>
 
-      {error ? <Text className="text-sm text-red-600">{error}</Text> : null}
+      {error ? (
+        <View className="rounded-lg bg-red-50 p-4">
+          <Text className="text-base text-red-700">{error}</Text>
+        </View>
+      ) : null}
 
-      <TextInput
-        className="rounded-lg border border-gray-300 px-4 py-3"
-        placeholder="Email"
-        autoCapitalize="none"
-        autoComplete="email"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-      />
-      <TextInput
-        className="rounded-lg border border-gray-300 px-4 py-3"
-        placeholder="Contraseña"
-        secureTextEntry
-        autoComplete="password"
-        value={password}
-        onChangeText={setPassword}
-      />
+      <View className="gap-2">
+        <GoogleSignInButton onError={setError} disabled={submitting} />
+        <Text className="text-center text-sm text-gray-500">
+          La forma más rápida. No necesitas recordar una contraseña.
+        </Text>
+      </View>
+
+      <View className="flex-row items-center gap-3 py-2">
+        <View className="h-px flex-1 bg-gray-200" />
+        <Text className="text-sm text-gray-500">o con tu email</Text>
+        <View className="h-px flex-1 bg-gray-200" />
+      </View>
+
+      <View className="gap-2">
+        <Text className="text-base font-medium text-gray-700">Email</Text>
+        <TextInput
+          className="rounded-lg border border-gray-300 px-4 py-4 text-lg text-gray-900"
+          placeholder="tucorreo@ejemplo.com"
+          placeholderTextColor="#9ca3af"
+          autoCapitalize="none"
+          autoComplete="email"
+          keyboardType="email-address"
+          value={email}
+          onChangeText={setEmail}
+          accessibilityLabel="Email"
+        />
+      </View>
+
+      <View className="gap-2">
+        <Text className="text-base font-medium text-gray-700">Contraseña</Text>
+        <TextInput
+          className="rounded-lg border border-gray-300 px-4 py-4 text-lg text-gray-900"
+          placeholder="Tu contraseña"
+          placeholderTextColor="#9ca3af"
+          secureTextEntry
+          autoComplete="password"
+          value={password}
+          onChangeText={setPassword}
+          accessibilityLabel="Contraseña"
+        />
+      </View>
 
       <Pressable
-        className="items-center justify-center rounded-lg bg-black py-3 disabled:opacity-50"
+        className="items-center justify-center rounded-lg bg-black py-4 disabled:opacity-50"
         onPress={onSubmit}
         disabled={submitting || !email || !password}
+        accessibilityRole="button"
+        accessibilityLabel="Iniciar sesión"
       >
         {submitting ? (
           <ActivityIndicator color="#ffffff" />
         ) : (
-          <Text className="font-semibold text-white">Iniciar sesión</Text>
+          <Text className="text-lg font-semibold text-white">Iniciar sesión</Text>
         )}
       </Pressable>
 
-      <View className="flex-row items-center gap-3 py-1">
-        <View className="h-px flex-1 bg-gray-200" />
-        <Text className="text-xs uppercase text-gray-400">o</Text>
-        <View className="h-px flex-1 bg-gray-200" />
+      <View className="gap-4 pt-2">
+        <Link href="/forgot-password" className="text-center text-base text-gray-600">
+          ¿Olvidaste tu contraseña?
+        </Link>
+        <Link href="/sign-up" className="text-center text-base text-gray-600">
+          ¿No tienes cuenta? Crea una
+        </Link>
       </View>
-
-      <GoogleSignInButton onError={setError} disabled={submitting} />
-
-      <Link href="/forgot-password" className="text-center text-sm text-gray-600">
-        ¿Olvidaste tu contraseña?
-      </Link>
-      <Link href="/sign-up" className="text-center text-sm text-gray-600">
-        ¿No tienes cuenta? Crea una
-      </Link>
-    </View>
+    </ScrollView>
   );
 }
