@@ -1,247 +1,273 @@
-# Handoff — Modernización Mobile Geras (Expo SDK 54 + rediseño)
+# Handoff — Modernización Mobile Geras
 
-Documento de continuidad. Última actualización: 2026-07-30 (sesión de validación de Etapa B).
+Documento de continuidad. Última actualización: **2026-07-31** (sesión de validación SDK 54 + auth).
 
-## Rama de trabajo
+---
 
+## 1. Cómo retomar (comandos exactos)
+
+```bash
+git checkout chore/expo-sdk-54-testing     # rama de trabajo, arbol limpio en 42873fd
 ```
-chore/expo-sdk-54-testing   (creada desde feat/mobile-ui-navigation-refresh, commit base 92296f6)
+
+Levantar los tres servicios (cada uno en su terminal / background):
+
+```bash
+cd C:/Geras-App/server && npm run dev                        # API en :4000
+cd C:/Geras-App/apps/mobile-familia && npx expo start --clear --lan     # Metro en :8081
+cd C:/Geras-App/apps/admin-panel && npm run dev               # Vite en :3000
 ```
 
-**No mergear a `main`. No hacer push sin autorización explícita.**
+Para el iPhone: `exp://192.168.1.85:8081` (o generar el QR — ver §6).
 
-## Estado general
+> **`--clear` es obligatorio al alternar entre `mobile-familia` y `mobile-profesional`.**
+> La caché de Metro se contamina entre apps: exportar una llegó a bundlear archivos de la otra.
+> Vale tanto para `expo start` como para `expo export`.
 
-Objetivo completo: dejar Mobile Familia y Mobile Profesional listas para Expo Go en iPhone, con
-identidad visual Soluciones Mayores, login Google vía Clerk, y Panel Admin operativo. **Aún no se
-tocó lógica de negocio ni se agregaron features nuevas** — todo lo hecho hasta ahora es
-infraestructura (upgrade de Expo + saneamiento de la resolución de dependencias del monorepo).
+> **Solo se puede correr UNA app móvil a la vez** en el puerto 8081. Para cambiar: matar el
+> proceso que escucha en 8081 y arrancar la otra con `--clear`.
+
+---
+
+## 2. Estado del plan
 
 | # | Tarea | Estado |
 |---|-------|--------|
-| 1 | Etapa A: Expo SDK 52→53 | ✅ Completa (`624e2c0`) |
-| 2 | Etapa B: Expo SDK 53→54 | ✅ **Completa y validada** |
-| 3 | Arrancar Expo Go y entregar QR/URL | ⬜ Siguiente |
-| 4 | Backend accesible por LAN desde iPhone | ⬜ No iniciada |
-| 5 | Clerk Google OAuth en ambas apps | ⬜ No iniciada |
-| 6 | Identidad visual Soluciones Mayores | ⬜ No iniciada |
-| 7 | Navegación e interacciones móviles | ⬜ No iniciada |
-| 8 | Rediseño de pantallas prioritarias | ⬜ No iniciada |
-| 9 | Mejoras Panel Admin | ⬜ No iniciada |
-| 10 | Perfiles EAS | ⬜ No iniciada |
-| 11 | Verificación técnica final y entrega | ⬜ No iniciada |
+| 1 | Expo SDK 52→53 | ✅ `624e2c0` |
+| 2 | Expo SDK 53→54 + saneamiento de dependencias | ✅ `96796b2`, `e55717a`, `105bd36` |
+| 3 | Expo Go corriendo + QR | ✅ verificado en dispositivo |
+| 4 | Backend accesible por LAN | ✅ verificado |
+| 5 | Clerk Google OAuth en ambas apps | ✅ verificado end-to-end |
+| 6 | **Identidad visual Soluciones Mayores** | ⬜ **siguiente** |
+| 7 | **Navegación e interacciones móviles** | ⬜ **siguiente** |
+| 8 | **Rediseño de pantallas prioritarias** | ⬜ **siguiente** |
+| 9 | **Mejoras Panel Admin** | ⬜ pendiente |
+| 10 | Perfiles EAS | ⬜ pendiente |
+| 11 | Verificación técnica final y entrega | ⬜ pendiente |
 
-## Decisiones ya acordadas con el usuario (no volver a preguntar)
+**El usuario quedó revisando UI/UX por su cuenta** para traer hallazgos concretos. Las tareas
+6–8 arrancan con eso.
 
-1. **Arranque de Expo/QR**: Claude corre `expo start` en background y pega el QR ASCII + URL
-   `exp://` como texto en el chat para que el usuario escanee desde el iPhone. No se le pide al
-   usuario abrir su propia terminal.
-2. **Pruebas en iPhone**: el usuario prueba físicamente (login Google, navegación, Safe Area) y
-   reporta de vuelta. Claude solo valida lo automatizable (expo-doctor, tsc, lint, exports, tests).
-3. **Autonomía**: el usuario pidió explícitamente no volver a pedir autorización para generar
-   cambios. La única excepción que se mantiene es `push`/merge a `main`.
+### Reglas del proyecto (vigentes)
 
-## Etapa A — Expo SDK 53 (✅ completa)
+- **No mergear a `main`. No hacer push sin autorización explícita.** Todo local.
+- **No tocar lógica de negocio.** Backend y DB ya están construidos y probados. El alcance es
+  UI/UX, infra móvil y auth.
+- El usuario pidió **no volver a pedir autorización para generar cambios**. Excepciones que se
+  mantuvieron: push/merge, configuración de su cuenta de Clerk, y cambios de datos sensibles
+  (roles de usuario) — esos se consultan.
 
-Commit `624e2c0`. `expo-doctor` 18/18, `tsc` limpio, `expo export` exitoso en ambas apps.
+---
 
-Dos bugs corregidos, documentados en el mensaje del commit:
-- Peer deps opcionales faltantes (`expo-apple-authentication`, `@react-native-masked-view/masked-view`)
-  rompían `expo export --platform ios`.
-- Contaminación de caché de Metro entre apps: **siempre usar `--clear` al alternar entre apps**,
-  tanto en `export` como en `start`.
+## 3. Cuentas de prueba
 
-## Etapa B — Expo SDK 54 (✅ completa y validada)
+| Cuenta | Entra por | Rol | Para qué |
+|---|---|---|---|
+| `fundacionochohuellas@gmail.com` | **Google** | family | **apps móviles** |
+| `martinzulian.n@gmail.com` | email + contraseña | family | apps móviles |
+| `mzulian@casasenior.cl` | **Google** | admin | panel admin |
+| `zulianmartin.n@gmail.com` | **Google** | admin | panel admin |
 
-Los bumps de versión están en el WIP `df46c23`. La validación destapó **cinco bugs** de resolución
-de dependencias, todos corregidos (ver commit `fix: resolve monorepo dependency resolution ...`).
+**Por diseño, un admin NO puede entrar a las apps móviles.** `useFamilyBootstrap` y
+`useProfessionalBootstrap` rechazan cualquier rol ajeno (`wrong-role` → "esta app es solo para
+familias"). Se evaluó relajarlo y **el usuario prefirió mantener la restricción**. Para probar
+las móviles hay que usar una cuenta con el rol correspondiente.
 
-### Causa raíz común
+**No hay ninguna cuenta con rol `professional` que sea del usuario.** Solo existe
+`qa.geras.profesional@example.com`, de QA, sin contraseña conocida. **Para probar la app
+profesional mañana hay que crear una cuenta nueva desde su pantalla de registro** (por Google o
+email): el sign-up de esa app manda `unsafeMetadata.role = "professional"` y el rol queda bien.
 
-Un monorepo npm con **dos versiones de React conviviendo** (`19.1.0` para las apps móviles,
-`18.3.1` para `admin-panel`) más librerías que declaran peers con rangos sueltos. npm resolvía
-copias anidadas en lugar de deduplicar, y cada herramienta de la cadena falla distinto según
-desde dónde resuelve. Se manifestó en cinco capas:
+---
 
-| # | Síntoma | Capa | Causa |
-|---|---------|------|-------|
-| 1 | `Unable to resolve react-native-css-interop/jsx-runtime` | Metro | Peers sueltos de `nativewind` (`react: ">=18"`, `react-native: "*"`) hicieron que npm anidara todo su subárbol, dejando `css-interop` fuera del alcance de Metro |
-| 2 | `Invalid call ... process.env.EXPO_ROUTER_APP_ROOT` | Babel | `babel-preset-expo` hace `hasModule('expo-router')` con `require.resolve` **desde su propia ubicación** (raíz); `expo-router` vivía solo en `apps/*/node_modules` |
-| 3 | `Cannot read properties of undefined (reading 'ReactCurrentBatchConfig')` | React DOM (web) | `react-dom@18.3.1` hoisteado en la raíz junto a `react@19.1.0`; `react-native-web` (también en raíz) cargaba el 18 |
-| 4 | `Cannot find module 'expo-router/build/utils/url'` | `@expo/cli` | Misma causa que #2, pero en `exportStaticAsync.js` — acá no se puede parchear, obliga a hoistear de verdad |
-| 5 | `admin-panel`: build bloqueado por errores de tipos | TypeScript | `@radix-ui/*` (hoisteado) resolvía `@types/react@19` mientras `admin-panel` compila con `@types/react@18` |
+## 4. Trampas del monorepo (leer antes de tocar dependencias)
 
-**El bug #5 es preexistente**, verificado reconstruyendo el estado original en un worktree limpio:
-los errores son idénticos línea por línea. Los bugs #1–#4 se tapaban entre sí — cada uno abortaba
-el build antes de que apareciera el siguiente.
+Esta sesión se fue casi entera en esto. **Causa raíz común**: monorepo npm con **dos versiones
+de React conviviendo** (`19.1.0` móviles, `18.3.1` admin-panel) y librerías que declaran peers
+con rangos sueltos. npm anida copias en vez de deduplicar, y cada herramienta falla distinto
+según desde dónde resuelve.
 
-### Cambios aplicados
+Ocho bugs encontrados, todos corregidos. Los cinco primeros se tapaban entre sí — cada uno
+abortaba el build antes de que apareciera el siguiente.
 
-`package.json` (raíz) — `overrides`:
-```json
-"@types/react-dom": "19.1.11",
-"react-server-dom-webpack": { "react": "19.1.0", "react-dom": "19.1.0" },
-"nativewind": {
-  "react": "19.1.0", "react-native": "0.81.5",
-  "react-native-reanimated": "4.1.7", "react-native-worklets": "0.5.1"
-}
+| # | Síntoma | Capa | Fix |
+|---|---------|------|-----|
+| 1 | `Unable to resolve react-native-css-interop/jsx-runtime` | Metro | override anidado en `nativewind` |
+| 2 | `Invalid call ... EXPO_ROUTER_APP_ROOT` | Babel | hoistear `expo-router` a la raíz |
+| 3 | `ReactCurrentBatchConfig` undefined (web) | React DOM | `react-dom` 19.1.0 fijado en la raíz |
+| 4 | `Cannot find module 'expo-router/build/utils/url'` | `@expo/cli` | mismo fix que #2 |
+| 5 | build de admin-panel bloqueado por tipos | TypeScript | `paths` en su `tsconfig.json` |
+| 6 | `TypeError: events is not iterable` (dev server) | metro | overrides `metro-*` a **0.83.3** |
+| 7 | `supabase.ts` reventaba al importarse | app | optional chaining en `accessToken` |
+| 8 | `expected dynamic type 'boolean', but had type 'string'` | nativo | `react-native-screens` a **4.16.0** |
+
+### Reglas que salieron de ahí
+
+- **Un duplicado de módulo NATIVO que reporte `expo-doctor` NO es cosmético.** Expo Go embebe
+  versiones nativas fijas; si el JS no coincide, el puente rechaza props por tipo (bug #8).
+  Forzar siempre la versión que fija el SDK.
+- **`metro-*` debe quedar en la versión que pinea `@expo/metro`** (hoy `0.83.3`), no en la más
+  nueva. Verificar con:
+  `node -e "console.log(require('./node_modules/@expo/metro/package.json').dependencies.metro)"`
+- Las entradas `expo-router`, `react-dom` y `metro-runtime` en `dependencies` de la raíz **no
+  son dependencias reales**: son controles de hoisting. `@expo/cli` y `babel-preset-expo`
+  resuelven esos paquetes desde su propia ubicación, así que tienen que estar físicamente en
+  `node_modules/` de la raíz. **No borrarlas.**
+- Ante `ERESOLVE` por un peer opcional, la salida es un **override anidado** que fuerce el peer
+  conflictivo, no cambiar la versión del paquete (así se desbloqueó `react-server-dom-webpack`).
+- Si `npm install` empieza a fallar de forma rara, **borrar `package-lock.json` y reinstalar**:
+  varias veces el lock quedó inconsistente tras intentos fallidos.
+
+### Warning residual (no bloqueante)
+
+`expo-doctor` da **17/18** en ambas apps: `expo-application@7.0.8` duplicado **en la misma
+versión**. Al ser idéntica no puede haber desajuste JS/nativo. El check *"packages match
+versions required by installed Expo SDK"* **pasa**.
+
+---
+
+## 5. Autenticación: cómo funciona hoy
+
+### Google OAuth — ✅ verificado end-to-end
+
+`GoogleSignInButton` (uno por app) usa `useSSO()` de `@clerk/clerk-expo` 2.19.31 y abre el flujo
+en un `AuthSession` del navegador del sistema. Manda `unsafeMetadata.role` (`family` /
+`professional`) porque **el flujo SSO también CREA la cuenta**, y el rol se fija en ese momento.
+
+Verificado en dispositivo el 2026-07-31 03:39: alta por Google → cuenta creada en Clerk con el
+rol correcto → fila creada en Supabase → `POST /api/v1/me/sync` 200.
+
+### El webhook de Clerk NO llega en desarrollo
+
+Es una llamada **entrante desde la nube de Clerk** hacia el server. En desarrollo el server está
+en `192.168.1.85:4000`, una IP privada: el teléfono llega, Clerk no. Sin webhook la fila en
+`users` nunca se creaba y la app quedaba en "Sincronizando tu cuenta" para siempre.
+
+**Solución**: `POST /api/v1/me/sync` — el cliente autenticado pide la sincronización y el server
+va a buscar los datos a la API de Clerk. Llamada saliente desde la LAN, sin exponer nada.
+No reemplaza al webhook, que sigue cubriendo `user.updated` / `user.deleted`.
+
+**Invariante de seguridad** (con tests): el rol autodeclarado se aplica **solo si la fila no
+existía**. Si ya existe, no se toca — un usuario no puede cambiarse el rol editando su metadata.
+`admin` está fuera de `SELF_DECLARABLE_ROLES`, inalcanzable por esta vía.
+
+**Para producción**: configurar el webhook en el dashboard de Clerk apuntando a la URL pública
+del server desplegado. `CLERK_WEBHOOK_SIGNING_SECRET` ya está en `server/.env`.
+
+### Sobre la configuración de Clerk
+
+- El atributo `password` está en `required`, pero eso **NO impide** crear cuentas por Google:
+  aplica al flujo de email/contraseña, y el `sign_up` está en modo `progressive`. Verificado.
+- **Mejora sugerida, no aplicada**: activar **Email verification code** en Clerk permitiría
+  ingresar con email + código sin contraseña. Para adultos mayores es mejor que recordar una
+  clave. Requiere que el usuario lo toque en su dashboard.
+
+---
+
+## 6. Mobile Familia — estado
+
+Login rediseñado para accesibilidad (`1fab745`). Criterio aplicado, **replicar en el resto del
+rediseño**:
+
+- **Google primero**, es el camino sin contraseña. El formulario de email queda detrás.
+- **Etiquetas visibles arriba de cada campo**, no solo `placeholder`: el placeholder desaparece
+  al escribir y deja al usuario sin contexto.
+- **Áreas táctiles 48px+ (`py-4`)** y tipografía grande (`text-lg`, título `text-3xl`).
+- **`ScrollView` con `keyboardShouldPersistTaps`** para que con el teclado abierto o el tamaño de
+  letra del sistema aumentado nada quede inaccesible.
+- `placeholderTextColor` explícito: el gris por defecto no llega a contraste AA.
+
+Pantallas existentes (no revisadas a fondo esta sesión): tabs `index`, `explorar`, `actividad`,
+`perfil`; flujos `professionals/`, `residencias/`, `servicios/`, `recipients/`, `requests/`.
+
+Para generar el QR:
+
+```bash
+node -e "require('qrcode').toFile('qr.png','exp://192.168.1.85:8081',{width:600},()=>console.log('ok'))"
 ```
 
-`package.json` (raíz) — `dependencies`:
-```json
-"expo-router": "6.0.24",
-"react-dom": "19.1.0"
-```
+---
 
-> Estas dos entradas **no son dependencias reales de la raíz**: son controles de hoisting.
-> `expo-router` tiene que estar físicamente en `node_modules/` de la raíz porque tanto
-> `@expo/cli` como `babel-preset-expo` lo resuelven desde su propia ubicación. `react-dom` fija
-> la raíz en 19.1.0 para que quede coherente con su `react`, empujando el par 18.3.1 a anidarse
-> bajo `admin-panel`.
+## 7. Mobile Profesional — pendiente de revisar
 
-> El override de `react-server-dom-webpack` es lo que permite hoistear `expo-router`: es un peer
-> **opcional** suyo cuyo rango (`~19.0.4 || ~19.1.5 || ~19.2.4`) solo admite versiones que exigen
-> un React más nuevo que el `19.1.0` que fija RN 0.81.5. Forzando su peer de React se neutraliza
-> el `ERESOLVE` y npm termina no instalándolo (tampoco arrastra `webpack`).
+**No se probó en dispositivo esta sesión.** Recibió los mismos fixes que familia (SDK 54, Google
+OAuth, fallback de sync, `supabase.ts`), y `tsc` + `expo export` pasan, pero **nadie la abrió en
+el teléfono todavía**.
 
-`apps/admin-panel/tsconfig.json` — `paths` para que la resolución de tipos de React apunte a la
-copia local de React 18, incluida la que hacen los `.d.ts` de `@radix-ui`. Cambio solo de tipos,
-sin efecto en runtime.
+Al retomar:
 
-`packages/ui/package.json` (de `df46c23`): `react`, `react-native`,
-`react-native-safe-area-context`, `expo-font`, `@expo/vector-icons` movidos de `dependencies` a
-`peerDependencies`. Sigue siendo correcto y verificado: `packages/ui/node_modules` no tiene
-ninguna copia física propia.
+1. Matar el proceso en :8081 y arrancar con `--clear`.
+2. **Crear una cuenta nueva** (no hay cuenta `professional` del usuario). El sign-up manda
+   `role: "professional"`.
+3. Su bootstrap es más complejo que el de familia: además de `users` consulta
+   `professional_profiles` y tiene estados `onboarding` / `pending` (verificación) / `approved`.
+   Un profesional recién creado va a caer en **onboarding**.
+4. El onboarding tiene **10 pasos**: `personal`, `profession`, `services`, `experience`,
+   `coverage`, `availability`, `pricing`, `documents`, `review`. Es el flujo más largo de todo
+   el proyecto y el mejor candidato a mejoras de UX.
 
-### Verificación (todo en verde)
+El login de esta app ya quedó con el mismo rediseño accesible que familia.
+
+---
+
+## 8. Panel Admin — pendiente de revisar
+
+Vite + React **18** (a propósito: es la única parte del monorepo que no está en 19). Corre en
+`:3000` con `npm run dev`. `npm run build` (`tsc && vite build`) **pasa**.
+
+**Bug preexistente corregido esta sesión**: el build estaba roto por errores de tipos
+(`@radix-ui` hoisteado resolvía `@types/react@19` mientras el panel compila con 18). Se arregló
+con `paths` en `apps/admin-panel/tsconfig.json` apuntando a su copia local de React 18. Es un
+cambio solo de tipos, sin efecto en runtime. Verificado que era preexistente reconstruyendo el
+estado original en un worktree limpio.
+
+15 páginas existentes: `DashboardPage`, `UsersListPage`, `ProfessionalsListPage` +
+`ProfessionalDetailPage`, `ServiceRequestsListPage` + detalle, `BookingsListPage`,
+`ResidencesListPage` + `ResidenceFormPage`, `ResidenceInquiriesListPage` + detalle,
+`ServicesPage`, `SettingsPage`, `LoginPage`, `AccessDeniedPage`.
+
+**No se abrió en el navegador esta sesión** — solo se verificó que compila.
+
+---
+
+## 9. Pendientes técnicos concretos
+
+1. **Re-correr los 6 `expo export`** (2 apps × android/ios/web) con metro `0.83.3`. La validación
+   que dio 6/6 en verde corrió con `0.83.7`, que se bajó después. Requiere el dev server
+   detenido. Comando por combinación:
+   `npx expo export --platform ios --output-dir dist-test-ios --clear` (borrar los `dist-test-*`
+   al terminar, no están en `.gitignore`).
+2. **`mailto:contacto@geras.cl` falla** en el dispositivo (`Unable to open URL`). Decidir si se
+   abre de otra forma o se muestra el mail para copiar.
+3. **`SafeAreaView` deprecado** — el warning viene de una dependencia. Migrar a
+   `react-native-safe-area-context` cuando se toque navegación (tarea 7).
+4. **`README.md` desactualizado**: la sección "Estado actual" dice que las apps móviles no tienen
+   pantallas. Es falso, tienen flujos completos.
+
+---
+
+## 10. Verificación al cierre de esta sesión
 
 | Workspace | Resultado |
 |-----------|-----------|
-| `mobile-familia` | `expo export` android/ios/web ✅ · `tsc` ✅ · `expo-doctor` 17/18 |
-| `mobile-profesional` | `expo export` android/ios/web ✅ · `tsc` ✅ · `expo-doctor` 17/18 |
-| `admin-panel` | `tsc` ✅ · `npm run build` (tsc && vite build) ✅ |
-| `packages/shared` | `tsc` ✅ |
-| `packages/ui` | `tsc` ✅ |
-| `server` | `tsc` ✅ · 127 tests pasan, 36 skipped (16 archivos) |
+| `mobile-familia` | `tsc` ✅ · `expo export` android/ios/web ✅ · bundle iOS servido al dispositivo ✅ |
+| `mobile-profesional` | `tsc` ✅ · `expo export` android/ios/web ✅ · sin probar en dispositivo |
+| `admin-panel` | `tsc` ✅ · `npm run build` ✅ · sin abrir en navegador |
+| `packages/shared` · `packages/ui` | `tsc` ✅ |
+| `server` | `tsc` ✅ · **135 tests pasan**, 36 skipped |
 
-### Warning residual conocido (no bloqueante)
-
-`expo-doctor` 17/18 en ambas apps, por "no duplicate dependencies":
-- `expo-application@7.0.8` duplicado **en la misma versión** (`expo-auth-session` vs
-  `expo-notifications`). Al ser idéntica versión no puede haber desajuste JS/nativo. Inofensivo,
-  preexistente.
-
-El check "packages match versions required by installed Expo SDK" **sí pasa**: no queda ningún
-módulo nativo desalineado con SDK 54.
-
-### Lección importante: duplicados de módulos nativos SÍ rompen Expo Go
-
-Durante esta sesión se documentó erróneamente que el duplicado de `react-native-screens`
-(`4.16.0` en las apps vs `4.26.2` en la raíz) "no afecta a Expo Go porque trae los módulos nativos
-precompilados". **El razonamiento está invertido y costó un bug en el dispositivo**: es
-justamente por venir precompilado que la versión de JS *tiene que coincidir* con la nativa.
-
-Expo Go de SDK 54 embebe `react-native-screens@4.16.0`. Al hoistear `expo-router` a la raíz (fix
-del bug #4), su `@react-navigation/native-stack` pasó a resolver el `4.26.2` de la raíz, y el JS
-mandaba props con la forma de 4.26.x al binario nativo de 4.16.0:
+Commits de la sesión (todos locales, sin push):
 
 ```
-Render Error: Exception in HostFunction:
-TypeError: expected dynamic type 'boolean', but had type 'string'
+42873fd docs: corregir el diagnostico sobre password required y Google
+1fab745 feat: priorizar Google en el login y accesibilidad para adultos mayores
+0b6eaf7 feat: fallback de sincronizacion bajo demanda (POST /api/v1/me/sync)
+ca212b5 feat: login con Google via Clerk en ambas apps moviles
+105bd36 fix: pinear react-native-screens a 4.16.0 (Expo Go SDK 54)
+e55717a fix: alinear metro con @expo/metro y tolerar Clerk sin montar
+96796b2 fix: resolver la resolucion de dependencias que bloqueaba SDK 54
 ```
 
-en `createNode` de `RNSScreen`. Resuelto con `"react-native-screens": "4.16.0"` en `overrides`
-(una sola copia deduplicada en todo el árbol, incluida la que ve `expo-router`).
-
-**Regla para lo que viene**: ante cualquier duplicado de un módulo **nativo** que reporte
-`expo-doctor`, forzar la versión que fija el SDK. No asumir que es cosmético.
-
-## Login con Google: estado verificado
-
-**Funciona end-to-end**, verificado en el dispositivo el 2026-07-31:
-
-```
-03:39:04  Clerk crea fundacionochohuellas@gmail.com via oauth_google
-          con unsafe_metadata {"role":"family"}
-03:39:15  server: clerk_user_synced (selfDeclaredRole: family)
-03:39:15  server: clerk_user_synced_on_demand (created: true)
-03:39:15  POST /api/v1/me/sync -> 200
-```
-
-Esto confirma de una sola pasada las dos piezas que estaban sin probar: el flujo SSO de Google
-y el fallback de sincronización bajo demanda.
-
-**CORRECCIÓN a lo dicho en el commit `1fab745`**: ahí se afirma que el atributo `password`
-marcado como `required` impide crear cuentas nuevas por Google (`missing_requirements`).
-**Es falso.** El `required` aplica al flujo de email/contraseña; el `sign_up` de la instancia
-está en modo `progressive`, que permite completar altas sociales sin contraseña. No hace falta
-cambiar ese toggle en el dashboard de Clerk. El manejo de `missing_requirements` que quedó en
-`GoogleSignInButton` no molesta, pero no es el escenario que se creía.
-
-Sigue siendo válida la otra sugerencia: activar **Email verification code** en Clerk permitiría
-ingresar con email + código sin contraseña, que para adultos mayores es mejor que recordar una
-clave. Es una mejora de UX, no un bloqueo.
-
-### Roles y apps: por diseño, un admin NO entra a las apps móviles
-
-`useFamilyBootstrap` y `useProfessionalBootstrap` rechazan cualquier rol que no sea el suyo
-(`wrong-role`). Un usuario admin que intente entrar a la app de familias ve "esta app es solo
-para familias". **Es deliberado, no un bug** — se evaluó relajarlo y el usuario prefirió
-mantener la restricción y probar con una cuenta aparte.
-
-Cuentas de prueba actuales: `fundacionochohuellas@gmail.com` (family, entra por Google) para las
-apps móviles; `mzulian@casasenior.cl` y `zulianmartin.n@gmail.com` (admin) para el panel.
-
-## Webhook de Clerk: por qué no funciona en desarrollo
-
-Síntoma: creás una cuenta y la app queda para siempre en "Sincronizando tu cuenta".
-
-Causa: el webhook (`POST /api/v1/webhooks`) es una llamada **entrante desde la nube de
-Clerk** hacia el server. En desarrollo el server corre en `192.168.1.85:4000`, una IP de red
-privada: el teléfono la alcanza (misma red), Clerk **no**. Sin webhook no se crea la fila en
-`users`, y `useFamilyBootstrap`/`useProfessionalBootstrap` reintentan cada 2s indefinidamente.
-
-Se verificó mirando el log del server: la única request recibida en toda la sesión fue un
-`/health` manual. Cero webhooks.
-
-**Solución implementada**: fallback bajo demanda, en sentido inverso al webhook.
-`POST /api/v1/me/sync` — el cliente autenticado le pide al server que sincronice, y el server
-va a buscar los datos a la API de Clerk. Como la llamada es saliente desde el teléfono hacia
-la LAN, no hace falta exponer nada a internet ni tocar la configuración de Clerk.
-
-No reemplaza al webhook: este sigue siendo el camino normal y el único que cubre
-`user.updated` / `user.deleted`. El fallback solo cubre la creación.
-
-**Invariante de seguridad preservada** (cubierta por tests en `userSync.test.ts`): el rol
-autodeclarado de `unsafeMetadata` se aplica **solo si la fila no existía**. Si ya existe,
-`applySelfDeclaredRole` va en `false`, así que un usuario no puede cambiarse el rol editando su
-propia metadata y llamando al endpoint. Y `admin` sigue fuera de `SELF_DECLARABLE_ROLES`, así
-que es inalcanzable por esta vía en cualquier caso.
-
-El endpoint a propósito **no** usa `requireAuth`: ese middleware exige que el usuario de negocio
-ya exista y responde `403 USER_NOT_SYNCED` si no — justo la situación que viene a resolver. Se
-valida solo la sesión de Clerk, y el `clerkId` sale siempre del token verificado, nunca del body.
-
-**Para producción**: configurar el endpoint del webhook en el dashboard de Clerk apuntando a la
-URL pública del server desplegado. `CLERK_WEBHOOK_SIGNING_SECRET` ya está en `server/.env`.
-
-## Notas de contexto del proyecto
-
-- 3 ramas locales relevantes, **ninguna pusheada a remoto**: `main` (muy atrás, solo hasta el panel
-  admin), `feature/geras-core-marketplace-residences` (DB/server maduros),
-  `feat/mobile-ui-navigation-refresh` (design system, base de esta rama).
-- Backend (`server/`) y base de datos ya construidos y probados — **no tocar lógica de negocio**,
-  solo UI/UX/infra móvil y auth.
-- Los `.env` **sí existen** en esta máquina (`apps/admin-panel`, `apps/mobile-familia`,
-  `apps/mobile-profesional`, `server`). Una sesión anterior no los encontraba; ese diagnóstico
-  quedó obsoleto.
-- El `README.md` está desactualizado en "Estado actual" (dice que las apps móviles no tienen
-  pantallas — falso). No es parte de este trabajo arreglarlo.
-
-## Próximos pasos al retomar
-
-1. **Tarea #3**: `expo start` en background y pegar QR ASCII + URL `exp://` en el chat.
-   Usar `--clear` si se alterna entre apps.
-2. **Tarea #4**: exponer `server/` en la LAN y apuntar `EXPO_PUBLIC_API_URL` de ambas apps a la IP
-   de la máquina (hoy apunta a localhost). Revisar `CORS_ALLOWED_ORIGINS` en `server/.env`.
-3. **Tarea #5**: Clerk Google OAuth con `expo-auth-session` + `expo-web-browser` (ya instalados).
+Ramas locales relevantes, **ninguna pusheada**: `main` (atrasada), 
+`feature/geras-core-marketplace-residences` (DB/server maduros),
+`feat/mobile-ui-navigation-refresh` (design system, base de esta rama).
