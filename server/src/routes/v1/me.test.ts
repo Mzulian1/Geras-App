@@ -13,6 +13,12 @@ vi.mock("@clerk/express", () => ({
 const { getBusinessUserMock } = vi.hoisted(() => ({ getBusinessUserMock: vi.fn() }));
 vi.mock("../../services/businessUser.js", () => ({ getBusinessUser: getBusinessUserMock }));
 
+const { syncOnDemandMock } = vi.hoisted(() => ({ syncOnDemandMock: vi.fn() }));
+vi.mock("../../services/userSync.js", () => ({
+  syncClerkUserOnDemand: syncOnDemandMock,
+  syncClerkUserEvent: vi.fn(),
+}));
+
 const { app } = await import("../../app.js");
 
 const familyUser = { id: "u1", clerkId: "clerk_1", email: "f@geras.cl", role: "family", active: true };
@@ -79,5 +85,59 @@ describe("GET /api/v1/me/admin-check", () => {
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ ok: true, user: adminUser });
+  });
+});
+
+// Este endpoint es el fallback para cuando el webhook de Clerk no llegó.
+// Lo que importa cubrir es que NO herede el requisito de requireAuth (que
+// exige la fila que este endpoint viene a crear) y que el clerkId salga
+// siempre del token, nunca del body.
+describe("POST /api/v1/me/sync", () => {
+  beforeEach(() => {
+    getAuthMock.mockReset();
+    getBusinessUserMock.mockReset();
+    syncOnDemandMock.mockReset().mockResolvedValue(undefined);
+  });
+
+  it("responde 401 sin sesión de Clerk y no intenta sincronizar", async () => {
+    getAuthMock.mockReturnValue({ userId: null });
+
+    const res = await request(app).post("/api/v1/me/sync");
+
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe("UNAUTHENTICATED");
+    expect(syncOnDemandMock).not.toHaveBeenCalled();
+  });
+
+  it("sincroniza y responde 200 aunque la fila todavía no exista al entrar", async () => {
+    getAuthMock.mockReturnValue({ userId: "clerk_1" });
+    // Antes de sincronizar no hay usuario; después sí.
+    getBusinessUserMock.mockResolvedValueOnce(familyUser);
+
+    const res = await request(app).post("/api/v1/me/sync");
+
+    expect(res.status).toBe(200);
+    expect(syncOnDemandMock).toHaveBeenCalledWith("clerk_1");
+    expect(res.body.user).toEqual(familyUser);
+  });
+
+  it("usa el clerkId del token verificado, ignorando cualquier id enviado en el body", async () => {
+    getAuthMock.mockReturnValue({ userId: "clerk_1" });
+    getBusinessUserMock.mockResolvedValue(familyUser);
+
+    await request(app).post("/api/v1/me/sync").send({ clerkId: "clerk_de_otro", userId: "clerk_de_otro" });
+
+    expect(syncOnDemandMock).toHaveBeenCalledWith("clerk_1");
+    expect(syncOnDemandMock).not.toHaveBeenCalledWith("clerk_de_otro");
+  });
+
+  it("responde 403 USER_NOT_SYNCED si tras sincronizar la fila sigue sin aparecer", async () => {
+    getAuthMock.mockReturnValue({ userId: "clerk_1" });
+    getBusinessUserMock.mockResolvedValue(null);
+
+    const res = await request(app).post("/api/v1/me/sync");
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe("USER_NOT_SYNCED");
   });
 });

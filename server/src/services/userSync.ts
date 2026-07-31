@@ -31,8 +31,10 @@
 // ============================================================
 import { z } from "zod";
 import type { WebhookEvent } from "@clerk/express/webhooks";
+import { clerkClient } from "@clerk/express";
 import { supabaseAdmin } from "../lib/supabase.js";
 import { logger } from "../lib/logger.js";
+import { getBusinessUser } from "./businessUser.js";
 
 const SELF_DECLARABLE_ROLES = ["family", "professional", "residence"] as const;
 type SelfDeclarableRole = (typeof SELF_DECLARABLE_ROLES)[number];
@@ -115,6 +117,47 @@ async function deactivateUserFromClerk(rawData: unknown): Promise<void> {
   }
 
   logger.info("clerk_user_deactivated", { clerkId: data.id });
+}
+
+// ------------------------------------------------------------
+// FALLBACK BAJO DEMANDA
+//
+// El webhook es una llamada ENTRANTE desde la nube de Clerk, así que solo
+// funciona si el server es alcanzable desde internet. En desarrollo no lo
+// es (corre en una IP de red privada), y el resultado es que una cuenta
+// recién creada nunca llega a `users` y el cliente queda esperando para
+// siempre en "sincronizando tu cuenta".
+//
+// Esta función hace lo mismo que el webhook pero en sentido inverso: es el
+// cliente autenticado quien pide la sincronización, y el server va a buscar
+// los datos a la API de Clerk. No reemplaza al webhook (que sigue siendo el
+// camino normal y cubre user.updated/user.deleted), es una red de seguridad.
+//
+// SEGURIDAD — se preserva la invariante del webhook: el rol autodeclarado
+// solo se aplica si la fila NO existía. Si ya existe, `applySelfDeclaredRole`
+// va en false, así que un usuario ya creado no puede cambiarse el rol
+// editando su unsafeMetadata y llamando a este endpoint. Y como el rol pasa
+// igual por SELF_DECLARABLE_ROLES, 'admin' sigue siendo inalcanzable.
+export async function syncClerkUserOnDemand(clerkId: string): Promise<void> {
+  const existing = await getBusinessUser(clerkId);
+  const user = await clerkClient.users.getUser(clerkId);
+
+  // El SDK backend devuelve camelCase; el schema de arriba espera el
+  // snake_case del payload del webhook. Se mapea para reusar exactamente la
+  // misma validación y el mismo upsert, sin duplicar lógica.
+  await upsertUserFromClerk(
+    {
+      id: user.id,
+      email_addresses: user.emailAddresses.map((e) => ({ id: e.id, email_address: e.emailAddress })),
+      primary_email_address_id: user.primaryEmailAddressId,
+      phone_numbers: user.phoneNumbers.map((p) => ({ id: p.id, phone_number: p.phoneNumber })),
+      primary_phone_number_id: user.primaryPhoneNumberId,
+      unsafe_metadata: user.unsafeMetadata,
+    },
+    existing === null
+  );
+
+  logger.info("clerk_user_synced_on_demand", { clerkId, created: existing === null });
 }
 
 export async function syncClerkUserEvent(evt: WebhookEvent): Promise<void> {

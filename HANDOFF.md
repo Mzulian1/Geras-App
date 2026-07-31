@@ -156,6 +156,39 @@ en `createNode` de `RNSScreen`. Resuelto con `"react-native-screens": "4.16.0"` 
 **Regla para lo que viene**: ante cualquier duplicado de un módulo **nativo** que reporte
 `expo-doctor`, forzar la versión que fija el SDK. No asumir que es cosmético.
 
+## Webhook de Clerk: por qué no funciona en desarrollo
+
+Síntoma: creás una cuenta y la app queda para siempre en "Sincronizando tu cuenta".
+
+Causa: el webhook (`POST /api/v1/webhooks`) es una llamada **entrante desde la nube de
+Clerk** hacia el server. En desarrollo el server corre en `192.168.1.85:4000`, una IP de red
+privada: el teléfono la alcanza (misma red), Clerk **no**. Sin webhook no se crea la fila en
+`users`, y `useFamilyBootstrap`/`useProfessionalBootstrap` reintentan cada 2s indefinidamente.
+
+Se verificó mirando el log del server: la única request recibida en toda la sesión fue un
+`/health` manual. Cero webhooks.
+
+**Solución implementada**: fallback bajo demanda, en sentido inverso al webhook.
+`POST /api/v1/me/sync` — el cliente autenticado le pide al server que sincronice, y el server
+va a buscar los datos a la API de Clerk. Como la llamada es saliente desde el teléfono hacia
+la LAN, no hace falta exponer nada a internet ni tocar la configuración de Clerk.
+
+No reemplaza al webhook: este sigue siendo el camino normal y el único que cubre
+`user.updated` / `user.deleted`. El fallback solo cubre la creación.
+
+**Invariante de seguridad preservada** (cubierta por tests en `userSync.test.ts`): el rol
+autodeclarado de `unsafeMetadata` se aplica **solo si la fila no existía**. Si ya existe,
+`applySelfDeclaredRole` va en `false`, así que un usuario no puede cambiarse el rol editando su
+propia metadata y llamando al endpoint. Y `admin` sigue fuera de `SELF_DECLARABLE_ROLES`, así
+que es inalcanzable por esta vía en cualquier caso.
+
+El endpoint a propósito **no** usa `requireAuth`: ese middleware exige que el usuario de negocio
+ya exista y responde `403 USER_NOT_SYNCED` si no — justo la situación que viene a resolver. Se
+valida solo la sesión de Clerk, y el `clerkId` sale siempre del token verificado, nunca del body.
+
+**Para producción**: configurar el endpoint del webhook en el dashboard de Clerk apuntando a la
+URL pública del server desplegado. `CLERK_WEBHOOK_SIGNING_SECRET` ya está en `server/.env`.
+
 ## Notas de contexto del proyecto
 
 - 3 ramas locales relevantes, **ninguna pusheada a remoto**: `main` (muy atrás, solo hasta el panel

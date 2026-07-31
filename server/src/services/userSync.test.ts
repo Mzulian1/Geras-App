@@ -10,7 +10,13 @@ const { upsertMock, eqMock, updateMock, fromMock } = vi.hoisted(() => {
 });
 vi.mock("../lib/supabase.js", () => ({ supabaseAdmin: { from: fromMock } }));
 
-const { syncClerkUserEvent } = await import("./userSync.js");
+const { getUserMock } = vi.hoisted(() => ({ getUserMock: vi.fn() }));
+vi.mock("@clerk/express", () => ({ clerkClient: { users: { getUser: getUserMock } } }));
+
+const { getBusinessUserMock } = vi.hoisted(() => ({ getBusinessUserMock: vi.fn() }));
+vi.mock("./businessUser.js", () => ({ getBusinessUser: getBusinessUserMock }));
+
+const { syncClerkUserEvent, syncClerkUserOnDemand } = await import("./userSync.js");
 
 function userCreatedEvent(overrides?: Record<string, unknown>): WebhookEvent {
   return {
@@ -124,5 +130,98 @@ describe("syncClerkUserEvent", () => {
 
     const [payload] = upsertMock.mock.calls[0]!;
     expect(payload.email).toBe("fallback@geras.cl");
+  });
+});
+
+// El fallback bajo demanda existe porque el webhook es una llamada ENTRANTE
+// desde la nube de Clerk y no llega si el server no es alcanzable desde
+// internet (el caso normal en desarrollo). Lo crítico a cubrir acá no es el
+// camino feliz sino la invariante de privilegios: quién puede fijar el rol
+// y en qué momento.
+describe("syncClerkUserOnDemand", () => {
+  function clerkUser(overrides?: Record<string, unknown>) {
+    return {
+      id: "clerk_user_1",
+      emailAddresses: [{ id: "email_1", emailAddress: "ana@geras.cl" }],
+      primaryEmailAddressId: "email_1",
+      phoneNumbers: [],
+      primaryPhoneNumberId: null,
+      unsafeMetadata: { role: "family" },
+      ...overrides,
+    };
+  }
+
+  beforeEach(() => {
+    upsertMock.mockReset().mockResolvedValue({ error: null });
+    eqMock.mockReset().mockResolvedValue({ error: null });
+    updateMock.mockReset().mockImplementation(() => ({ eq: eqMock }));
+    fromMock.mockReset().mockImplementation(() => ({ upsert: upsertMock, update: updateMock }));
+    getUserMock.mockReset();
+    getBusinessUserMock.mockReset();
+  });
+
+  it("cuando la fila NO existe, crea el usuario aplicando el rol autodeclarado", async () => {
+    getBusinessUserMock.mockResolvedValue(null);
+    getUserMock.mockResolvedValue(clerkUser({ unsafeMetadata: { role: "professional" } }));
+
+    await syncClerkUserOnDemand("clerk_user_1");
+
+    expect(getUserMock).toHaveBeenCalledWith("clerk_user_1");
+    const [payload, options] = upsertMock.mock.calls[0]!;
+    expect(payload).toEqual({
+      clerk_id: "clerk_user_1",
+      email: "ana@geras.cl",
+      phone: null,
+      role: "professional",
+    });
+    expect(options).toEqual({ onConflict: "clerk_id" });
+  });
+
+  it("cuando la fila YA existe, NUNCA vuelve a aplicar el rol (no permite auto-escalar)", async () => {
+    getBusinessUserMock.mockResolvedValue({
+      id: "u1",
+      clerkId: "clerk_user_1",
+      email: "ana@geras.cl",
+      role: "family",
+      active: true,
+    });
+    // El usuario se editó su propia unsafeMetadata para intentar cambiarse el rol.
+    getUserMock.mockResolvedValue(clerkUser({ unsafeMetadata: { role: "professional" } }));
+
+    await syncClerkUserOnDemand("clerk_user_1");
+
+    const [payload] = upsertMock.mock.calls[0]!;
+    expect(payload).not.toHaveProperty("role");
+  });
+
+  it("'admin' en unsafeMetadata nunca llega al upsert, ni siquiera creando la cuenta", async () => {
+    getBusinessUserMock.mockResolvedValue(null);
+    getUserMock.mockResolvedValue(clerkUser({ unsafeMetadata: { role: "admin" } }));
+
+    await syncClerkUserOnDemand("clerk_user_1");
+
+    const [payload] = upsertMock.mock.calls[0]!;
+    expect(payload).not.toHaveProperty("role");
+  });
+
+  it("mapea camelCase del SDK backend al snake_case que espera el schema del webhook", async () => {
+    getBusinessUserMock.mockResolvedValue(null);
+    getUserMock.mockResolvedValue(
+      clerkUser({
+        emailAddresses: [
+          { id: "email_1", emailAddress: "secundario@geras.cl" },
+          { id: "email_2", emailAddress: "principal@geras.cl" },
+        ],
+        primaryEmailAddressId: "email_2",
+        phoneNumbers: [{ id: "phone_1", phoneNumber: "+56911111111" }],
+        primaryPhoneNumberId: "phone_1",
+      })
+    );
+
+    await syncClerkUserOnDemand("clerk_user_1");
+
+    const [payload] = upsertMock.mock.calls[0]!;
+    expect(payload.email).toBe("principal@geras.cl");
+    expect(payload.phone).toBe("+56911111111");
   });
 });
