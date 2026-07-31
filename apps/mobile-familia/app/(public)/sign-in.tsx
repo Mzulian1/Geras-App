@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-nativ
 import { Link, router } from "expo-router";
 import { useSignIn } from "@clerk/clerk-expo";
 import { getClerkErrorMessage } from "@/lib/clerkError";
+import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 
 export default function SignInScreen() {
   const { isLoaded, signIn, setActive } = useSignIn();
@@ -66,6 +67,14 @@ export default function SignInScreen() {
           <Text className="font-semibold text-white">Iniciar sesión</Text>
         )}
       </Pressable>
+
+      <View className="flex-row items-center gap-3 py-1">
+        <View className="h-px flex-1 bg-gray-200" />
+        <Text className="text-xs uppercase text-gray-400">o</Text>
+        <View className="h-px flex-1 bg-gray-200" />
+      </View>
+
+      <GoogleSignInButton onError={setError} disabled={submitting} />
 
       <Link href="/forgot-password" className="text-center text-sm text-gray-600">
         ¿Olvidaste tu contraseña?
