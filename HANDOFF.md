@@ -1,6 +1,6 @@
 # Handoff — Modernización Mobile Geras (Expo SDK 54 + rediseño)
 
-Documento de continuidad para retomar mañana. Generado automáticamente al pausar la sesión del 2026-07-29.
+Documento de continuidad. Última actualización: 2026-07-30 (sesión de validación de Etapa B).
 
 ## Rama de trabajo
 
@@ -8,21 +8,20 @@ Documento de continuidad para retomar mañana. Generado automáticamente al paus
 chore/expo-sdk-54-testing   (creada desde feat/mobile-ui-navigation-refresh, commit base 92296f6)
 ```
 
-Al retomar: `git checkout chore/expo-sdk-54-testing` y confirmar `git log --oneline -5` muestra el commit de Etapa A abajo.
-
 **No mergear a `main`. No hacer push sin autorización explícita.**
 
 ## Estado general
 
-Objetivo completo (ver instrucciones originales del usuario): dejar Mobile Familia y Mobile Profesional listas para Expo Go en iPhone, con identidad visual Soluciones Mayores, login Google vía Clerk, y Panel Admin operativo. **Aún no se tocó lógica de negocio ni se agregaron features nuevas** — todo lo hecho hasta ahora es infraestructura (upgrade de Expo).
-
-Ver `TaskList` de la sesión (11 tareas) para el desglose completo del plan. Resumen:
+Objetivo completo: dejar Mobile Familia y Mobile Profesional listas para Expo Go en iPhone, con
+identidad visual Soluciones Mayores, login Google vía Clerk, y Panel Admin operativo. **Aún no se
+tocó lógica de negocio ni se agregaron features nuevas** — todo lo hecho hasta ahora es
+infraestructura (upgrade de Expo + saneamiento de la resolución de dependencias del monorepo).
 
 | # | Tarea | Estado |
-|---|---|---|
-| 1 | Etapa A: Expo SDK 52→53 | ✅ **Completa y commiteada** |
-| 2 | Etapa B: Expo SDK 53→54 | 🔶 **En progreso, NO commiteada** (ver detalle abajo) |
-| 3 | Arrancar Expo Go y entregar QR/URL | ⬜ No iniciada |
+|---|-------|--------|
+| 1 | Etapa A: Expo SDK 52→53 | ✅ Completa (`624e2c0`) |
+| 2 | Etapa B: Expo SDK 53→54 | ✅ **Completa y validada** |
+| 3 | Arrancar Expo Go y entregar QR/URL | ⬜ Siguiente |
 | 4 | Backend accesible por LAN desde iPhone | ⬜ No iniciada |
 | 5 | Clerk Google OAuth en ambas apps | ⬜ No iniciada |
 | 6 | Identidad visual Soluciones Mayores | ⬜ No iniciada |
@@ -34,64 +33,125 @@ Ver `TaskList` de la sesión (11 tareas) para el desglose completo del plan. Res
 
 ## Decisiones ya acordadas con el usuario (no volver a preguntar)
 
-1. **Arranque de Expo/QR**: como el asistente no puede abrir una ventana gráfica visible, se acordó que Claude corre `expo start` en background y **pega el QR ASCII + URL `exp://` como texto** en el chat para que el usuario escanee desde el iPhone. No se va a pedir al usuario que abra su propia terminal.
-2. **Pruebas en iPhone**: el usuario prueba físicamente en su iPhone (login Google, navegación, Safe Area, etc.) y reporta problemas de vuelta; Claude no puede operar el dispositivo. Claude solo valida lo automatizable (expo-doctor, tsc, lint, exports).
+1. **Arranque de Expo/QR**: Claude corre `expo start` en background y pega el QR ASCII + URL
+   `exp://` como texto en el chat para que el usuario escanee desde el iPhone. No se le pide al
+   usuario abrir su propia terminal.
+2. **Pruebas en iPhone**: el usuario prueba físicamente (login Google, navegación, Safe Area) y
+   reporta de vuelta. Claude solo valida lo automatizable (expo-doctor, tsc, lint, exports, tests).
+3. **Autonomía**: el usuario pidió explícitamente no volver a pedir autorización para generar
+   cambios. La única excepción que se mantiene es `push`/merge a `main`.
 
 ## Etapa A — Expo SDK 53 (✅ completa)
 
-Commit `624e2c0` en `chore/expo-sdk-54-testing`: **`chore: upgrade mobile apps to Expo SDK 53`**
+Commit `624e2c0`. `expo-doctor` 18/18, `tsc` limpio, `expo export` exitoso en ambas apps.
 
-Resultado verificado: `expo-doctor` 18/18 en ambas apps, `tsc --noEmit` limpio, `expo export` (android/ios/web) exitoso en ambas apps.
+Dos bugs corregidos, documentados en el mensaje del commit:
+- Peer deps opcionales faltantes (`expo-apple-authentication`, `@react-native-masked-view/masked-view`)
+  rompían `expo export --platform ios`.
+- Contaminación de caché de Metro entre apps: **siempre usar `--clear` al alternar entre apps**,
+  tanto en `export` como en `start`.
 
-Dos bugs no triviales encontrados y corregidos (documentados en el mensaje de commit):
-- **Peer deps opcionales faltantes** (`expo-apple-authentication` para Clerk, `@react-native-masked-view/masked-view` para React Navigation) rompían `expo export --platform ios` con `AssertionError: Chunk containing module not found` — Android y web toleraban el nodo huérfano en el grafo de Metro, iOS no.
-- **Contaminación de caché de Metro entre apps** (justo lo que el plan del usuario advertía en la sección 2): exportar `mobile-profesional` intentó bundlear un archivo de `mobile-familia` hasta limpiar caché con `--clear`. **Importante para más adelante**: siempre usar `--clear` al alternar entre apps, incluso corriendo `expo start` (no solo `export`).
+## Etapa B — Expo SDK 54 (✅ completa y validada)
 
-## Etapa B — Expo SDK 54 (🔶 en progreso, sin commitear)
+Los bumps de versión están en el WIP `df46c23`. La validación destapó **cinco bugs** de resolución
+de dependencias, todos corregidos (ver commit `fix: resolve monorepo dependency resolution ...`).
 
-### Cambios ya aplicados en el working tree (sin commit todavía)
+### Causa raíz común
 
-- `apps/mobile-familia/package.json` y `apps/mobile-profesional/package.json`: bump a Expo SDK 54 (React 19.1.0, React Native 0.81.5, Expo Router 6.0.24, etc.) vía `npx expo install expo@^54.0.0` + `npx expo install --fix` (con el mismo ajuste manual de `@types/react`→`~19.1.10` y `typescript`→`~5.9.2` que en Etapa A, porque `expo install --fix` no los actualiza solo).
-- Se instalaron peers faltantes detectados por `expo-doctor`: `expo-auth-session`, `expo-web-browser` (ambos además necesarios para el login Google de la sección 4), `react-native-worklets`.
-- `package.json` (raíz): overrides de `metro-*` bump a `0.83.7`, `expo-font` a `14.0.12`, `react-native-safe-area-context` a `5.6.2`, y se agregó `"expo": "54.0.36"` al mapa de overrides (para evitar que un peer suelto resuelva una versión de Expo más nueva que la SDK 54 real — ver hallazgo abajo).
-- **`packages/ui/package.json` — cambio de arquitectura** (el más importante, no es solo un bump de versión): `react`, `react-native`, `react-native-safe-area-context`, `expo-font`, `@expo/vector-icons` se movieron de `dependencies` a **`peerDependencies`** (quitados también de `devDependencies`, salvo `@types/react` que se mantiene porque es inofensivo — son solo tipos).
+Un monorepo npm con **dos versiones de React conviviendo** (`19.1.0` para las apps móviles,
+`18.3.1` para `admin-panel`) más librerías que declaran peers con rangos sueltos. npm resolvía
+copias anidadas en lugar de deduplicar, y cada herramienta de la cadena falla distinto según
+desde dónde resuelve. Se manifestó en cinco capas:
 
-### Por qué el cambio de arquitectura en packages/ui
+| # | Síntoma | Capa | Causa |
+|---|---------|------|-------|
+| 1 | `Unable to resolve react-native-css-interop/jsx-runtime` | Metro | Peers sueltos de `nativewind` (`react: ">=18"`, `react-native: "*"`) hicieron que npm anidara todo su subárbol, dejando `css-interop` fuera del alcance de Metro |
+| 2 | `Invalid call ... process.env.EXPO_ROUTER_APP_ROOT` | Babel | `babel-preset-expo` hace `hasModule('expo-router')` con `require.resolve` **desde su propia ubicación** (raíz); `expo-router` vivía solo en `apps/*/node_modules` |
+| 3 | `Cannot read properties of undefined (reading 'ReactCurrentBatchConfig')` | React DOM (web) | `react-dom@18.3.1` hoisteado en la raíz junto a `react@19.1.0`; `react-native-web` (también en raíz) cargaba el 18 |
+| 4 | `Cannot find module 'expo-router/build/utils/url'` | `@expo/cli` | Misma causa que #2, pero en `exportStaticAsync.js` — acá no se puede parchear, obliga a hoistear de verdad |
+| 5 | `admin-panel`: build bloqueado por errores de tipos | TypeScript | `@radix-ui/*` (hoisteado) resolvía `@types/react@19` mientras `admin-panel` compila con `@types/react@18` |
 
-Con `react-native-safe-area-context` como `dependency` normal de `packages/ui`, npm instalaba una **copia física propia** dentro de `packages/ui/node_modules/`, distinta a la que usa cada app — exactamente el bug que el commit `92296f6` ("fix: dedupe react-native-safe-area-context and add missing SafeAreaProvider") ya había parcheado una vez con un hack de overrides + dependency en la raíz. Ese parche no sobrevivió el upgrade a SDK 54: apareció un árbol `expo@57.0.8` completo (una versión de Expo más nueva que la que usamos) colgando de `packages/ui/node_modules/expo-font`, porque `expo-font` tiene su propio peer `"expo": "*"` sin anclar.
+**El bug #5 es preexistente**, verificado reconstruyendo el estado original en un worktree limpio:
+los errores son idénticos línea por línea. Los bugs #1–#4 se tapaban entre sí — cada uno abortaba
+el build antes de que apareciera el siguiente.
 
-La causa raíz real es que una librería de UI compartida en un monorepo RN **no debería declarar `react`/`react-native`/módulos nativos como `dependencies` normales** — debe declararlos como `peerDependencies`, para que nunca instale su propia copia y siempre use la de la app que la consume. Este es el fix correcto y definitivo, no otro parche de overrides.
+### Cambios aplicados
 
-### ✅ Confirmado tras pausar: el fix de `peerDependencies` funcionó
-
-La reinstalación limpia que había quedado corriendo en background terminó (exit 0, 1400 paquetes) y **`packages/ui/node_modules` ya no tiene NINGUNA copia física propia** de React/RN/safe-area-context/expo/etc. `npx expo-doctor` en `mobile-familia` pasó a **17/18**, y el único check que falla ahora es "no duplicate dependencies" con una lista mucho más corta, **100% de terceros, ninguno originado en `packages/ui`**:
-
+`package.json` (raíz) — `overrides`:
+```json
+"@types/react-dom": "19.1.11",
+"react-server-dom-webpack": { "react": "19.1.0", "react-dom": "19.1.0" },
+"nativewind": {
+  "react": "19.1.0", "react-native": "0.81.5",
+  "react-native-reanimated": "4.1.7", "react-native-worklets": "0.5.1"
+}
 ```
-react@19.1.0 (raíz) vs react@19.2.8 (nativewind/node_modules)
-react-dom@19.1.0 (raíz, x2) vs react-dom@18.3.1 (raíz — admin-panel, esperado)
-react-native@0.81.5 (raíz) vs react-native@0.86.2 (nativewind/node_modules)
-react-native-reanimated@4.1.7 vs 4.5.3 (nativewind/node_modules)
-react-native-worklets@0.5.1 vs 0.11.3 (nativewind/node_modules)
-expo-application@7.0.8 duplicado mismo-versión (expo-auth-session vs expo-notifications) — inofensivo
+
+`package.json` (raíz) — `dependencies`:
+```json
+"expo-router": "6.0.24",
+"react-dom": "19.1.0"
 ```
 
-Todo lo que queda es tooling interna de `nativewind` (su propio Babel/Metro plugin, no debería llegar al bundle de la app ya que el código de la app nunca importa esos paquetes directamente) más la copia de React 18 esperada de `admin-panel`. El árbol de `@solana/wallet-adapter-react`/`@solana-mobile/*` (Web3 login opcional de Clerk, que no usamos) ya ni siquiera aparece en esta corrida. **No se llegó a correr `expo-doctor` en `mobile-profesional` todavía — hacerlo primero al retomar.**
+> Estas dos entradas **no son dependencias reales de la raíz**: son controles de hoisting.
+> `expo-router` tiene que estar físicamente en `node_modules/` de la raíz porque tanto
+> `@expo/cli` como `babel-preset-expo` lo resuelven desde su propia ubicación. `react-dom` fija
+> la raíz en 19.1.0 para que quede coherente con su `react`, empujando el par 18.3.1 a anidarse
+> bajo `admin-panel`.
 
-### Próximos pasos exactos al retomar (ya NO hace falta reinstalar desde cero)
+> El override de `react-server-dom-webpack` es lo que permite hoistear `expo-router`: es un peer
+> **opcional** suyo cuyo rango (`~19.0.4 || ~19.1.5 || ~19.2.4`) solo admite versiones que exigen
+> un React más nuevo que el `19.1.0` que fija RN 0.81.5. Forzando su peer de React se neutraliza
+> el `ERESOLVE` y npm termina no instalándolo (tampoco arrastra `webpack`).
 
-1. `cd C:/Geras-App/apps/mobile-profesional && npx expo-doctor` — confirmar que da el mismo resultado (17/18, mismos duplicados de terceros) que `mobile-familia`.
-2. `npx tsc --noEmit` en ambas apps.
-3. `npx expo export --platform android|ios|web --output-dir dist-test-<plataforma>` en ambas apps (limpiar los `dist-test-*` después, no commitear). Prestar atención especial a iOS (fue el que falló en Etapa A) y usar `--clear` si se alterna entre apps.
-4. `npm ls react-native-safe-area-context` — confirmar una sola versión, sin duplicado físico bajo `packages/ui` (ya se ve resuelto, pero confirmar formalmente).
-5. Si todo pasa: **amendear o reemplazar el commit WIP `df46c23`** (`wip: Expo SDK 54 upgrade in progress, not yet validated`) por el commit final pedido por el usuario: `chore: upgrade mobile apps to Expo SDK 54` — incluir el `package-lock.json` regenerado (no estaba en el WIP) y explicar el cambio de arquitectura de `packages/ui/package.json` en el mensaje, igual que se hizo en el de Etapa A. Confirmar con el usuario antes de reescribir el commit si ya hizo algo más encima.
-6. Seguir con la sección 2 del plan original (arrancar Expo Go, entregar QR) — tarea #3 de la lista.
+`apps/admin-panel/tsconfig.json` — `paths` para que la resolución de tipos de React apunte a la
+copia local de React 18, incluida la que hacen los `.d.ts` de `@radix-ui`. Cambio solo de tipos,
+sin efecto en runtime.
 
-## Notas de contexto del proyecto (por si se perdió memoria de sesión)
+`packages/ui/package.json` (de `df46c23`): `react`, `react-native`,
+`react-native-safe-area-context`, `expo-font`, `@expo/vector-icons` movidos de `dependencies` a
+`peerDependencies`. Sigue siendo correcto y verificado: `packages/ui/node_modules` no tiene
+ninguna copia física propia.
 
-- El repo tiene 3 ramas locales relevantes, **ninguna pusheada a remoto**: `main` (muy atrás, solo hasta el panel admin), `feature/geras-core-marketplace-residences` (DB/server ya maduros), `feat/mobile-ui-navigation-refresh` (+ design system, base de esta rama de trabajo).
-- Backend (`server/`) y base de datos ya están construidos y probados — **no tocar lógica de negocio** en este trabajo, solo UI/UX/infra móvil y auth.
-- El `README.md` del repo está desactualizado en la sección "Estado actual" (dice que las apps móviles no tienen pantallas — falso, ya tienen pantallas completas). No es parte de este trabajo arreglarlo, pero es bueno saberlo.
+### Verificación (todo en verde)
 
-## Estado de git al pausar
+| Workspace | Resultado |
+|-----------|-----------|
+| `mobile-familia` | `expo export` android/ios/web ✅ · `tsc` ✅ · `expo-doctor` 17/18 |
+| `mobile-profesional` | `expo export` android/ios/web ✅ · `tsc` ✅ · `expo-doctor` 17/18 |
+| `admin-panel` | `tsc` ✅ · `npm run build` (tsc && vite build) ✅ |
+| `packages/shared` | `tsc` ✅ |
+| `packages/ui` | `tsc` ✅ |
+| `server` | `tsc` ✅ · 127 tests pasan, 36 skipped (16 archivos) |
 
-Todos los cambios de Etapa B están **sin commitear** (working tree sucio, ver `git status --short` — modificaciones en ambos `package.json` de las apps, `apps/*/app.json`, `packages/ui/package.json`, `package.json` raíz, y `package-lock.json` en proceso de regenerarse). Si vas a cambiar de máquina antes de continuar, considera pedirle a Claude que haga `git stash` (o un commit WIP explícito) para no perder el trabajo — no se commiteó automáticamente porque no se pidió explícitamente.
+### Warning residual conocido (no bloqueante)
+
+`expo-doctor` 17/18 en ambas apps, por "no duplicate dependencies":
+- `react-native-screens`: `4.16.0` en las apps (versión de SDK 54) vs `4.26.2` en la raíz,
+  arrastrado por `expo-router`. Se intentó forzar una sola versión con override y desencadena una
+  cascada de `ERESOLVE` sin beneficio: los exports pasan igual porque cada app resuelve su copia
+  local primero. **No afecta a Expo Go** (trae los módulos nativos precompilados), pero
+  **revisar antes de los builds EAS (tarea #10)**, que sí son sensibles a módulos nativos duplicados.
+- `expo-application@7.0.8` duplicado en la misma versión (`expo-auth-session` vs
+  `expo-notifications`) — inofensivo, preexistente.
+
+## Notas de contexto del proyecto
+
+- 3 ramas locales relevantes, **ninguna pusheada a remoto**: `main` (muy atrás, solo hasta el panel
+  admin), `feature/geras-core-marketplace-residences` (DB/server maduros),
+  `feat/mobile-ui-navigation-refresh` (design system, base de esta rama).
+- Backend (`server/`) y base de datos ya construidos y probados — **no tocar lógica de negocio**,
+  solo UI/UX/infra móvil y auth.
+- Los `.env` **sí existen** en esta máquina (`apps/admin-panel`, `apps/mobile-familia`,
+  `apps/mobile-profesional`, `server`). Una sesión anterior no los encontraba; ese diagnóstico
+  quedó obsoleto.
+- El `README.md` está desactualizado en "Estado actual" (dice que las apps móviles no tienen
+  pantallas — falso). No es parte de este trabajo arreglarlo.
+
+## Próximos pasos al retomar
+
+1. **Tarea #3**: `expo start` en background y pegar QR ASCII + URL `exp://` en el chat.
+   Usar `--clear` si se alterna entre apps.
+2. **Tarea #4**: exponer `server/` en la LAN y apuntar `EXPO_PUBLIC_API_URL` de ambas apps a la IP
+   de la máquina (hoy apunta a localhost). Revisar `CORS_ALLOWED_ORIGINS` en `server/.env`.
+3. **Tarea #5**: Clerk Google OAuth con `expo-auth-session` + `expo-web-browser` (ya instalados).
