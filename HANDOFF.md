@@ -127,13 +127,34 @@ ninguna copia física propia.
 ### Warning residual conocido (no bloqueante)
 
 `expo-doctor` 17/18 en ambas apps, por "no duplicate dependencies":
-- `react-native-screens`: `4.16.0` en las apps (versión de SDK 54) vs `4.26.2` en la raíz,
-  arrastrado por `expo-router`. Se intentó forzar una sola versión con override y desencadena una
-  cascada de `ERESOLVE` sin beneficio: los exports pasan igual porque cada app resuelve su copia
-  local primero. **No afecta a Expo Go** (trae los módulos nativos precompilados), pero
-  **revisar antes de los builds EAS (tarea #10)**, que sí son sensibles a módulos nativos duplicados.
-- `expo-application@7.0.8` duplicado en la misma versión (`expo-auth-session` vs
-  `expo-notifications`) — inofensivo, preexistente.
+- `expo-application@7.0.8` duplicado **en la misma versión** (`expo-auth-session` vs
+  `expo-notifications`). Al ser idéntica versión no puede haber desajuste JS/nativo. Inofensivo,
+  preexistente.
+
+El check "packages match versions required by installed Expo SDK" **sí pasa**: no queda ningún
+módulo nativo desalineado con SDK 54.
+
+### Lección importante: duplicados de módulos nativos SÍ rompen Expo Go
+
+Durante esta sesión se documentó erróneamente que el duplicado de `react-native-screens`
+(`4.16.0` en las apps vs `4.26.2` en la raíz) "no afecta a Expo Go porque trae los módulos nativos
+precompilados". **El razonamiento está invertido y costó un bug en el dispositivo**: es
+justamente por venir precompilado que la versión de JS *tiene que coincidir* con la nativa.
+
+Expo Go de SDK 54 embebe `react-native-screens@4.16.0`. Al hoistear `expo-router` a la raíz (fix
+del bug #4), su `@react-navigation/native-stack` pasó a resolver el `4.26.2` de la raíz, y el JS
+mandaba props con la forma de 4.26.x al binario nativo de 4.16.0:
+
+```
+Render Error: Exception in HostFunction:
+TypeError: expected dynamic type 'boolean', but had type 'string'
+```
+
+en `createNode` de `RNSScreen`. Resuelto con `"react-native-screens": "4.16.0"` en `overrides`
+(una sola copia deduplicada en todo el árbol, incluida la que ve `expo-router`).
+
+**Regla para lo que viene**: ante cualquier duplicado de un módulo **nativo** que reporte
+`expo-doctor`, forzar la versión que fija el SDK. No asumir que es cosmético.
 
 ## Notas de contexto del proyecto
 
