@@ -4,6 +4,7 @@
 // `content` glob de Tailwind de cada app escanee este paquete.
 export * from "./tokens/index";
 export * from "./theme/GerasThemeProvider";
+export * from "./brand/GerasBrand";
 
 export * from "./components/Screen";
 export * from "./components/AppHeader";
