@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { router } from "expo-router";
-import { Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { createServiceRequestSchema } from "@geras/shared";
 import type { CreateServiceRequestInput } from "@geras/shared";
-import { AppHeader, BottomActionBar, ErrorState, PrimaryButton, Screen, TertiaryButton, useGerasTheme } from "@geras/ui";
+import { AppHeader, BottomActionBar, ErrorState, PrimaryButton, Screen, TertiaryButton, useGerasTheme, SearchableSelectModal } from "@geras/ui";
 import { useFamilyBootstrap } from "@/hooks/useFamilyBootstrap";
 import { useCareRecipients } from "@/hooks/useCareRecipients";
 import { useComunasCatalog, useServicesCatalog } from "@/hooks/useCatalogs";
@@ -78,6 +78,7 @@ export default function NewServiceRequestScreen() {
   });
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof CreateServiceRequestInput, string>>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [showComunaModal, setShowComunaModal] = useState(false);
 
   if (bootstrap.status !== "ready" || recipientsQuery.isPending || servicesQuery.isPending || comunasQuery.isPending) {
     return <LoadingScreen />;
@@ -202,13 +203,43 @@ export default function NewServiceRequestScreen() {
         ) : null}
 
         {step.key === "location" ? (
-          <SelectChips
-            label="Comuna"
-            options={(comunasQuery.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
-            selected={values.comuna_id ? [values.comuna_id] : []}
-            onToggle={(value) => update("comuna_id", value)}
-            error={fieldErrors.comuna_id}
-          />
+          <>
+            <View>
+              <Text style={[{ fontSize: 14, fontWeight: "500", marginBottom: 8, color: theme.textPrimary }]}>
+                Comuna
+                {fieldErrors.comuna_id ? <Text style={{ color: theme.error }}> *</Text> : null}
+              </Text>
+              <Pressable onPress={() => setShowComunaModal(true)}>
+                <View
+                  style={{
+                    minHeight: 48,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    borderWidth: 1,
+                    borderRadius: 8,
+                    paddingHorizontal: 12,
+                    borderColor: fieldErrors.comuna_id ? theme.error : theme.borderSoft,
+                    backgroundColor: theme.surface,
+                  }}
+                >
+                  <Text
+                    style={{
+                      flex: 1,
+                      fontSize: 14,
+                      color: values.comuna_id ? theme.textPrimary : theme.textSecondary,
+                    }}
+                    numberOfLines={1}
+                  >
+                    {selectedComuna?.name ?? "Selecciona una comuna"}
+                  </Text>
+                  <Text style={{ color: theme.textSecondary }}>›</Text>
+                </View>
+              </Pressable>
+              {fieldErrors.comuna_id ? (
+                <Text style={{ fontSize: 12, color: theme.error, marginTop: 4 }}>{fieldErrors.comuna_id}</Text>
+              ) : null}
+            </View>
+          </>
         ) : null}
 
         {step.key === "schedule" ? (
@@ -252,6 +283,16 @@ export default function NewServiceRequestScreen() {
           </>
         ) : null}
       </View>
+
+      <SearchableSelectModal
+        visible={showComunaModal}
+        title="Selecciona una comuna"
+        options={(comunasQuery.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
+        value={values.comuna_id}
+        onChange={(id) => update("comuna_id", id as number)}
+        onClose={() => setShowComunaModal(false)}
+        searchPlaceholder="Buscar comuna..."
+      />
     </Screen>
   );
 }

@@ -30,4 +30,6 @@ export * from "./components/SelectField";
 export * from "./components/InfoRow";
 export * from "./components/BottomActionBar";
 export * from "./components/ConfirmationModal";
+export * from "./components/SearchableSelectModal";
+export * from "./components/MultiSelectModal";
 export * from "./components/SuccessFeedback";
