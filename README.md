@@ -24,7 +24,7 @@ geras-app/
 
 | App/paquete | Stack |
 |---|---|
-| `mobile-familia`, `mobile-profesional` | Expo SDK 52, Expo Router, TypeScript, NativeWind (Tailwind para RN), TanStack Query, Zustand, `@clerk/clerk-expo`, `@supabase/supabase-js` |
+| `mobile-familia`, `mobile-profesional` | Expo SDK 54, Expo Router 6, React 19.1 / React Native 0.81.5, TypeScript, NativeWind (Tailwind para RN), TanStack Query, Zustand, `@clerk/clerk-expo`, `@supabase/supabase-js` |
 | `admin-panel` | React 18 + Vite, React Router, Tailwind CSS + shadcn/ui, TanStack Query, `@clerk/clerk-react`, `@supabase/supabase-js` |
 | `server` | Node.js + Express + TypeScript, `@clerk/express` (verificación de JWT), Zod, `tsx` (dev runner) |
 | `packages/shared` | Tipos de Postgres generados por Supabase, esquemas Zod, cliente Supabase tipado, factory de QueryClient |
@@ -72,6 +72,29 @@ npm run dev:server             # solo server (http://localhost:4000)
 
 Turborepo cachea build/lint por paquete; `dev` corre siempre sin cache (son procesos persistentes).
 
+### Probar las apps móviles en Expo Go
+
+Las apps móviles necesitan el server corriendo para resolver el usuario de negocio, así que
+levanta primero `npm run dev:server`.
+
+```bash
+cd apps/mobile-familia     && npx expo start --clear --lan
+cd apps/mobile-profesional && npx expo start --clear --lan
+```
+
+Escanea el QR con la cámara del iPhone (con [Expo Go](https://expo.dev/go) instalado) o abre la
+URL `exp://<ip-de-tu-máquina>:8081`.
+
+Dos reglas que ahorran tiempo:
+
+- **`--clear` es obligatorio al alternar entre las dos apps móviles.** La caché de Metro se
+  contamina entre ellas: exportar una llegó a bundlear archivos de la otra.
+- **Solo una app móvil a la vez** en el puerto 8081. Para cambiar, mata el proceso que lo ocupa y
+  arranca la otra.
+
+El teléfono tiene que estar en la misma red Wi-Fi que la máquina, y `EXPO_PUBLIC_API_URL` en el
+`.env` de cada app debe apuntar a la IP de la máquina en la LAN, no a `localhost`.
+
 ## Build y lint
 
 ```bash
@@ -104,6 +127,24 @@ Todos los tipos de conveniencia (`UserRole`, `BookingStatus`, etc.) y los esquem
 
 - **admin-panel** usa [shadcn/ui](https://ui.shadcn.com): los componentes se generan con `npx shadcn@latest add <componente>` desde `apps/admin-panel/` (ya está configurado `components.json`).
 - **mobile-familia / mobile-profesional** comparten componentes propios en `packages/ui` (no shadcn — es React Native puro con NativeWind).
+
+### Sistema visual
+
+`packages/ui` contiene el sistema de diseño compartido: tokens (`colors`, `typography`,
+`spacing`, `radii`), `GerasThemeProvider` y los componentes transversales (botones, campos,
+tarjetas, estados vacíos, skeletons, encabezados).
+
+La identidad es la de **Soluciones Mayores**. Los colores viven **exclusivamente** en
+`packages/ui/src/tokens/colors.ts`, con una paleta por app (Familia, Profesional, Admin) y los
+colores semánticos compartidos para que un estado se vea igual en las tres.
+
+> **Las reglas de diseño, accesibilidad y navegación están en
+> [`docs/UI_UX_GERAS.md`](./docs/UI_UX_GERAS.md).** Toda pantalla nueva o rediseñada debe cumplir
+> esa guía, incluido su checklist. No hardcodear colores ni tamaños en las pantallas.
+
+`packages/ui` declara `react`, `react-native`, `@expo/vector-icons`, `expo-font` y
+`react-native-safe-area-context` como **`peerDependencies`**, nunca como `dependencies`: de lo
+contrario npm instala copias físicas propias dentro del paquete y rompe el bundle de Metro.
 
 ## Panel Admin (`apps/admin-panel`)
 
@@ -156,4 +197,22 @@ Geras cobra una comisión porcentual sobre el precio real que publica cada profe
 
 ## Estado actual
 
-Base de datos, monorepo y Panel Admin completos (falta cablear rutas de negocio en `server/` — hoy solo tiene health-check). Las apps móviles (`mobile-familia`, `mobile-profesional`) siguen sin pantallas — es el siguiente paso.
+| Componente | Estado |
+|---|---|
+| Base de datos (Supabase) | Completa: schema, RLS, funciones y vistas |
+| `server/` | **Rutas de negocio implementadas** (`/api/v1`: bookings, service-requests, professional, residences, residence-inquiries, services, admin, me) más el webhook de Clerk y health-check. Suite de tests en verde |
+| `admin-panel` | Funcional, 15 pantallas. Build de producción OK |
+| `mobile-familia` | **Funcional con pantallas completas**: tabs, exploración de servicios/profesionales/residencias, solicitudes, reservas y perfil |
+| `mobile-profesional` | **Funcional con pantallas completas**: onboarding de 9 pasos, reservas, disponibilidad y perfil |
+| Autenticación | Clerk operativo en las tres apps, con inicio de sesión por correo y por Google |
+
+### Trabajo en curso: rediseño de UI/UX
+
+Rama: **`feat/mobile-ui-navigation-refresh`**
+
+El backend, la base de datos y las reglas de negocio están cerrados y **no se modifican** en este
+trabajo. Lo que está en curso es exclusivamente interfaz, experiencia de usuario, navegación,
+formularios y facilidad de uso, siguiendo [`docs/UI_UX_GERAS.md`](./docs/UI_UX_GERAS.md).
+
+El estado detallado de esa migración, con lo hecho y lo pendiente, está en
+[`docs/NEXT_SESSION_UI_UX.md`](./docs/NEXT_SESSION_UI_UX.md).
