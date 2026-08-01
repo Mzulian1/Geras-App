@@ -7,7 +7,7 @@ import { BottomActionBar, Card, LoadingState, PrimaryButton, Screen, SuccessFeed
 import { useProfessionalBootstrap } from "@/hooks/useProfessionalBootstrap";
 import { useProfessionalAvailabilityQuery } from "@/hooks/useOnboardingQueries";
 import { useSyncProfessionalAvailability } from "@/hooks/useOnboardingMutations";
-import { TimePickerField } from "@/components/onboarding/TimePickerField";
+import { DayAvailabilityModal, type DayBlock } from "@/components/DayAvailabilityModal";
 import { describeMutationError } from "@/lib/errors";
 
 const DAY_LABELS: Record<DayOfWeek, string> = {
@@ -19,12 +19,6 @@ const DAY_LABELS: Record<DayOfWeek, string> = {
   saturday: "Sábado",
   sunday: "Domingo",
 };
-
-interface DayBlock {
-  enabled: boolean;
-  start_time: string | null;
-  end_time: string | null;
-}
 
 function buildInitialBlocks(existing: ProfessionalAvailability[]): Record<DayOfWeek, DayBlock> {
   const base = Object.fromEntries(
@@ -39,7 +33,9 @@ function buildInitialBlocks(existing: ProfessionalAvailability[]): Record<DayOfW
 // Tab "Disponibilidad" (Fase 4): misma tabla/misma mutation que el
 // paso 7 del onboarding (useProfessionalAvailabilityQuery /
 // useSyncProfessionalAvailability), pero editable en cualquier momento
-// después de aprobado — no solo durante el wizard inicial.
+// después de aprobado. Días como filas resumen; tocar una fila abre un
+// modal para editar ese día en vez de tener los 7 horarios abiertos
+// simultáneamente en la pantalla.
 export default function DisponibilidadScreen() {
   const theme = useGerasTheme();
   const bootstrap = useProfessionalBootstrap();
@@ -51,6 +47,7 @@ export default function DisponibilidadScreen() {
   const [blocks, setBlocks] = useState<Record<DayOfWeek, DayBlock> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [editingDay, setEditingDay] = useState<DayOfWeek | null>(null);
 
   if (bootstrap.status !== "approved" || availabilityQuery.isPending) {
     return (
@@ -110,32 +107,38 @@ export default function DisponibilidadScreen() {
           return (
             <Card key={day}>
               <Pressable
-                onPress={() => updateDay(day, { enabled: !block.enabled })}
+                onPress={() => setEditingDay(day)}
                 accessibilityRole="button"
-                accessibilityLabel={`${DAY_LABELS[day]}, ${block.enabled ? "activado" : "desactivado"}`}
+                accessibilityLabel={`${DAY_LABELS[day]}, ${block.enabled ? `de ${block.start_time} a ${block.end_time}` : "no disponible"}`}
                 style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}
               >
                 <Text style={{ fontSize: 15, fontWeight: "600", color: theme.textPrimary }}>{DAY_LABELS[day]}</Text>
-                <Ionicons
-                  name={block.enabled ? "checkmark-circle" : "ellipse-outline"}
-                  size={24}
-                  color={block.enabled ? theme.primary : theme.textSecondary}
-                />
-              </Pressable>
-              {block.enabled ? (
-                <View style={{ flexDirection: "row", gap: 12, marginTop: 12 }}>
-                  <View style={{ flex: 1 }}>
-                    <TimePickerField label="Desde" value={block.start_time} onChange={(value) => updateDay(day, { start_time: value })} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <TimePickerField label="Hasta" value={block.end_time} onChange={(value) => updateDay(day, { end_time: value })} />
-                  </View>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <Text style={{ fontSize: 13, color: theme.textSecondary }}>
+                    {block.enabled ? `${block.start_time ?? "—"} a ${block.end_time ?? "—"}` : "No disponible"}
+                  </Text>
+                  <Ionicons
+                    name={block.enabled ? "checkmark-circle" : "ellipse-outline"}
+                    size={22}
+                    color={block.enabled ? theme.primary : theme.textSecondary}
+                  />
                 </View>
-              ) : null}
+              </Pressable>
             </Card>
           );
         })}
       </View>
+
+      {editingDay ? (
+        <DayAvailabilityModal
+          visible={editingDay !== null}
+          day={editingDay}
+          dayLabel={DAY_LABELS[editingDay]}
+          block={currentBlocks[editingDay]}
+          onChange={(patch) => updateDay(editingDay, patch)}
+          onClose={() => setEditingDay(null)}
+        />
+      ) : null}
     </Screen>
   );
 }

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { FlatList, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { useMemo, useState } from "react";
+import { Modal, Pressable, SectionList, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useGerasTheme } from "../theme/GerasThemeProvider";
@@ -13,6 +13,10 @@ import { TertiaryButton } from "./buttons/TertiaryButton";
 export interface MultiSelectOption {
   value: string | number;
   label: string;
+  /** Texto breve bajo el nombre (p. ej. descripción del servicio). */
+  description?: string;
+  /** Si se define en al menos una opción, la lista se agrupa por este campo. */
+  group?: string;
 }
 
 export interface MultiSelectModalProps {
@@ -29,7 +33,9 @@ export interface MultiSelectModalProps {
 
 // Modal de selección múltiple con buscador. Permite seleccionar/deseleccionar
 // opciones con checkbox y confirmar con un botón "Aplicar". No cierra al
-// seleccionar; el usuario debe presionar "Aplicar" o cerrar el modal.
+// seleccionar; el usuario debe presionar "Aplicar" o cerrar el modal. Si
+// las opciones traen `group`, se agrupan en secciones (p. ej. servicios
+// por categoría).
 export function MultiSelectModal({
   visible,
   title,
@@ -38,15 +44,29 @@ export function MultiSelectModal({
   onChange,
   onClose,
   onApply,
-  placeholder = "Buscar",
   searchPlaceholder = "Buscar",
 }: MultiSelectModalProps) {
   const theme = useGerasTheme();
   const [searchText, setSearchText] = useState("");
 
   const filtered = searchText.trim()
-    ? options.filter((opt) => opt.label.toLowerCase().includes(searchText.toLowerCase()))
+    ? options.filter(
+        (opt) =>
+          opt.label.toLowerCase().includes(searchText.toLowerCase()) ||
+          opt.description?.toLowerCase().includes(searchText.toLowerCase())
+      )
     : options;
+
+  const sections = useMemo(() => {
+    const groups = new Map<string, MultiSelectOption[]>();
+    for (const opt of filtered) {
+      const key = opt.group ?? "";
+      groups.set(key, [...(groups.get(key) ?? []), opt]);
+    }
+    return [...groups.entries()].map(([title, data]) => ({ title, data }));
+  }, [filtered]);
+
+  const hasGroups = options.some((opt) => opt.group);
 
   function toggleOption(value: string | number) {
     onChange(
@@ -84,9 +104,29 @@ export function MultiSelectModal({
         </View>
 
         {/* List */}
-        <FlatList
-          data={filtered}
+        <SectionList
+          sections={sections}
           keyExtractor={(item) => String(item.value)}
+          stickySectionHeadersEnabled={false}
+          renderSectionHeader={({ section }) =>
+            hasGroups && section.title ? (
+              <Text
+                style={[
+                  typography.label,
+                  {
+                    color: theme.textSecondary,
+                    textTransform: "uppercase",
+                    backgroundColor: theme.surface,
+                    paddingHorizontal: spacing.base,
+                    paddingTop: spacing.md,
+                    paddingBottom: spacing.xs,
+                  },
+                ]}
+              >
+                {section.title}
+              </Text>
+            ) : null
+          }
           renderItem={({ item }) => {
             const isSelected = selected.includes(item.value);
             return (
@@ -109,7 +149,14 @@ export function MultiSelectModal({
                     <Ionicons name="checkmark" size={16} color={theme.onPrimary} />
                   ) : null}
                 </View>
-                <Text style={[typography.body, { color: theme.textPrimary, flex: 1 }]}>{item.label}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[typography.body, { color: theme.textPrimary }]}>{item.label}</Text>
+                  {item.description ? (
+                    <Text style={[typography.help, { color: theme.textSecondary, marginTop: 2 }]} numberOfLines={2}>
+                      {item.description}
+                    </Text>
+                  ) : null}
+                </View>
               </Pressable>
             );
           }}

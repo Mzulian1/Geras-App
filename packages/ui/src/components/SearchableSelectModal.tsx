@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { FlatList, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { useMemo, useState } from "react";
+import { Modal, Pressable, SectionList, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useGerasTheme } from "../theme/GerasThemeProvider";
@@ -11,6 +11,10 @@ import { SearchInput } from "./SearchInput";
 export interface SearchableSelectOption {
   value: string | number;
   label: string;
+  /** Texto breve bajo el nombre (p. ej. descripción del servicio). */
+  description?: string;
+  /** Si se define en al menos una opción, la lista se agrupa por este campo. */
+  group?: string;
 }
 
 export interface SearchableSelectModalProps {
@@ -24,8 +28,9 @@ export interface SearchableSelectModalProps {
   searchPlaceholder?: string;
 }
 
-// Modal de selección única para catálogos largos (comunas, profesiones).
-// Abre una pantalla modal con buscador y lista deslizable de opciones.
+// Modal de selección única para catálogos largos (comunas, profesiones,
+// servicios). Con buscador y lista deslizable; si las opciones traen
+// `group`, se agrupan en secciones (p. ej. servicios por categoría).
 export function SearchableSelectModal({
   visible,
   title,
@@ -33,16 +38,29 @@ export function SearchableSelectModal({
   value,
   onChange,
   onClose,
-  placeholder = "Selecciona una opción",
   searchPlaceholder = "Buscar",
 }: SearchableSelectModalProps) {
   const theme = useGerasTheme();
   const [searchText, setSearchText] = useState("");
 
   const filtered = searchText.trim()
-    ? options.filter((opt) => opt.label.toLowerCase().includes(searchText.toLowerCase()))
+    ? options.filter(
+        (opt) =>
+          opt.label.toLowerCase().includes(searchText.toLowerCase()) ||
+          opt.description?.toLowerCase().includes(searchText.toLowerCase())
+      )
     : options;
 
+  const sections = useMemo(() => {
+    const groups = new Map<string, SearchableSelectOption[]>();
+    for (const opt of filtered) {
+      const key = opt.group ?? "";
+      groups.set(key, [...(groups.get(key) ?? []), opt]);
+    }
+    return [...groups.entries()].map(([title, data]) => ({ title, data }));
+  }, [filtered]);
+
+  const hasGroups = options.some((opt) => opt.group);
   const selected = options.find((opt) => opt.value === value);
 
   return (
@@ -69,9 +87,29 @@ export function SearchableSelectModal({
         </View>
 
         {/* List */}
-        <FlatList
-          data={filtered}
+        <SectionList
+          sections={sections}
           keyExtractor={(item) => String(item.value)}
+          stickySectionHeadersEnabled={false}
+          renderSectionHeader={({ section }) =>
+            hasGroups && section.title ? (
+              <Text
+                style={[
+                  typography.label,
+                  {
+                    color: theme.textSecondary,
+                    textTransform: "uppercase",
+                    backgroundColor: theme.surface,
+                    paddingHorizontal: spacing.base,
+                    paddingTop: spacing.md,
+                    paddingBottom: spacing.xs,
+                  },
+                ]}
+              >
+                {section.title}
+              </Text>
+            ) : null
+          }
           renderItem={({ item }) => {
             const isSelected = item.value === value;
             return (
@@ -84,7 +122,14 @@ export function SearchableSelectModal({
                 accessibilityState={{ selected: isSelected }}
                 style={[styles.option, { borderBottomColor: theme.borderSoft }]}
               >
-                <Text style={[typography.body, { color: theme.textPrimary, flex: 1 }]}>{item.label}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[typography.body, { color: theme.textPrimary }]}>{item.label}</Text>
+                  {item.description ? (
+                    <Text style={[typography.help, { color: theme.textSecondary, marginTop: 2 }]} numberOfLines={2}>
+                      {item.description}
+                    </Text>
+                  ) : null}
+                </View>
                 {isSelected ? (
                   <Ionicons name="checkmark-circle" size={20} color={theme.primary} />
                 ) : (

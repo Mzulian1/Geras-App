@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { router } from "expo-router";
-import { FlatList, Text, View } from "react-native";
+import { FlatList, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { dayOfWeekSchema } from "@geras/shared";
 import type { DayOfWeek, PublicProfessionalView } from "@geras/shared";
-import { Card, EmptyState, LoadingState, StatusBadge, useGerasTheme } from "@geras/ui";
+import { Card, EmptyState, LoadingState, SearchableSelectField, StatusBadge, useGerasTheme } from "@geras/ui";
 import { usePublicProfessionals } from "@/hooks/usePublicProfessionals";
 import { useComunasCatalog, useServicesCatalog } from "@/hooks/useCatalogs";
 import { useCareRecipient } from "@/hooks/useCareRecipients";
@@ -174,18 +174,36 @@ export default function ProfessionalsScreen() {
             selected={category ? [category] : []}
             onToggle={(value) => setCategory(category === value ? null : value)}
           />
-          <SelectChips
-            label="Servicio"
-            options={(servicesQuery.data ?? []).map((service) => ({ value: service.id, label: service.name }))}
-            selected={serviceId ? [serviceId] : []}
-            onToggle={(value) => setServiceId(serviceId === value ? null : value)}
-          />
-          <SelectChips
-            label="Comuna"
-            options={(comunasQuery.data ?? []).map((comuna) => ({ value: comuna.name, label: comuna.name }))}
-            selected={comunaName ? [comunaName] : []}
-            onToggle={(value) => setComunaName(comunaName === value ? null : value)}
-          />
+          <View style={{ gap: 4 }}>
+            <SearchableSelectField
+              label="Servicio"
+              options={(servicesQuery.data ?? []).map((service) => ({ value: service.id, label: service.name }))}
+              value={serviceId}
+              onChange={(value) => setServiceId(value as number)}
+              placeholder="Todos los servicios"
+              searchPlaceholder="Buscar servicio..."
+            />
+            {serviceId ? (
+              <Pressable onPress={() => setServiceId(null)} accessibilityRole="button" accessibilityLabel="Quitar filtro de servicio">
+                <Text style={{ fontSize: 13, color: theme.primary, fontWeight: "600" }}>Quitar filtro</Text>
+              </Pressable>
+            ) : null}
+          </View>
+          <View style={{ gap: 4 }}>
+            <SearchableSelectField
+              label="Comuna"
+              options={(comunasQuery.data ?? []).map((comuna) => ({ value: comuna.name, label: comuna.name }))}
+              value={comunaName}
+              onChange={(value) => setComunaName(value as string)}
+              placeholder="Todas las comunas"
+              searchPlaceholder="Buscar comuna..."
+            />
+            {comunaName ? (
+              <Pressable onPress={() => setComunaName(null)} accessibilityRole="button" accessibilityLabel="Quitar filtro de comuna">
+                <Text style={{ fontSize: 13, color: theme.primary, fontWeight: "600" }}>Quitar filtro</Text>
+              </Pressable>
+            ) : null}
+          </View>
           <SelectChips
             label="Disponibilidad"
             options={dayOfWeekSchema.options.map((value) => ({ value, label: DAY_LABELS[value] }))}

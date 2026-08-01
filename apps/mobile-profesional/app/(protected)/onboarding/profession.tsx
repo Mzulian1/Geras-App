@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Redirect, router } from "expo-router";
 import { professionalOnboardingProfessionSchema } from "@geras/shared";
+import { SearchableSelectField } from "@geras/ui";
 import { useProfessionalBootstrap } from "@/hooks/useProfessionalBootstrap";
 import { useProfessionsCatalog } from "@/hooks/useCatalogs";
 import { useClearProfessionalServices, useSaveProfessionalIdentity } from "@/hooks/useOnboardingMutations";
 import { useOnboardingDraftStore } from "@/state/onboardingDraftStore";
 import { OnboardingScreenLayout } from "@/components/onboarding/OnboardingScreenLayout";
-import { SelectChips } from "@/components/onboarding/SelectChips";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { describeMutationError } from "@/lib/errors";
 
@@ -83,10 +83,18 @@ export default function ProfessionStep() {
         (clearServices.error && describeMutationError(clearServices.error))
       }
     >
-      <SelectChips
-        options={(professionsQuery.data ?? []).map((profession) => ({ value: profession.id, label: profession.name }))}
-        selected={professionId ? [professionId] : []}
-        onToggle={(value) => setProfessionId(value)}
+      <SearchableSelectField
+        label="Profesión"
+        options={(professionsQuery.data ?? []).map((profession) => ({
+          value: profession.id,
+          label: profession.name,
+          group: profession.category,
+        }))}
+        value={professionId}
+        onChange={(value) => setProfessionId(value as number)}
+        placeholder="Selecciona tu profesión"
+        searchPlaceholder="Buscar profesión..."
+        required
       />
     </OnboardingScreenLayout>
   );

@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Redirect, router } from "expo-router";
-import { Pressable, Text, View } from "react-native";
+import { Text, View } from "react-native";
 import { serviceModalitySchema } from "@geras/shared";
 import type { ServiceModality } from "@geras/shared";
+import { MultiSelectField, useGerasTheme } from "@geras/ui";
 import { useProfessionalBootstrap } from "@/hooks/useProfessionalBootstrap";
 import { useServicesCatalog } from "@/hooks/useCatalogs";
 import { useProfessionalServicesQuery } from "@/hooks/useOnboardingQueries";
@@ -24,7 +25,12 @@ interface Selection {
   modality: ServiceModality;
 }
 
+// Elegir servicios abre un modal con buscador y checkbox (catálogo
+// puede superar 10 opciones según la profesión); el formulario solo
+// muestra los servicios ya elegidos, cada uno con su selector de
+// modalidad y una acción para quitarlo.
 export default function ServicesStep() {
+  const theme = useGerasTheme();
   const bootstrap = useProfessionalBootstrap();
   const profile = bootstrap.status === "onboarding" ? bootstrap.professionalProfile : null;
 
@@ -45,23 +51,27 @@ export default function ServicesStep() {
   const currentSelections: Selection[] =
     selections ?? (existingServicesQuery.data ?? []).map((row) => ({ service_id: row.service_id, modality: row.modality }));
 
-  function isSelected(serviceId: number) {
-    return currentSelections.some((s) => s.service_id === serviceId);
-  }
   function modalityFor(serviceId: number): ServiceModality {
     return currentSelections.find((s) => s.service_id === serviceId)?.modality ?? "home_visit";
   }
 
-  function toggleService(serviceId: number) {
+  function setSelectedIds(ids: (string | number)[]) {
     setError(null);
-    const next = isSelected(serviceId)
-      ? currentSelections.filter((s) => s.service_id !== serviceId)
-      : [...currentSelections, { service_id: serviceId, modality: "home_visit" as ServiceModality }];
-    setSelections(next);
+    const idSet = new Set(ids as number[]);
+    const kept = currentSelections.filter((s) => idSet.has(s.service_id));
+    const keptIds = new Set(kept.map((s) => s.service_id));
+    const added = [...idSet]
+      .filter((id) => !keptIds.has(id))
+      .map((id) => ({ service_id: id, modality: "home_visit" as ServiceModality }));
+    setSelections([...kept, ...added]);
   }
 
   function setModality(serviceId: number, modality: ServiceModality) {
     setSelections(currentSelections.map((s) => (s.service_id === serviceId ? { ...s, modality } : s)));
+  }
+
+  function removeService(serviceId: number) {
+    setSelections(currentSelections.filter((s) => s.service_id !== serviceId));
   }
 
   async function handleContinue() {
@@ -83,6 +93,8 @@ export default function ServicesStep() {
     }
   }
 
+  const selectedServices = catalog.filter((service) => currentSelections.some((s) => s.service_id === service.id));
+
   return (
     <OnboardingScreenLayout
       step={4}
@@ -96,36 +108,51 @@ export default function ServicesStep() {
       {catalog.length === 0 ? (
         <Text className="text-gray-500">Todavía no hay servicios cargados para tu profesión.</Text>
       ) : (
-        catalog.map((service) => {
-          const selected = isSelected(service.id);
-          return (
-            <View key={service.id} className="gap-2 rounded-lg border border-gray-200 p-3">
-              <Pressable onPress={() => toggleService(service.id)} className="flex-row items-center justify-between">
-                <View className="flex-1 pr-2">
-                  <Text className="font-medium">{service.name}</Text>
-                  {service.base_price_min ? (
-                    <Text className="text-xs text-gray-500">
-                      Sugerido: ${service.base_price_min.toLocaleString("es-CL")} - $
-                      {service.base_price_max?.toLocaleString("es-CL")}
-                    </Text>
-                  ) : null}
-                </View>
-                <View className={`h-5 w-5 rounded border ${selected ? "border-black bg-black" : "border-gray-300"}`} />
-              </Pressable>
+        <>
+          <MultiSelectField
+            label="Servicios"
+            options={catalog.map((service) => ({
+              value: service.id,
+              label: service.name,
+              description:
+                service.base_price_min != null
+                  ? `Sugerido: $${service.base_price_min.toLocaleString("es-CL")} - $${service.base_price_max?.toLocaleString("es-CL")}`
+                  : undefined,
+            }))}
+            selected={currentSelections.map((s) => s.service_id)}
+            onChange={setSelectedIds}
+            placeholder="Selecciona los servicios que ofreces"
+            searchPlaceholder="Buscar servicio..."
+          />
 
-              {selected ? (
-                <View className="pl-1">
-                  <Text className="mb-1 text-xs font-medium text-gray-500">Modalidad</Text>
-                  <SelectChips
-                    options={serviceModalitySchema.options.map((value) => ({ value, label: MODALITY_LABELS[value] }))}
-                    selected={[modalityFor(service.id)]}
-                    onToggle={(value) => setModality(service.id, value)}
-                  />
+          {selectedServices.length > 0 ? (
+            <View style={{ gap: 12 }}>
+              {selectedServices.map((service) => (
+                <View key={service.id} style={{ gap: 8, borderRadius: 8, borderWidth: 1, borderColor: theme.borderSoft, padding: 12 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                    <Text style={{ fontWeight: "600", color: theme.textPrimary }}>{service.name}</Text>
+                    <Text
+                      onPress={() => removeService(service.id)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Quitar ${service.name}`}
+                      style={{ fontSize: 13, color: theme.error, fontWeight: "600" }}
+                    >
+                      Quitar
+                    </Text>
+                  </View>
+                  <View>
+                    <Text style={{ marginBottom: 4, fontSize: 12, fontWeight: "500", color: theme.textSecondary }}>Modalidad</Text>
+                    <SelectChips
+                      options={serviceModalitySchema.options.map((value) => ({ value, label: MODALITY_LABELS[value] }))}
+                      selected={[modalityFor(service.id)]}
+                      onToggle={(value) => setModality(service.id, value)}
+                    />
+                  </View>
                 </View>
-              ) : null}
+              ))}
             </View>
-          );
-        })
+          ) : null}
+        </>
       )}
     </OnboardingScreenLayout>
   );

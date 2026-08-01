@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { router } from "expo-router";
-import { FlatList, Text, View } from "react-native";
+import { FlatList, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { MobilityLevel } from "@geras/shared";
-import { Card, EmptyState, FormField, LoadingState, useGerasTheme } from "@geras/ui";
+import { Card, EmptyState, FormField, LoadingState, SearchableSelectField, useGerasTheme } from "@geras/ui";
 import { useResidencesCatalog } from "@/hooks/useResidencesCatalog";
 import { useComunasCatalog } from "@/hooks/useCatalogs";
 import { SelectChips } from "@/components/SelectChips";
@@ -51,18 +51,36 @@ export default function ResidenciasScreen() {
       contentContainerStyle={{ gap: 12, paddingBottom: 24 }}
       ListHeaderComponent={
         <View style={{ gap: 12, paddingBottom: 16, marginBottom: 4, borderBottomWidth: 1, borderBottomColor: theme.borderSoft }}>
-          <SelectChips
-            label="Región"
-            options={regions.map((r) => ({ value: r, label: r }))}
-            selected={region ? [region] : []}
-            onToggle={(value) => setRegion(region === value ? null : value)}
-          />
-          <SelectChips
-            label="Comuna"
-            options={(comunasQuery.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
-            selected={comunaId ? [comunaId] : []}
-            onToggle={(value) => setComunaId(comunaId === value ? null : value)}
-          />
+          <View style={{ gap: 4 }}>
+            <SearchableSelectField
+              label="Región"
+              options={regions.map((r) => ({ value: r, label: r }))}
+              value={region}
+              onChange={(value) => setRegion(value as string)}
+              placeholder="Todas las regiones"
+              searchPlaceholder="Buscar región..."
+            />
+            {region ? (
+              <Pressable onPress={() => setRegion(null)} accessibilityRole="button" accessibilityLabel="Quitar filtro de región">
+                <Text style={{ fontSize: 13, color: theme.primary, fontWeight: "600" }}>Quitar filtro</Text>
+              </Pressable>
+            ) : null}
+          </View>
+          <View style={{ gap: 4 }}>
+            <SearchableSelectField
+              label="Comuna"
+              options={(comunasQuery.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
+              value={comunaId}
+              onChange={(value) => setComunaId(value as number)}
+              placeholder="Todas las comunas"
+              searchPlaceholder="Buscar comuna..."
+            />
+            {comunaId ? (
+              <Pressable onPress={() => setComunaId(null)} accessibilityRole="button" accessibilityLabel="Quitar filtro de comuna">
+                <Text style={{ fontSize: 13, color: theme.primary, fontWeight: "600" }}>Quitar filtro</Text>
+              </Pressable>
+            ) : null}
+          </View>
           <View style={{ flexDirection: "row", gap: 12 }}>
             <View style={{ flex: 1 }}>
               <FormField label="Precio desde" keyboardType="numeric" value={priceFrom} onChangeText={setPriceFrom} />

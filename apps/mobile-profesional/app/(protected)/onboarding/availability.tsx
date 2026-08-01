@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { Redirect, router } from "expo-router";
 import { Pressable, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { dayOfWeekSchema, professionalAvailabilityFormSchema } from "@geras/shared";
 import type { DayOfWeek, ProfessionalAvailability } from "@geras/shared";
+import { useGerasTheme } from "@geras/ui";
 import { useProfessionalBootstrap } from "@/hooks/useProfessionalBootstrap";
 import { useProfessionalAvailabilityQuery } from "@/hooks/useOnboardingQueries";
 import { useSyncProfessionalAvailability } from "@/hooks/useOnboardingMutations";
 import { OnboardingScreenLayout } from "@/components/onboarding/OnboardingScreenLayout";
-import { TimePickerField } from "@/components/onboarding/TimePickerField";
+import { DayAvailabilityModal, type DayBlock } from "@/components/DayAvailabilityModal";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { describeMutationError } from "@/lib/errors";
 
@@ -20,12 +22,6 @@ const DAY_LABELS: Record<DayOfWeek, string> = {
   saturday: "Sábado",
   sunday: "Domingo",
 };
-
-interface DayBlock {
-  enabled: boolean;
-  start_time: string | null;
-  end_time: string | null;
-}
 
 function buildInitialBlocks(existing: ProfessionalAvailability[]): Record<DayOfWeek, DayBlock> {
   const base = Object.fromEntries(
@@ -42,7 +38,11 @@ function buildInitialBlocks(existing: ProfessionalAvailability[]): Record<DayOfW
   return base;
 }
 
+// Días como filas resumen (día + horario o "No disponible"); tocar una
+// fila abre un modal para activar/desactivar y elegir el horario de
+// ese día — evita tener los 7 selectores de hora abiertos a la vez.
 export default function AvailabilityStep() {
+  const theme = useGerasTheme();
   const bootstrap = useProfessionalBootstrap();
   const profile = bootstrap.status === "onboarding" ? bootstrap.professionalProfile : null;
 
@@ -51,6 +51,7 @@ export default function AvailabilityStep() {
 
   const [blocks, setBlocks] = useState<Record<DayOfWeek, DayBlock> | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [editingDay, setEditingDay] = useState<DayOfWeek | null>(null);
 
   if (bootstrap.status !== "onboarding") return <LoadingScreen />;
   if (!profile) return <Redirect href="/onboarding/personal" />;
@@ -96,26 +97,54 @@ export default function AvailabilityStep() {
       continuePending={syncAvailability.isPending}
       errorMessage={error}
     >
-      {dayOfWeekSchema.options.map((day) => {
-        const block = currentBlocks[day];
-        return (
-          <View key={day} className="gap-2 rounded-lg border border-gray-200 p-3">
+      <View style={{ gap: 8 }}>
+        {dayOfWeekSchema.options.map((day) => {
+          const block = currentBlocks[day];
+          return (
             <Pressable
-              onPress={() => updateDay(day, { enabled: !block.enabled })}
-              className="flex-row items-center justify-between"
+              key={day}
+              onPress={() => setEditingDay(day)}
+              accessibilityRole="button"
+              accessibilityLabel={`${DAY_LABELS[day]}, ${block.enabled ? `de ${block.start_time} a ${block.end_time}` : "no disponible"}`}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: theme.borderSoft,
+                padding: 12,
+              }}
             >
-              <Text className="font-medium">{DAY_LABELS[day]}</Text>
-              <View className={`h-5 w-5 rounded border ${block.enabled ? "border-black bg-black" : "border-gray-300"}`} />
-            </Pressable>
-            {block.enabled ? (
-              <View className="flex-row gap-3">
-                <TimePickerField label="Desde" value={block.start_time} onChange={(value) => updateDay(day, { start_time: value })} />
-                <TimePickerField label="Hasta" value={block.end_time} onChange={(value) => updateDay(day, { end_time: value })} />
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <Ionicons
+                  name={block.enabled ? "checkmark-circle" : "ellipse-outline"}
+                  size={20}
+                  color={block.enabled ? theme.primary : theme.textSecondary}
+                />
+                <Text style={{ fontSize: 15, fontWeight: "600", color: theme.textPrimary }}>{DAY_LABELS[day]}</Text>
               </View>
-            ) : null}
-          </View>
-        );
-      })}
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <Text style={{ fontSize: 13, color: theme.textSecondary }}>
+                  {block.enabled ? `${block.start_time ?? "—"} a ${block.end_time ?? "—"}` : "No disponible"}
+                </Text>
+                <Ionicons name="chevron-forward" size={16} color={theme.textSecondary} />
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {editingDay ? (
+        <DayAvailabilityModal
+          visible={editingDay !== null}
+          day={editingDay}
+          dayLabel={DAY_LABELS[editingDay]}
+          block={currentBlocks[editingDay]}
+          onChange={(patch) => updateDay(editingDay, patch)}
+          onClose={() => setEditingDay(null)}
+        />
+      ) : null}
     </OnboardingScreenLayout>
   );
 }

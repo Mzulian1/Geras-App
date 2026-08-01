@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Redirect, router } from "expo-router";
 import { Pressable, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import * as DocumentPicker from "expo-document-picker";
 import { getRequiredDocumentTypes } from "@geras/shared";
 import type { DocumentType } from "@geras/shared";
+import { useGerasTheme } from "@geras/ui";
 import { useProfessionalBootstrap } from "@/hooks/useProfessionalBootstrap";
 import { useProfessionsCatalog } from "@/hooks/useCatalogs";
 import { useProfessionalDocumentsQuery } from "@/hooks/useOnboardingQueries";
@@ -22,7 +24,22 @@ const DOCUMENT_LABELS: Record<DocumentType, string> = {
   other: "Otro documento",
 };
 
+const DOCUMENT_HELP: Record<DocumentType, string> = {
+  national_id: "Ambos lados, en formato imagen o PDF.",
+  background_check: "Emitido por el Registro Civil, con menos de 90 días.",
+  professional_title: "Título o certificado que acredite tu formación.",
+  complementary_cert: "Cursos o certificaciones adicionales relevantes.",
+  professional_registry: "Número de registro ante el colegio o entidad correspondiente.",
+  work_reference: "Carta o contacto de un empleador o cliente anterior.",
+  other: "Cualquier otro documento que respalde tu perfil.",
+};
+
+// Documentos agrupados en filas colapsadas (nombre + estado); tocar una
+// fila la expande y muestra la ayuda breve junto con la acción de
+// Subir/Reemplazar — evita mostrar todos los controles de carga
+// abiertos a la vez.
 export default function DocumentsStep() {
+  const theme = useGerasTheme();
   const bootstrap = useProfessionalBootstrap();
   const profile = bootstrap.status === "onboarding" ? bootstrap.professionalProfile : null;
 
@@ -31,6 +48,7 @@ export default function DocumentsStep() {
   const uploadDocument = useUploadProfessionalDocument(profile?.id);
 
   const [uploadingType, setUploadingType] = useState<DocumentType | null>(null);
+  const [expandedType, setExpandedType] = useState<DocumentType | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   if (bootstrap.status !== "onboarding") return <LoadingScreen />;
@@ -82,26 +100,59 @@ export default function DocumentsStep() {
       onContinue={handleContinue}
       errorMessage={error}
     >
-      {requiredTypes.map((type) => {
-        const uploaded = uploadedTypes.has(type);
-        const uploading = uploadingType === type;
-        return (
-          <Pressable
-            key={type}
-            onPress={() => handlePick(type)}
-            disabled={uploading}
-            className="flex-row items-center justify-between rounded-lg border border-gray-200 p-3"
-          >
-            <View>
-              <Text className="font-medium">{DOCUMENT_LABELS[type]}</Text>
-              <Text className="text-xs text-gray-500">
-                {uploading ? "Subiendo..." : uploaded ? "Subido — toca para reemplazar" : "Toca para subir"}
-              </Text>
+      <View style={{ gap: 8 }}>
+        {requiredTypes.map((type) => {
+          const uploaded = uploadedTypes.has(type);
+          const uploading = uploadingType === type;
+          const expanded = expandedType === type;
+          return (
+            <View key={type} style={{ borderRadius: 8, borderWidth: 1, borderColor: theme.borderSoft, overflow: "hidden" }}>
+              <Pressable
+                onPress={() => setExpandedType(expanded ? null : type)}
+                accessibilityRole="button"
+                accessibilityLabel={`${DOCUMENT_LABELS[type]}, ${uploaded ? "subido" : "pendiente"}`}
+                style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 12 }}
+              >
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
+                  <Ionicons
+                    name={uploaded ? "checkmark-circle" : "ellipse-outline"}
+                    size={20}
+                    color={uploaded ? theme.success : theme.textSecondary}
+                  />
+                  <Text style={{ fontSize: 15, fontWeight: "600", color: theme.textPrimary, flexShrink: 1 }}>
+                    {DOCUMENT_LABELS[type]}
+                  </Text>
+                </View>
+                <Ionicons name={expanded ? "chevron-up" : "chevron-down"} size={18} color={theme.textSecondary} />
+              </Pressable>
+
+              {expanded ? (
+                <View style={{ padding: 12, paddingTop: 0, gap: 10 }}>
+                  <Text style={{ fontSize: 13, color: theme.textSecondary }}>{DOCUMENT_HELP[type]}</Text>
+                  <Pressable
+                    onPress={() => handlePick(type)}
+                    disabled={uploading}
+                    accessibilityRole="button"
+                    accessibilityLabel={uploaded ? `Reemplazar ${DOCUMENT_LABELS[type]}` : `Subir ${DOCUMENT_LABELS[type]}`}
+                    style={{
+                      minHeight: 48,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderRadius: 8,
+                      backgroundColor: uploaded ? theme.surfaceSecondary : theme.primary,
+                      opacity: uploading ? 0.6 : 1,
+                    }}
+                  >
+                    <Text style={{ fontSize: 14, fontWeight: "600", color: uploaded ? theme.textPrimary : theme.onPrimary }}>
+                      {uploading ? "Subiendo..." : uploaded ? "Reemplazar documento" : "Subir documento"}
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
             </View>
-            <View className={`h-3 w-3 rounded-full ${uploaded ? "bg-green-500" : "bg-gray-300"}`} />
-          </Pressable>
-        );
-      })}
+          );
+        })}
+      </View>
     </OnboardingScreenLayout>
   );
 }

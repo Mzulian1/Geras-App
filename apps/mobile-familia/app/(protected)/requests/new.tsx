@@ -1,9 +1,19 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { router } from "expo-router";
 import { Pressable, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { createServiceRequestSchema } from "@geras/shared";
 import type { CreateServiceRequestInput } from "@geras/shared";
-import { AppHeader, BottomActionBar, ErrorState, PrimaryButton, Screen, TertiaryButton, useGerasTheme, SearchableSelectModal } from "@geras/ui";
+import {
+  AppHeader,
+  BottomActionBar,
+  ErrorState,
+  PrimaryButton,
+  Screen,
+  SearchableSelectField,
+  TertiaryButton,
+  useGerasTheme,
+} from "@geras/ui";
 import { useFamilyBootstrap } from "@/hooks/useFamilyBootstrap";
 import { useCareRecipients } from "@/hooks/useCareRecipients";
 import { useComunasCatalog, useServicesCatalog } from "@/hooks/useCatalogs";
@@ -12,6 +22,7 @@ import { useSelectedRecipientStore } from "@/state/selectedRecipientStore";
 import { useSelectedServiceStore } from "@/state/selectedServiceStore";
 import { TextField } from "@/components/TextField";
 import { SelectChips } from "@/components/SelectChips";
+import { RecipientSelectModal } from "@/components/RecipientSelectModal";
 import { TimePickerField } from "@/components/TimePickerField";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { describeMutationError } from "@/lib/errors";
@@ -56,7 +67,9 @@ const EMPTY_VALUES: FormValues = {
 // wizard de 5 pasos (Fase 7 "Solicitud de servicio") en vez de un
 // formulario largo de una sola pantalla. El server sigue recibiendo
 // exactamente los mismos campos al final (POST /service-requests +
-// .../generate-matches) — acá solo cambió cómo se piden.
+// .../generate-matches) — acá solo cambió cómo se piden. Servicio y
+// comuna usan un selector con buscador (catálogos largos); si la
+// familia tiene una sola persona registrada se preselecciona sola.
 export default function NewServiceRequestScreen() {
   const theme = useGerasTheme();
   const bootstrap = useFamilyBootstrap();
@@ -78,13 +91,25 @@ export default function NewServiceRequestScreen() {
   });
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof CreateServiceRequestInput, string>>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [showComunaModal, setShowComunaModal] = useState(false);
+  const [showRecipientModal, setShowRecipientModal] = useState(false);
+
+  const recipients = recipientsQuery.data ?? [];
+
+  // Con una sola persona registrada, se preselecciona automáticamente
+  // — no tiene sentido pedirle a la familia que "elija" cuando no hay
+  // elección real que hacer.
+  useEffect(() => {
+    const onlyRecipient = recipients.length === 1 ? recipients[0] : undefined;
+    if (onlyRecipient && !values.care_recipient_id) {
+      setValues((prev) => ({ ...prev, care_recipient_id: onlyRecipient.id }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recipients.length]);
 
   if (bootstrap.status !== "ready" || recipientsQuery.isPending || servicesQuery.isPending || comunasQuery.isPending) {
     return <LoadingScreen />;
   }
 
-  const recipients = recipientsQuery.data ?? [];
   const submitting = createRequest.isPending || generateMatches.isPending;
   const step = STEPS[stepIndex] ?? STEPS[0];
   const isLastStep = stepIndex === STEPS.length - 1;
@@ -174,12 +199,15 @@ export default function NewServiceRequestScreen() {
 
       <View style={{ padding: 16, gap: 16 }}>
         {step.key === "service" ? (
-          <SelectChips
+          <SearchableSelectField
             label="Servicio"
-            options={(servicesQuery.data ?? []).map((s) => ({ value: s.id, label: s.name }))}
-            selected={values.service_id ? [values.service_id] : []}
-            onToggle={(value) => update("service_id", value)}
-            error={fieldErrors.service_id}
+            options={(servicesQuery.data ?? []).map((s) => ({ value: s.id, label: s.name, description: s.description ?? undefined }))}
+            value={values.service_id}
+            onChange={(id) => update("service_id", id as number)}
+            placeholder="Selecciona un servicio"
+            searchPlaceholder="Buscar servicio..."
+            required
+            errorText={fieldErrors.service_id}
           />
         ) : null}
 
@@ -191,25 +219,35 @@ export default function NewServiceRequestScreen() {
               retryLabel="Ir a Perfil"
               onRetry={() => router.push("/perfil")}
             />
-          ) : (
-            <SelectChips
-              label="¿Para quién es?"
-              options={recipients.map((r) => ({ value: r.id, label: r.full_name }))}
-              selected={values.care_recipient_id ? [values.care_recipient_id] : []}
-              onToggle={(value) => update("care_recipient_id", value)}
-              error={fieldErrors.care_recipient_id}
-            />
-          )
-        ) : null}
-
-        {step.key === "location" ? (
-          <>
+          ) : recipients.length === 1 && recipients[0] ? (
             <View>
-              <Text style={[{ fontSize: 14, fontWeight: "500", marginBottom: 8, color: theme.textPrimary }]}>
-                Comuna
-                {fieldErrors.comuna_id ? <Text style={{ color: theme.error }}> *</Text> : null}
+              <Text style={{ fontSize: 14, fontWeight: "500", marginBottom: 8, color: theme.textPrimary }}>¿Para quién es?</Text>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: 12,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  borderColor: theme.borderSoft,
+                  backgroundColor: theme.surface,
+                }}
+              >
+                <Ionicons name="person" size={18} color={theme.primary} />
+                <View>
+                  <Text style={{ fontSize: 15, fontWeight: "600", color: theme.textPrimary }}>{recipients[0].full_name}</Text>
+                  <Text style={{ fontSize: 13, color: theme.textSecondary }}>{recipients[0].relationship_to_family}</Text>
+                </View>
+              </View>
+            </View>
+          ) : (
+            <View>
+              <Text style={{ fontSize: 14, fontWeight: "500", marginBottom: 8, color: theme.textPrimary }}>
+                ¿Para quién es?
+                {fieldErrors.care_recipient_id ? <Text style={{ color: theme.error }}> *</Text> : null}
               </Text>
-              <Pressable onPress={() => setShowComunaModal(true)}>
+              <Pressable onPress={() => setShowRecipientModal(true)}>
                 <View
                   style={{
                     minHeight: 48,
@@ -218,28 +256,37 @@ export default function NewServiceRequestScreen() {
                     borderWidth: 1,
                     borderRadius: 8,
                     paddingHorizontal: 12,
-                    borderColor: fieldErrors.comuna_id ? theme.error : theme.borderSoft,
+                    borderColor: fieldErrors.care_recipient_id ? theme.error : theme.borderSoft,
                     backgroundColor: theme.surface,
                   }}
                 >
                   <Text
-                    style={{
-                      flex: 1,
-                      fontSize: 14,
-                      color: values.comuna_id ? theme.textPrimary : theme.textSecondary,
-                    }}
+                    style={{ flex: 1, fontSize: 14, color: selectedRecipient ? theme.textPrimary : theme.textSecondary }}
                     numberOfLines={1}
                   >
-                    {selectedComuna?.name ?? "Selecciona una comuna"}
+                    {selectedRecipient ? `${selectedRecipient.full_name} (${selectedRecipient.relationship_to_family})` : "Selecciona una persona"}
                   </Text>
-                  <Text style={{ color: theme.textSecondary }}>›</Text>
+                  <Ionicons name="chevron-down" size={18} color={theme.textSecondary} />
                 </View>
               </Pressable>
-              {fieldErrors.comuna_id ? (
-                <Text style={{ fontSize: 12, color: theme.error, marginTop: 4 }}>{fieldErrors.comuna_id}</Text>
+              {fieldErrors.care_recipient_id ? (
+                <Text style={{ fontSize: 12, color: theme.error, marginTop: 4 }}>{fieldErrors.care_recipient_id}</Text>
               ) : null}
             </View>
-          </>
+          )
+        ) : null}
+
+        {step.key === "location" ? (
+          <SearchableSelectField
+            label="Comuna"
+            options={(comunasQuery.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
+            value={values.comuna_id}
+            onChange={(id) => update("comuna_id", id as number)}
+            placeholder="Selecciona una comuna"
+            searchPlaceholder="Buscar comuna..."
+            required
+            errorText={fieldErrors.comuna_id}
+          />
         ) : null}
 
         {step.key === "schedule" ? (
@@ -284,14 +331,12 @@ export default function NewServiceRequestScreen() {
         ) : null}
       </View>
 
-      <SearchableSelectModal
-        visible={showComunaModal}
-        title="Selecciona una comuna"
-        options={(comunasQuery.data ?? []).map((c) => ({ value: c.id, label: c.name }))}
-        value={values.comuna_id}
-        onChange={(id) => update("comuna_id", id as number)}
-        onClose={() => setShowComunaModal(false)}
-        searchPlaceholder="Buscar comuna..."
+      <RecipientSelectModal
+        visible={showRecipientModal}
+        recipients={recipients}
+        value={values.care_recipient_id}
+        onChange={(id) => update("care_recipient_id", id)}
+        onClose={() => setShowRecipientModal(false)}
       />
     </Screen>
   );
