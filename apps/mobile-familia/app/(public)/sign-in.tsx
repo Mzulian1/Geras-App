@@ -47,7 +47,7 @@ export default function SignInScreen() {
       keyboardShouldPersistTaps="handled"
     >
       <View className="items-center gap-3">
-        <GerasBrand variant="compact" tone="dark" size="lg" showTagline={false} />
+        <GerasBrand variant="horizontal" tone="dark" size="lg" showTagline={false} />
         <Text className="text-center text-base text-gray-600">
           El ecosistema de cuidado y bienestar para personas mayores y sus familias
         </Text>

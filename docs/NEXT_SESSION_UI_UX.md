@@ -15,22 +15,24 @@ Complementa [`UI_UX_GERAS.md`](./UI_UX_GERAS.md) (las reglas) — este documento
 | F2 · Rama y punto de trabajo | ✅ `feat/mobile-ui-navigation-refresh` |
 | F3 · Evaluación del sistema visual | ✅ decisión tomada (ver §4) |
 | F4 · Paleta | ✅ paleta final aplicada en `packages/ui/src/tokens/colors.ts` |
-| F5 · Logo | ⬜ código preparado (`GerasBrand` acepta `logoSource`), falta el archivo — ver AGENT_START_HERE.md §Siguiente tarea |
-| F6–F7 · Tipografía, espaciado | ⬜ sin cambios esta sesión |
-| F8 · Botones | ⬜ |
-| F9 · Selectores | ✅ hecho en sesiones previas (`SearchableSelectField`/`MultiSelectField`/modales con buscador) |
-| F10 · Bottom sheets | ⬜ (los modales actuales cubren el caso, sin bottom sheet dedicado) |
+| F5 · Logo | ✅ `packages/ui/assets/brand/logo.png` conectado en `GerasBrand`, ambos login |
+| F6–F7 · Tipografía, espaciado | ⬜ sin cambios |
+| F8 · Botones | ✅ auditado — ya cumplían 48px/16px/loading/disabled desde antes |
+| F9 · Selectores | ✅ hecho en sesiones previas |
+| F10 · Bottom sheets | ⬜ (los modales actuales cubren el caso) |
 | F11–F13 · Iconografía y navegación | ⬜ |
-| F14 · Guía interactiva y ayuda | 🟡 `GuidedTour` + `/guia` reabrible desde Perfil en ambas apps; falta el disparo automático al primer ingreso (persistencia "visto") |
-| F15 · Formularios largos | ✅ solicitud de servicio y de residencia ya en pasos; flujo desde perfil profesional corregido (preserva professionalId/serviceId, calendario real, sin re-preguntar el servicio) |
-| F16–F18 · Tarjetas, encabezados, estados | 🟡 tarjetas de profesionales/residencias ya con formato tarjeta; falta imagen real de servicios |
-| F19 · Calendario de reservas | ✅ `CalendarGrid`/`DatePickerField` propios (sin dependencia nativa), fechas centralizadas en `@geras/shared/dates` |
-| F20 · Login | 🟡 marca + tagline + footer "Desarrollado por Soluciones Mayores" agregados; falta el logo real |
-| F21 · Panel Admin | ⬜ fuera de alcance esta sesión |
-| F22–F24 · Accesibilidad y pruebas | 🟡 verificado con `expo-doctor` (18/18), lint y tests de server (135 en verde); sin prueba en dispositivo físico |
+| F14 · Guía interactiva y ayuda | ✅ se dispara sola al primer ingreso (persistida con `expo-secure-store`) y reabrible desde Perfil, en ambas apps |
+| F15 · Formularios largos | ✅ + agenda real: `GET /professionals/:id/availability`, calendario+horas reales en `requests/new.tsx` |
+| F16–F18 · Tarjetas, encabezados, estados | 🟡 profesionales ya con foto real/fallback y "próxima disponibilidad"; residencias/servicios sin cambio; falta imagen real de servicios |
+| F19 · Calendario de reservas | ✅ + agenda real conectada al backend (antes solo el widget visual) |
+| F20 · Login | ✅ marca + logo + tagline + footer |
+| F21 · Panel Admin | 🟡 solo se agregó columna "Creada" a Reservas — resto fuera de alcance |
+| F22–F24 · Accesibilidad y pruebas | 🟡 `expo-doctor` 18/18, lint y tests de server (144 en verde) en ambas sesiones; sin prueba táctil en dispositivo físico |
 | F25 · Configuración de release (EAS) | ⬜ |
-| F26 · Legal | ✅ política de privacidad/términos/aviso legal (borrador) en Perfil de ambas apps |
-| F27 · Datos de demostración | ✅ `npm run seed:showcase` — 10 profesionales + 10 residencias |
+| F26 · Legal | ✅ (sesión anterior) |
+| F27 · Datos de demostración | ✅ 10+10 (sesión anterior) + agenda variada/reserva/oportunidad real en 2 profesionales, 1 solicitud de información (esta sesión, sin re-ejecutar el seed) |
+| F28 · Oportunidades para profesionales | ✅ reutiliza `matches.status = 'contacted'` (ya existía, sin usar) — `/oportunidades` en Mobile Profesional |
+| F29 · Fotos de profesional | ✅ bucket público nuevo `professional-avatars` (migración 030) + subida desde Perfil |
 
 ## 2. Qué funciona
 
@@ -42,23 +44,25 @@ Verificado en dispositivo antes de empezar el rediseño:
   `POST /api/v1/me/sync` para desarrollo.
 - Backend accesible por LAN; Supabase operativo.
 - Panel Admin compila y buildea.
-- `server`: 135 tests en verde.
+- `server`: 144 tests en verde (incluye disponibilidad + oportunidades, agregados 2026-08-02).
+- Agenda real, reserva end-to-end (bloqueo de horario, correo, visibilidad en las tres apps) y
+  matching → oportunidades, verificados contra datos QA reales en Supabase (ver
+  `docs/AGENT_START_HERE.md`).
 
 ## 3. Qué falta
 
 Todo lo marcado ⬜ arriba. El orden de las fases es el orden de trabajo.
 
-**La prioridad real, por impacto en el usuario:**
-
-1. **Selectores (F9)** — es el peor problema visual actual: hoy se muestran todas las opciones
-   simultáneamente (servicios, profesionales, residencias) dentro de formularios.
-2. **Formularios largos (F15)** — dividir en pasos, sobre todo el onboarding profesional (9 pasos
-   ya existentes como pantallas, pero hay que revisar su experiencia) y la solicitud de servicio.
-3. **Paleta (F4)** — hoy los colores de marca **no** son los de Soluciones Mayores.
+**Pendiente real de mayor impacto:** probar el flujo completo tocando la UI en un dispositivo o
+emulador real — esta sesión y la anterior verificaron todo por API/base de datos y lint/tests,
+pero no hay una pasada táctil confirmada en Expo Go.
 
 ## 4. Qué NO debe modificarse
 
-- **Lógica de negocio, endpoints, migraciones, RLS y autenticación.** Están cerrados y probados.
+- **Lógica de negocio, endpoints, migraciones, RLS y autenticación existentes.** Están cerrados y
+  probados. (Se agregaron endpoints/migraciones NUEVOS y acotados cuando la tarea lo pidió
+  explícitamente — disponibilidad, oportunidades, bucket de avatares — nunca se modificó nada de
+  lo ya construido.)
 - **`packages/ui/package.json`**: `react`, `react-native`, `@expo/vector-icons`, `expo-font` y
   `react-native-safe-area-context` deben seguir siendo `peerDependencies`.
 - **Las entradas `expo-router`, `react-dom` y `metro-runtime` en `dependencies` de la raíz.** No
@@ -73,12 +77,8 @@ Detalle completo de estas trampas en [`../HANDOFF.md`](../HANDOFF.md).
 
 ## 5. Próxima tarea exacta
 
-**Logo real de Geras/Soluciones Mayores** (ver `docs/AGENT_START_HERE.md` §Siguiente tarea):
-copiar el PNG a `packages/ui/assets/brand/` y pasarlo como `logoSource` a `<GerasBrand/>` en los
-login de ambas apps. Es el único paso de código pendiente de la marca — todo lo demás (paleta,
-tagline, footer) ya está aplicado.
-
-Luego: disparo automático de la guía interactiva al primer ingreso (F14), F6 (tipografía) y F7
+Ver `docs/AGENT_START_HERE.md` §Siguiente tarea (lista corta y actualizada). En resumen: prueba
+táctil en dispositivo real, imágenes reales de servicios, F6 (tipografía) y F7
 (espaciado: falta el valor `40`).
 
 ## 6. Comandos de ejecución
@@ -125,9 +125,12 @@ Ya en la rama (orden real, no el plan original de 9 bloques):
 5. `feat: apply final Geras brand and mobile visual system`
 6. `feat: improve Geras booking calendar and navigation`
 7. `feat: add Geras legal and guided help sections`
-8. `chore: add Geras showcase development data` (pendiente al momento de escribir este párrafo — ver `git log` para confirmar)
+8. `chore: add Geras showcase development data`
+9. `feat: complete Geras availability and booking flow`
+10. `feat: expose matched service opportunities to professionals`
+11. `feat: improve Geras cards photos and guided experience`
 
-Pendiente real: modernizar a fondo tarjetas/estados (F16–F18), Panel Admin (F21), EAS (F25).
+Pendiente real: imágenes reales de servicios, EAS (F25), prueba táctil en dispositivo.
 
 ## 10. Riesgos
 

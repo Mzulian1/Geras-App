@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { DayOfWeek } from "@geras/shared";
 import {
   AppHeader,
+  Avatar,
   BottomActionBar,
   Card,
   FilterChip,
@@ -105,16 +106,22 @@ export default function ProfessionalPublicProfileScreen() {
     >
       <AppHeader title="Detalle del profesional" onBack={() => router.back()} />
       <View style={{ padding: 16, gap: 20 }}>
-        <View style={{ gap: 6 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <Text style={{ fontSize: 22, fontWeight: "700", color: theme.textPrimary, flexShrink: 1 }}>
-              {professional.full_name}
+        <View style={{ flexDirection: "row", gap: 14, alignItems: "center" }}>
+          <Avatar uri={professional.profile_photo_url} size={64} />
+          <View style={{ flex: 1, gap: 6 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Text style={{ fontSize: 22, fontWeight: "700", color: theme.textPrimary, flexShrink: 1 }}>
+                {professional.full_name}
+              </Text>
+              {professional.verification_status === "approved" ? <StatusBadge kind="verification" value="approved" /> : null}
+            </View>
+            <Text style={{ fontSize: 15, color: theme.textSecondary }}>
+              {professional.profession_name} · {professional.base_comuna ?? "Sin comuna"}
             </Text>
-            {professional.verification_status === "approved" ? <StatusBadge kind="verification" value="approved" /> : null}
           </View>
-          <Text style={{ fontSize: 15, color: theme.textSecondary }}>
-            {professional.profession_name} · {professional.base_comuna ?? "Sin comuna"}
-          </Text>
+        </View>
+
+        <View style={{ gap: 6 }}>
           {professional.average_rating ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
               <Ionicons name="star" size={16} color={theme.warning} />

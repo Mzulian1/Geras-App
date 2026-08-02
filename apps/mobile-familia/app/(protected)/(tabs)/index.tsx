@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { router } from "expo-router";
 import { FlatList, Text, View } from "react-native";
 import { useUser } from "@clerk/clerk-expo";
@@ -7,6 +7,7 @@ import { Card, LoadingState, PrimaryButton, Screen, SectionHeader, StatusBadge, 
 import { useServicesShowcase, type ServiceShowcaseEntry } from "@/hooks/useCatalogs";
 import { useFamilyBootstrap } from "@/hooks/useFamilyBootstrap";
 import { useMyServiceRequests } from "@/hooks/useMyRequests";
+import { useGuideGate } from "@/hooks/useGuideGate";
 
 const ONGOING_BOOKING: BookingStatus[] = ["pending", "confirmed", "en_route", "in_progress", "professional_completed"];
 
@@ -21,6 +22,15 @@ export default function InicioScreen() {
   const bootstrap = useFamilyBootstrap();
   const businessUserId = bootstrap.status === "ready" ? bootstrap.businessUser.id : undefined;
   const requestsQuery = useMyServiceRequests(businessUserId);
+  const guideGate = useGuideGate(bootstrap.status === "ready");
+
+  // Guía interactiva al primer ingreso: se dispara desde acá (no desde
+  // el _layout raíz) para que /guia siga siendo una ruta alcanzable —
+  // redirigir desde el layout que envuelve a /guia también la
+  // bloquearía a ella misma.
+  useEffect(() => {
+    if (guideGate === "show") router.replace("/guia");
+  }, [guideGate]);
 
   const activeRequest = useMemo(() => {
     const requests = requestsQuery.data ?? [];

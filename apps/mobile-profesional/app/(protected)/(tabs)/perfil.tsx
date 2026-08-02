@@ -1,11 +1,26 @@
+import { useState } from "react";
 import { router } from "expo-router";
 import { useClerk } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
 import { Text, View } from "react-native";
+import * as DocumentPicker from "expo-document-picker";
 import type { DocumentType } from "@geras/shared";
-import { Card, InfoRow, LoadingState, Screen, SecondaryButton, SectionHeader, StatusBadge, useGerasTheme } from "@geras/ui";
+import {
+  Avatar,
+  Card,
+  InfoRow,
+  LoadingState,
+  Screen,
+  SecondaryButton,
+  SectionHeader,
+  StatusBadge,
+  TertiaryButton,
+  useGerasTheme,
+} from "@geras/ui";
 import { useProfessionalBootstrap } from "@/hooks/useProfessionalBootstrap";
 import { useComunasCatalog, useProfessionsCatalog } from "@/hooks/useCatalogs";
+import { useRemoveProfilePhoto, useUpdateProfilePhoto } from "@/hooks/useProfileAvatar";
+import { describeMutationError } from "@/lib/errors";
 import {
   useProfessionalCoverageQuery,
   useProfessionalDocumentsQuery,
@@ -33,12 +48,16 @@ export default function PerfilScreen() {
   const { signOut } = useClerk();
   const bootstrap = useProfessionalBootstrap();
   const professionalId = bootstrap.status === "approved" ? bootstrap.professionalProfile.id : undefined;
+  const businessUserId = bootstrap.status === "approved" ? bootstrap.businessUser.id : undefined;
 
   const professionsQuery = useProfessionsCatalog();
   const comunasQuery = useComunasCatalog();
   const servicesQuery = useProfessionalServicesQuery(professionalId);
   const coverageQuery = useProfessionalCoverageQuery(professionalId);
   const documentsQuery = useProfessionalDocumentsQuery(professionalId);
+  const updatePhoto = useUpdateProfilePhoto(professionalId, businessUserId);
+  const removePhoto = useRemoveProfilePhoto(professionalId, businessUserId);
+  const [photoError, setPhotoError] = useState<string | null>(null);
 
   if (bootstrap.status !== "approved") {
     return (
@@ -52,9 +71,46 @@ export default function PerfilScreen() {
   const profession = professionsQuery.data?.find((p) => p.id === professionalProfile.profession_id);
   const baseComuna = comunasQuery.data?.find((c) => c.id === professionalProfile.base_comuna_id);
 
+  async function handlePickPhoto() {
+    setPhotoError(null);
+    const result = await DocumentPicker.getDocumentAsync({ type: "image/*", copyToCacheDirectory: true });
+    if (result.canceled || !result.assets?.[0]) return;
+    const asset = result.assets[0];
+    try {
+      await updatePhoto.mutateAsync({ uri: asset.uri, name: asset.name, mimeType: asset.mimeType });
+    } catch (err) {
+      setPhotoError(describeMutationError(err));
+    }
+  }
+
+  async function handleRemovePhoto() {
+    setPhotoError(null);
+    try {
+      await removePhoto.mutateAsync();
+    } catch (err) {
+      setPhotoError(describeMutationError(err));
+    }
+  }
+
   return (
     <Screen contentContainerStyle={{ gap: 24 }}>
       <Text style={{ fontSize: 24, fontWeight: "700", color: theme.textPrimary }}>Tu perfil</Text>
+
+      <View style={{ alignItems: "center", gap: 10 }}>
+        <Avatar uri={professionalProfile.profile_photo_url} size={88} />
+        {photoError ? <Text style={{ fontSize: 13, color: theme.error, textAlign: "center" }}>{photoError}</Text> : null}
+        <View style={{ flexDirection: "row", gap: 12 }}>
+          <SecondaryButton
+            label={professionalProfile.profile_photo_url ? "Cambiar foto" : "Subir foto"}
+            size="compact"
+            onPress={handlePickPhoto}
+            loading={updatePhoto.isPending}
+          />
+          {professionalProfile.profile_photo_url ? (
+            <TertiaryButton label="Eliminar" onPress={handleRemovePhoto} />
+          ) : null}
+        </View>
+      </View>
 
       <View style={{ gap: 12 }}>
         <SectionHeader title="Información profesional" />

@@ -1,16 +1,12 @@
 import { router } from "expo-router";
 import { GuidedTour, type GuidedTourStep } from "@geras/ui";
+import { markGuideSeen } from "@/lib/guideStorage";
 
 const STEPS: GuidedTourStep[] = [
   {
     icon: "person-outline",
     title: "Completa tu perfil",
-    description: "Cuéntanos tu profesión y experiencia para que las familias sepan quién eres.",
-  },
-  {
-    icon: "document-attach-outline",
-    title: "Carga tus documentos",
-    description: "Sube tus documentos de respaldo — son privados y solo los ve el equipo de Geras.",
+    description: "Cuéntanos tu profesión, experiencia y sube una foto para que las familias sepan quién eres.",
   },
   {
     icon: "briefcase-outline",
@@ -20,7 +16,12 @@ const STEPS: GuidedTourStep[] = [
   {
     icon: "calendar-outline",
     title: "Configura tu disponibilidad",
-    description: "Marca los días y horarios en que puedes atender.",
+    description: "Marca los días y horarios en que puedes atender — de ahí sale tu agenda real.",
+  },
+  {
+    icon: "search-outline",
+    title: "Revisa tus oportunidades",
+    description: "Mira las solicitudes abiertas que coinciden con tus servicios, comuna y disponibilidad.",
   },
   {
     icon: "checkmark-done-outline",
@@ -29,9 +30,12 @@ const STEPS: GuidedTourStep[] = [
   },
 ];
 
-// Guía reabrible desde Perfil. No se muestra automáticamente al primer
-// ingreso todavía (mismo motivo que en Mobile Familia — ver guia.tsx
-// allá y el informe final, Pendientes).
+// Se muestra automáticamente al primer ingreso (ver (protected)/_layout.tsx)
+// y es reabrible desde Perfil.
 export default function GuideScreen() {
-  return <GuidedTour steps={STEPS} onFinish={() => router.back()} onSkip={() => router.back()} />;
+  function finish() {
+    void markGuideSeen();
+    router.replace("/");
+  }
+  return <GuidedTour steps={STEPS} onFinish={finish} onSkip={finish} />;
 }

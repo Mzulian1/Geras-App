@@ -80,25 +80,47 @@ npx expo start --go --clear --tunnel --port 8094   # Profesional
 
 Detalle completo de estas trampas en `../HANDOFF.md`.
 
+## Agenda y reservas (2026-08-02)
+
+- **Disponibilidad real**: `GET /api/v1/professionals/:id/availability?serviceId=&from=&to=`
+  (`server/src/routes/v1/professionals.ts`) cruza `professional_availability` (bloques semanales)
+  con `bookings` activas (mismo set de estados que la constraint `bookings_no_overlap`: pending,
+  confirmed, en_route, in_progress) y devuelve solo fechas/horas realmente libres. Consumido por
+  `useProfessionalAvailability` (mobile-familia) en `requests/new.tsx`, paso "schedule", cuando
+  viene de "Solicitar atención" en un perfil profesional (`CalendarGrid` + `TimeSlotPicker`, no
+  dropdown). No hay tabla de excepciones/bloqueos puntuales — solo disponibilidad semanal.
+- **Oportunidades**: `matches.status` ya tenía `contacted` sin usar — se reutiliza como "el
+  profesional mostró interés" (`GET/POST /api/v1/professional/opportunities*`, pantalla
+  `/oportunidades` en Mobile Profesional, accesible desde Inicio). No es un sistema paralelo de
+  solicitudes: son los mismos `matches` que ya genera `generate-matches`.
+- **Reservas**: siguen creándose `pending` (el profesional debe aceptar) — no se tocó ese enum.
+  Confirmación por correo ya existía (Resend); pantalla de detalle (`requests/[id]/confirmation`)
+  ahora muestra mensaje adaptado al estado real + botón "Ver actividad".
+- **Fotos de profesional**: bucket público nuevo `professional-avatars` (migración 030,
+  `supabase/migrations/20260802040000_030_professional_avatars_bucket.sql`) — no existía ninguno
+  apto (el de documentos es privado). Subida/cambio/eliminación desde Perfil en Mobile
+  Profesional; `Avatar` (packages/ui) muestra la foto o un ícono de persona como fallback en
+  tarjetas de Mobile Familia.
+- **Datos QA**: 2 profesionales (Diego Fuentes Araya, Paula Contreras Vidal) tienen agenda semanal
+  variada con días sin disponibilidad; hay una reserva real `confirmed` que bloquea un horario de
+  Diego (verificable contra el endpoint de disponibilidad) y una oportunidad abierta real
+  generada con `process_request_matches` (no se re-ejecutó `seed:showcase`, se ajustó con SQL
+  dirigido — ver el commit `feat: complete Geras availability and booking flow`).
+
 ## Siguiente tarea
 
-Pendientes reales al cierre de la sesión de "mejora visual, navegación y datos de demostración":
+Pendientes reales:
 
-1. **Logo real**: el logo de Geras (imagen adjunta en chat) no pudo guardarse en disco desde este
-   entorno. Copiar el PNG a `packages/ui/assets/brand/geras-logo.png` (y la versión blanca /
-   el logo de Soluciones Mayores si existen) y pasarlos como `logoSource` a `<GerasBrand/>` en
-   los login de ambas apps — es el único cambio de código que falta.
-2. **Guía interactiva al primer ingreso**: hoy `/guia` es reabrible desde Perfil en ambas apps,
-   pero no se dispara automáticamente la primera vez que alguien entra. Falta persistir un flag
-   "visto" (con `expo-secure-store`, ya es dependencia) y engancharlo en `(protected)/_layout.tsx`.
-3. **React Native Paper**: evaluado pero no instalado en esta sesión (riesgo de dependencias en un
-   monorepo con dos versiones de React — ver Riesgos en `NEXT_SESSION_UI_UX.md`). Si se necesita
-   Dialog/Menu/Snackbar/RadioButton reales, instalarlo y validar con `expo-doctor` + export de
-   ambas apps antes de dar por cerrado.
-4. **Tarjetas de servicio con imagen real**: hoy usan gradiente + icono como fallback (no hay
-   imágenes oficiales todavía).
-5. **Revisión jurídica** de los textos legales en `packages/shared/src/legal/content.ts` — son
-   borrador, marcado explícitamente así en la UI.
+1. **Logo real**: agregado en `packages/ui/assets/brand/logo.png` y ya conectado en `GerasBrand`
+   (ambos login). Falta la versión blanca dedicada y el logo aparte de Soluciones Mayores, si
+   existen — hoy se reutiliza el mismo ícono en ambos tonos.
+2. **React Native Paper**: evaluado pero no instalado (riesgo de dependencias en un monorepo con
+   dos versiones de React — ver Riesgos en `NEXT_SESSION_UI_UX.md`).
+3. **Tarjetas de servicio con imagen real**: siguen con gradiente + icono como fallback.
+4. **Revisión jurídica** de los textos legales en `packages/shared/src/legal/content.ts`.
+5. **Prueba en dispositivo físico real** (Expo Go): verificado que ambos Metro arrancan y
+   responden por LAN; el flujo completo (agenda → reserva → confirmación → correo) se verificó a
+   nivel de datos/API, no con la UI tocada a mano en un teléfono.
 
 ## Último commit
 

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from "react-native";
 import { Link, router } from "expo-router";
 import { useSignIn } from "@clerk/clerk-expo";
+import { GerasBrand } from "@geras/ui";
 import { getClerkErrorMessage } from "@/lib/clerkError";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 
@@ -42,9 +43,9 @@ export default function SignInScreen() {
       contentContainerClassName="grow justify-center gap-5 px-6 py-10"
       keyboardShouldPersistTaps="handled"
     >
-      <View className="gap-2">
-        <Text className="text-3xl font-bold text-gray-900">Geras Profesionales</Text>
-        <Text className="text-lg text-gray-600">Ingresa para continuar</Text>
+      <View className="items-center gap-3">
+        <GerasBrand variant="horizontal" tone="dark" size="lg" showTagline={false} />
+        <Text className="text-center text-lg text-gray-600">Para profesionales — ingresa para continuar</Text>
       </View>
 
       {error ? (

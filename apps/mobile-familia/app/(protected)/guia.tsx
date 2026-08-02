@@ -1,5 +1,6 @@
 import { router } from "expo-router";
 import { GuidedTour, type GuidedTourStep } from "@geras/ui";
+import { markGuideSeen } from "@/lib/guideStorage";
 
 const STEPS: GuidedTourStep[] = [
   {
@@ -29,11 +30,18 @@ const STEPS: GuidedTourStep[] = [
   },
 ];
 
-// Guía reabrible desde Perfil ("¿Cómo funciona Geras?"). No se muestra
-// automáticamente al primer ingreso todavía — activar eso requiere
-// persistir el estado "visto" y enganchar el gate de (protected)/_layout,
-// que se deja pendiente a propósito para no tocar ese gate sin más
-// tiempo de prueba en dispositivo (ver informe final, Pendientes).
+// Se muestra automáticamente al primer ingreso (ver (protected)/_layout.tsx)
+// y es reabrible desde Perfil ("¿Cómo funciona Geras?"). Omitir y
+// Comenzar marcan lo mismo como "visto" — no hay diferencia de
+// contenido entre saltarla o terminarla, solo cambia si se vuelve a
+// mostrar sola la próxima vez.
 export default function GuideScreen() {
-  return <GuidedTour steps={STEPS} onFinish={() => router.back()} onSkip={() => router.back()} />;
+  function finish() {
+    void markGuideSeen();
+    // No usa router.back(): cuando se abre automáticamente al primer
+    // ingreso (vía <Redirect/> desde _layout) no hay una pantalla
+    // previa a la que volver.
+    router.replace("/");
+  }
+  return <GuidedTour steps={STEPS} onFinish={finish} onSkip={finish} />;
 }
