@@ -3,7 +3,7 @@
 Síntesis breve para que otro agente continúe **sin releer todo el historial**.
 Complementa [`UI_UX_GERAS.md`](./UI_UX_GERAS.md) (las reglas) — este documento es el estado.
 
-Última actualización: **2026-08-01**
+Última actualización: **2026-08-02**
 
 ---
 
@@ -14,17 +14,23 @@ Complementa [`UI_UX_GERAS.md`](./UI_UX_GERAS.md) (las reglas) — este documento
 | F1 · Documentación del rediseño | ✅ `docs/UI_UX_GERAS.md` + README actualizado |
 | F2 · Rama y punto de trabajo | ✅ `feat/mobile-ui-navigation-refresh` |
 | F3 · Evaluación del sistema visual | ✅ decisión tomada (ver §4) |
-| F4–F7 · Paleta, logo, tipografía, espaciado | ⬜ en curso |
+| F4 · Paleta | ✅ paleta final aplicada en `packages/ui/src/tokens/colors.ts` |
+| F5 · Logo | ⬜ código preparado (`GerasBrand` acepta `logoSource`), falta el archivo — ver AGENT_START_HERE.md §Siguiente tarea |
+| F6–F7 · Tipografía, espaciado | ⬜ sin cambios esta sesión |
 | F8 · Botones | ⬜ |
-| F9–F10 · Selectores y bottom sheets | ⬜ |
+| F9 · Selectores | ✅ hecho en sesiones previas (`SearchableSelectField`/`MultiSelectField`/modales con buscador) |
+| F10 · Bottom sheets | ⬜ (los modales actuales cubren el caso, sin bottom sheet dedicado) |
 | F11–F13 · Iconografía y navegación | ⬜ |
-| F14 · Guía interactiva y ayuda | ⬜ |
-| F15–F18 · Formularios, tarjetas, encabezados, estados | ⬜ |
-| F19–F20 · Animaciones y login | ⬜ |
-| F21 · Panel Admin | ⬜ |
-| F22–F24 · Accesibilidad y pruebas | ⬜ |
+| F14 · Guía interactiva y ayuda | 🟡 `GuidedTour` + `/guia` reabrible desde Perfil en ambas apps; falta el disparo automático al primer ingreso (persistencia "visto") |
+| F15 · Formularios largos | ✅ solicitud de servicio y de residencia ya en pasos; flujo desde perfil profesional corregido (preserva professionalId/serviceId, calendario real, sin re-preguntar el servicio) |
+| F16–F18 · Tarjetas, encabezados, estados | 🟡 tarjetas de profesionales/residencias ya con formato tarjeta; falta imagen real de servicios |
+| F19 · Calendario de reservas | ✅ `CalendarGrid`/`DatePickerField` propios (sin dependencia nativa), fechas centralizadas en `@geras/shared/dates` |
+| F20 · Login | 🟡 marca + tagline + footer "Desarrollado por Soluciones Mayores" agregados; falta el logo real |
+| F21 · Panel Admin | ⬜ fuera de alcance esta sesión |
+| F22–F24 · Accesibilidad y pruebas | 🟡 verificado con `expo-doctor` (18/18), lint y tests de server (135 en verde); sin prueba en dispositivo físico |
 | F25 · Configuración de release (EAS) | ⬜ |
-| F26–F27 · Documentación final y verificación | ⬜ |
+| F26 · Legal | ✅ política de privacidad/términos/aviso legal (borrador) en Perfil de ambas apps |
+| F27 · Datos de demostración | ✅ `npm run seed:showcase` — 10 profesionales + 10 residencias |
 
 ## 2. Qué funciona
 
@@ -67,12 +73,13 @@ Detalle completo de estas trampas en [`../HANDOFF.md`](../HANDOFF.md).
 
 ## 5. Próxima tarea exacta
 
-**Fase 4** — reemplazar `brandPalettes` en `packages/ui/src/tokens/colors.ts` por la paleta de
-Soluciones Mayores (`#1C3A1A`, `#2D5A27`, `#88C043`, `#C5E49A`), agregar los gradientes
-institucionales y la diferenciación por app. Hoy las marcas son verde azulado y azul marino
-(`#1F7A5C`, `#1D3557`, `#33475B`), que no corresponden a la identidad.
+**Logo real de Geras/Soluciones Mayores** (ver `docs/AGENT_START_HERE.md` §Siguiente tarea):
+copiar el PNG a `packages/ui/assets/brand/` y pasarlo como `logoSource` a `<GerasBrand/>` en los
+login de ambas apps. Es el único paso de código pendiente de la marca — todo lo demás (paleta,
+tagline, footer) ya está aplicado.
 
-Luego F5 (logo), F6 (tipografía) y F7 (espaciado: falta el valor `40`).
+Luego: disparo automático de la guía interactiva al primer ingreso (F14), F6 (tipografía) y F7
+(espaciado: falta el valor `40`).
 
 ## 6. Comandos de ejecución
 
@@ -109,17 +116,18 @@ npx expo start --go --clear --tunnel --port 8094   # Profesional
 
 ## 9. Commits
 
-Plan de commits del rediseño (uno por bloque):
+Ya en la rama (orden real, no el plan original de 9 bloques):
 
 1. `docs: define Geras UI UX guidelines`
 2. `feat: apply Soluciones Mayores design system`
-3. `feat: improve Geras mobile selectors and forms`
-4. `feat: modernize family app experience`
-5. `feat: modernize professional app experience`
-6. `feat: improve Geras help and guided onboarding`
-7. `feat: improve admin visual experience`
-8. `chore: prepare Geras mobile release configuration`
-9. `docs: document Geras UI UX continuation`
+3. `feat: improve Geras mobile selectors`
+4. `feat: complete Geras mobile selectors and forms`
+5. `feat: apply final Geras brand and mobile visual system`
+6. `feat: improve Geras booking calendar and navigation`
+7. `feat: add Geras legal and guided help sections`
+8. `chore: add Geras showcase development data` (pendiente al momento de escribir este párrafo — ver `git log` para confirmar)
+
+Pendiente real: modernizar a fondo tarjetas/estados (F16–F18), Panel Admin (F21), EAS (F25).
 
 ## 10. Riesgos
 

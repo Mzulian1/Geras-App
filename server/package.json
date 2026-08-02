@@ -8,9 +8,12 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "lint": "tsc --noEmit",
+    "lint:scripts": "tsc --noEmit -p scripts/tsconfig.json",
     "test": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "seed:showcase": "tsx scripts/seed-showcase.ts",
+    "seed:showcase:clean": "tsx scripts/clean-showcase.ts"
   },
   "dependencies": {
     "@clerk/express": "^1.3.0",

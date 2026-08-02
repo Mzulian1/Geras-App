@@ -51,18 +51,24 @@ poca experiencia tecnológica, funciona para todos los demás. El caso inverso n
 
 ## 4. Paleta institucional
 
-Identidad de **Soluciones Mayores**. Fuente única: `packages/ui/src/tokens/colors.ts`.
-**Prohibido hardcodear colores en pantallas.**
+Identidad de **Soluciones Mayores** (segunda revisión, 2026-08-02). Fuente única:
+`packages/ui/src/tokens/colors.ts`. **Prohibido hardcodear colores en pantallas.**
 
 ### Colores de marca
 
 | Token | Hex | Uso |
 |---|---|---|
-| Verde oscuro | `#1C3A1A` | Sidebar Admin, encabezados con gradiente, texto sobre claro |
-| Verde medio | `#2D5A27` | Color principal de Profesional, estados presionados |
-| Verde principal | `#88C043` | Color principal de Familia, acciones destacadas, activo |
-| Verde claro | `#C5E49A` | Fondos suaves, chips, resaltados |
-| Blanco | `#FFFFFF` | Superficies |
+| Fondo profundo | `#1A1E17` | Sombras, bordes oscuros, splash |
+| Fondo base | `#273219` | Fondo oscuro, sidebar Admin |
+| Fondo intermedio | `#32471B` | Zona intermedia de gradientes |
+| Verde oliva | `#405E1D` | Color principal de Profesional |
+| Fondo iluminado | `#537C24` | Extremo claro del gradiente institucional |
+| Acento principal | `#80B444` | Color principal de Familia, acciones destacadas |
+| Acento claro | `#88C048` | Resaltados, estados activos |
+| Acento sobre claro | `#588818` | Texto/acciones verdes sobre fondos claros |
+| Blanco | `#FBFCFB` | Superficies |
+| Borde neutro | `#BEC6BB` | Bordes y superficies secundarias |
+| Texto neutro | `#54595A` | Texto e iconos secundarios |
 
 ### Colores derivados (solo interfaz)
 
@@ -73,19 +79,19 @@ variante suave.
 
 ### Gradientes institucionales
 
-- **Principal**: `#1C3A1A → #2D5A27 → #88C043`
-- **Suave**: `#2D5A27 → #88C043`
+- **Principal**: `#1A1E17 → #273219 → #405E1D → #537C24`
+- **Suave**: `#405E1D → #537C24`
 
 Usar **con moderación**: encabezados, login, tarjetas destacadas, acciones principales y
-pantallas de bienvenida. **Nunca como fondo de todas las pantallas.**
+pantallas de bienvenida. **Nunca como fondo de todas las pantallas ni de formularios extensos.**
 
 ### Diferenciación por aplicación
 
 | App | Principal | Carácter |
 |---|---|---|
-| **Mobile Familia** | `#88C043` predominante, fondos claros | Cercano y sencillo |
-| **Mobile Profesional** | `#2D5A27`, acciones en `#88C043` | Profesional y operacional |
-| **Panel Admin** | Sidebar `#1C3A1A`, activo `#88C043` | Claro y administrativo |
+| **Mobile Familia** | `#80B444` predominante, fondos claros | Cercano y sencillo |
+| **Mobile Profesional** | `#405E1D`, acciones en `#80B444` | Profesional y operacional |
+| **Panel Admin** | Sidebar `#273219`, activo `#80B444` | Claro y administrativo |
 
 ## 5. Tipografía
 
@@ -292,7 +298,7 @@ evidentes · centro de ayuda en Perfil. **No llenar todas las pantallas de toolt
 |---|---|---|---|
 | Plataforma | Expo / RN | Expo / RN | Web (Vite) |
 | React | 19.1.0 | 19.1.0 | **18.3.1** |
-| Color principal | `#88C043` | `#2D5A27` | Sidebar `#1C3A1A` |
+| Color principal | `#80B444` | `#405E1D` | Sidebar `#273219` |
 | Tono | Cercano, sencillo | Operacional | Administrativo |
 | Densidad | Baja | Media | Alta |
 | Navegación | 4 tabs | 4 tabs | Sidebar agrupado |
