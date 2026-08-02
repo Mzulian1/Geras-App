@@ -1,5 +1,6 @@
-import { Redirect, Stack } from "expo-router";
+import { Redirect, router, Stack } from "expo-router";
 import { useAuth, useClerk } from "@clerk/clerk-expo";
+import { ErrorBoundary } from "@geras/ui";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { StatusScreen } from "@/components/StatusScreen";
 import { useFamilyBootstrap } from "@/hooks/useFamilyBootstrap";
@@ -64,6 +65,10 @@ export default function ProtectedLayout() {
       );
 
     case "ready":
-      return <Stack screenOptions={{ headerShown: false }} />;
+      return (
+        <ErrorBoundary onReset={() => router.replace("/")}>
+          <Stack screenOptions={{ headerShown: false }} />
+        </ErrorBoundary>
+      );
   }
 }

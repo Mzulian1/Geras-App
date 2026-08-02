@@ -6,6 +6,7 @@ import {
   Card,
   EmptyState,
   FilterChip,
+  InlineAlert,
   LoadingState,
   Screen,
   StatusBadge,
@@ -110,6 +111,8 @@ export default function ActividadScreen() {
           Tus solicitudes, reservas y contactos con residencias, en un solo lugar.
         </Text>
       </View>
+
+      <InlineAlert message="Revisa aquí el estado de tus solicitudes y reservas." />
 
       <View style={{ flexDirection: "row", gap: 8 }}>
         {FILTERS.map((item) => (

@@ -7,10 +7,13 @@ import { createServiceRequestSchema, formatDateCL, formatDateLongCL, toDateKeyCL
 import type { CreateServiceRequestInput } from "@geras/shared";
 import {
   AppHeader,
+  Avatar,
   BottomActionBar,
+  Card,
   CalendarGrid,
   DatePickerField,
   ErrorState,
+  InlineAlert,
   LoadingState,
   PrimaryButton,
   Screen,
@@ -24,6 +27,7 @@ import { useCareRecipients } from "@/hooks/useCareRecipients";
 import { useComunasCatalog, useServicesCatalog } from "@/hooks/useCatalogs";
 import { useCreateBooking, useCreateServiceRequest, useGenerateMatches } from "@/hooks/useServiceRequestFlow";
 import { useProfessionalAvailability } from "@/hooks/useProfessionalAvailability";
+import { usePublicProfessional } from "@/hooks/usePublicProfessionals";
 import { useSelectedRecipientStore } from "@/state/selectedRecipientStore";
 import { useSelectedServiceStore } from "@/state/selectedServiceStore";
 import { useSelectedProfessionalStore } from "@/state/selectedProfessionalStore";
@@ -132,6 +136,7 @@ export default function NewServiceRequestScreen() {
     availabilityRange.from,
     availabilityRange.to
   );
+  const professionalQuery = usePublicProfessional(directBooking ? (preselectedProfessionalId ?? undefined) : undefined);
 
   const recipients = recipientsQuery.data ?? [];
 
@@ -163,6 +168,20 @@ export default function NewServiceRequestScreen() {
   const submitting = createRequest.isPending || generateMatches.isPending || createBooking.isPending;
   const step = steps[stepIndex] ?? steps[0];
   const isLastStep = stepIndex === steps.length - 1;
+
+  // Reserva directa: encabezados simples en vez del stepper extenso —
+  // solo la solicitud general (que sí implica varias decisiones reales)
+  // conserva "Paso X de Y" + barra de progreso.
+  function directBookingTitle(): string {
+    if (step.key === "schedule") {
+      if (!values.preferred_date) return "Elige una fecha";
+      if (!values.requested_time) return "Elige una hora";
+      return "Fecha y hora elegidas";
+    }
+    if (step.key === "review") return "Revisa tu reserva";
+    return step.title;
+  }
+  const headerTitle = directBooking ? directBookingTitle() : step.title;
 
   function update<K extends keyof FormValues>(key: K, value: FormValues[K]) {
     setValues((prev) => ({ ...prev, [key]: value }));
@@ -340,18 +359,45 @@ export default function NewServiceRequestScreen() {
         />
       }
     >
-      <AppHeader title={step.title} subtitle={`Paso ${stepIndex + 1} de ${steps.length}`} onBack={goBack} />
-      <View style={{ height: 4, backgroundColor: theme.surfaceSecondary }}>
-        <View
-          style={{
-            height: 4,
-            width: `${((stepIndex + 1) / steps.length) * 100}%`,
-            backgroundColor: theme.primary,
-          }}
-        />
-      </View>
+      <AppHeader
+        title={headerTitle}
+        subtitle={directBooking ? undefined : `Paso ${stepIndex + 1} de ${steps.length}`}
+        onBack={goBack}
+      />
+      {directBooking ? null : (
+        <View style={{ height: 4, backgroundColor: theme.surfaceSecondary }}>
+          <View
+            style={{
+              height: 4,
+              width: `${((stepIndex + 1) / steps.length) * 100}%`,
+              backgroundColor: theme.primary,
+            }}
+          />
+        </View>
+      )}
 
       <View style={{ padding: 16, gap: 16 }}>
+        {directBooking && professionalQuery.data ? (
+          <Card>
+            <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
+              <Avatar uri={professionalQuery.data.profile_photo_url} size={44} />
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={{ fontSize: 15, fontWeight: "700", color: theme.textPrimary }}>
+                  {professionalQuery.data.full_name}
+                </Text>
+                <Text style={{ fontSize: 13, color: theme.textSecondary }}>
+                  {availabilityQuery.data?.serviceName ?? professionalQuery.data.profession_name}
+                </Text>
+                {availabilityQuery.data ? (
+                  <Text style={{ fontSize: 13, color: theme.textSecondary }}>
+                    ${availabilityQuery.data.price.toLocaleString("es-CL")} · {availabilityQuery.data.durationMinutes} min
+                  </Text>
+                ) : null}
+              </View>
+            </View>
+          </Card>
+        ) : null}
+
         {step.key === "service" ? (
           <SearchableSelectField
             label="Servicio"
@@ -464,6 +510,9 @@ export default function NewServiceRequestScreen() {
               />
             ) : (
               <View style={{ gap: 16 }}>
+                {!values.preferred_date ? (
+                  <InlineAlert message="Los días destacados tienen horarios disponibles. Elige uno para ver las horas." icon="calendar-outline" />
+                ) : null}
                 <View>
                   <Text style={{ fontSize: 14, fontWeight: "500", marginBottom: 8, color: theme.textPrimary }}>
                     Fecha{fieldErrors.preferred_date ? <Text style={{ color: theme.error }}> *</Text> : null}

@@ -4,7 +4,7 @@ import { FlatList, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { dayOfWeekSchema } from "@geras/shared";
 import type { DayOfWeek, PublicProfessionalView } from "@geras/shared";
-import { Avatar, Card, EmptyState, LoadingState, SearchableSelectField, StatusBadge, useGerasTheme } from "@geras/ui";
+import { Avatar, Card, EmptyState, InlineAlert, LoadingState, SearchableSelectField, StatusBadge, useGerasTheme } from "@geras/ui";
 import { usePublicProfessionals } from "@/hooks/usePublicProfessionals";
 import { useComunasCatalog, useServicesCatalog } from "@/hooks/useCatalogs";
 import { useCareRecipient } from "@/hooks/useCareRecipients";
@@ -153,11 +153,13 @@ export default function ProfessionalsScreen() {
             <Text style={{ fontSize: 14, color: theme.textSecondary }}>
               {item.profession_name} · {item.base_comuna ?? "Sin comuna"}
             </Text>
-            {item.average_rating ? (
+            {item.average_rating || item.years_experience ? (
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Ionicons name="star" size={14} color={theme.warning} />
+                {item.average_rating ? <Ionicons name="star" size={14} color={theme.warning} /> : null}
                 <Text style={{ fontSize: 14, color: theme.textSecondary }}>
-                  {item.average_rating} ({item.total_reviews} reseñas)
+                  {item.average_rating ? `${item.average_rating} (${item.total_reviews} reseñas)` : null}
+                  {item.average_rating && item.years_experience ? " · " : null}
+                  {item.years_experience ? `${item.years_experience} años` : null}
                 </Text>
               </View>
             ) : null}
@@ -196,6 +198,7 @@ export default function ProfessionalsScreen() {
       contentContainerStyle={{ gap: 12, paddingBottom: 24 }}
       ListHeaderComponent={
         <View style={{ gap: 12, paddingBottom: 16, marginBottom: 4, borderBottomWidth: 1, borderBottomColor: theme.borderSoft }}>
+          <InlineAlert message="Aquí puedes encontrar profesionales verificados. Los días destacados en su agenda tienen horarios disponibles." />
           {recipientQuery.data ? (
             <Text style={{ fontSize: 14, color: theme.textSecondary }}>Buscando para {recipientQuery.data.full_name}</Text>
           ) : null}

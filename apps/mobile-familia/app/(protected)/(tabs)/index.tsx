@@ -3,7 +3,7 @@ import { router } from "expo-router";
 import { FlatList, Text, View } from "react-native";
 import { useUser } from "@clerk/clerk-expo";
 import type { BookingStatus } from "@geras/shared";
-import { Card, LoadingState, PrimaryButton, Screen, SectionHeader, StatusBadge, useGerasTheme } from "@geras/ui";
+import { Card, InlineAlert, LoadingState, PrimaryButton, Screen, SectionHeader, StatusBadge, useGerasTheme } from "@geras/ui";
 import { useServicesShowcase, type ServiceShowcaseEntry } from "@/hooks/useCatalogs";
 import { useFamilyBootstrap } from "@/hooks/useFamilyBootstrap";
 import { useMyServiceRequests } from "@/hooks/useMyRequests";
@@ -66,6 +66,8 @@ export default function InicioScreen() {
           Encuentra profesionales y residencias de confianza para el cuidado de tu familia.
         </Text>
       </View>
+
+      <InlineAlert message="Aquí puedes encontrar profesionales verificados para el cuidado de tu familia." />
 
       <View style={{ flexDirection: "row", gap: 12 }}>
         <View style={{ flex: 1 }}>

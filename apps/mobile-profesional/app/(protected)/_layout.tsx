@@ -1,5 +1,6 @@
-import { Redirect, Stack } from "expo-router";
+import { Redirect, router, Stack } from "expo-router";
 import { useAuth, useClerk } from "@clerk/clerk-expo";
+import { ErrorBoundary } from "@geras/ui";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { StatusScreen } from "@/components/StatusScreen";
 import { useProfessionalBootstrap } from "@/hooks/useProfessionalBootstrap";
@@ -94,7 +95,11 @@ export default function ProtectedLayout() {
       // (home vs. wizard de onboarding) lo deciden index.tsx y
       // onboarding/index.tsx mirando el mismo bootstrap.status, no acá
       // (evita un loop de redirects contra este mismo layout).
-      return <Stack screenOptions={{ headerShown: false }} />;
+      return (
+        <ErrorBoundary onReset={() => router.replace("/")}>
+          <Stack screenOptions={{ headerShown: false }} />
+        </ErrorBoundary>
+      );
   }
 }
 

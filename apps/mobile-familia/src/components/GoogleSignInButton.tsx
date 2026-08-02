@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, Text } from "react-native";
+import { ActivityIndicator, Platform, Pressable, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import * as WebBrowser from "expo-web-browser";
 import * as AuthSession from "expo-auth-session";
@@ -35,8 +35,11 @@ export function GoogleSignInButton({ onError, disabled }: GoogleSignInButtonProp
   const [submitting, setSubmitting] = useState(false);
 
   // Precalentar el navegador hace que la transición sea inmediata en Android;
-  // en iOS es no-op. El cleanup libera el proceso al desmontar la pantalla.
+  // en iOS es no-op. En web, warmUpAsync/coolDownAsync ni siquiera existen
+  // (lanzan una excepción no capturada que puede dejar la pantalla de login
+  // en blanco al montar) — no aplica ahí de todos modos, así que se salta.
   useEffect(() => {
+    if (Platform.OS === "web") return;
     void WebBrowser.warmUpAsync();
     return () => {
       void WebBrowser.coolDownAsync();

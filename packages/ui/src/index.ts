@@ -40,4 +40,6 @@ export * from "./components/LegalDocumentScreen";
 export * from "./components/GuidedTour";
 export * from "./components/TimeSlotPicker";
 export * from "./components/Avatar";
+export * from "./components/ErrorBoundary";
+export * from "./components/InlineAlert";
 export * from "./components/SuccessFeedback";

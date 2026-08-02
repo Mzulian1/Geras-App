@@ -10,6 +10,7 @@ import { describeMutationError } from "@/lib/errors";
 import { canFamilyConfirmCompletion, canReviewBooking, formatDateTimeCL } from "@geras/shared";
 import {
   AppHeader,
+  Avatar,
   Card,
   ConfirmationModal,
   InfoRow,
@@ -114,35 +115,48 @@ export default function BookingConfirmationScreen() {
   const existingReview = reviewQuery.data;
   const nextStep = NEXT_STEP[booking.status];
 
+  const isFreshSuccess = booking.status === "pending" || booking.status === "confirmed";
+
   return (
     <Screen scroll padded={false}>
       <AppHeader title="Detalle de reserva" onBack={() => router.back()} />
       <View style={{ padding: 16, gap: 16 }}>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-          <Text style={{ fontSize: 20, fontWeight: "700", color: theme.textPrimary }}>
-            {booking.services?.name ?? "Servicio"}
-          </Text>
-          <StatusBadge kind="booking" value={booking.status} />
-        </View>
-
-        <View
-          style={{
-            flexDirection: "row",
-            gap: 10,
-            padding: 12,
-            borderRadius: 8,
-            backgroundColor: theme.successSoft,
-          }}
-        >
-          <Ionicons name="checkmark-circle-outline" size={20} color={theme.success} />
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={{ fontSize: 14, color: theme.textPrimary, lineHeight: 20 }}>{STATUS_MESSAGE[booking.status]}</Text>
-            {nextStep ? <Text style={{ fontSize: 13, color: theme.textSecondary }}>{nextStep}</Text> : null}
+        <View style={{ alignItems: "center", gap: 8, paddingVertical: 8 }}>
+          <View
+            style={{
+              width: 72,
+              height: 72,
+              borderRadius: 36,
+              backgroundColor: theme.successSoft,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Ionicons
+              name={isFreshSuccess ? "checkmark-circle" : "information-circle"}
+              size={44}
+              color={theme.success}
+            />
           </View>
+          <Text style={{ fontSize: 18, fontWeight: "700", color: theme.textPrimary, textAlign: "center" }}>
+            {STATUS_MESSAGE[booking.status]}
+          </Text>
+          {nextStep ? (
+            <Text style={{ fontSize: 14, color: theme.textSecondary, textAlign: "center" }}>{nextStep}</Text>
+          ) : null}
         </View>
 
         <Card>
-          <InfoRow label="Profesional" value={booking.professional_profiles?.full_name ?? "—"} />
+          <View style={{ flexDirection: "row", gap: 12, alignItems: "center", marginBottom: 12 }}>
+            <Avatar uri={booking.professional_profiles?.profile_photo_url} size={48} />
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 16, fontWeight: "700", color: theme.textPrimary }}>
+                {booking.professional_profiles?.full_name ?? "—"}
+              </Text>
+              <Text style={{ fontSize: 14, color: theme.textSecondary }}>{booking.services?.name ?? "Servicio"}</Text>
+            </View>
+            <StatusBadge kind="booking" value={booking.status} />
+          </View>
           <InfoRow label="Para" value={booking.service_requests?.care_recipients?.full_name ?? "—"} />
           <InfoRow label="Fecha" value={formatDateTimeCL(booking.scheduled_at)} />
           <InfoRow label="Duración" value={`${booking.duration_minutes} min`} />
