@@ -6,14 +6,23 @@
 // Ver docs/UI_UX_GERAS.md §4.
 // ============================================================
 
-// Los cinco valores oficiales de la marca. Todo lo demás en este archivo
-// se deriva de ellos o los acompaña.
+// Paleta oficial (segunda revisión). Fondos van de más oscuro a más claro;
+// acentos son las acciones/resaltados; neutros son texto y superficies.
 export const brandColors = {
-  greenDark: "#1C3A1A",
-  greenMedium: "#2D5A27",
-  greenPrimary: "#88C043",
-  greenLight: "#C5E49A",
-  white: "#FFFFFF",
+  // Fondos
+  bgDeep: "#1A1E17",
+  bgBase: "#273219",
+  bgMid: "#32471B",
+  oliveGreen: "#405E1D",
+  bgLit: "#537C24",
+  // Acentos
+  accentPrimary: "#80B444",
+  accentLight: "#88C048",
+  accentOnLight: "#588818",
+  // Neutros
+  white: "#FBFCFB",
+  borderNeutral: "#BEC6BB",
+  textNeutral: "#54595A",
 } as const;
 
 // Colores semánticos y de interfaz. IGUALES en las tres apps a propósito:
@@ -29,15 +38,15 @@ export const brandColors = {
 export const semanticColors = {
   background: "#F5F8F2",
   backgroundSecondary: "#EAF0E4",
-  surface: "#FFFFFF",
+  surface: brandColors.white,
   surfaceSecondary: "#F0F4EC",
   borderSoft: "#DCE5D4",
-  borderStrong: "#BFCDB4",
+  borderStrong: brandColors.borderNeutral,
 
   textPrimary: "#16210F",
-  textSecondary: "#55614C",
+  textSecondary: brandColors.textNeutral,
   textDisabled: "#9AA593",
-  textOnBrand: "#FFFFFF",
+  textOnBrand: brandColors.white,
 
   success: "#2E9E5B",
   successSoft: "#E3F5EA",
@@ -48,8 +57,8 @@ export const semanticColors = {
   info: "#2F6FED",
   infoSoft: "#E6EEFD",
 
-  white: "#FFFFFF",
-  overlay: "rgba(22, 33, 15, 0.45)",
+  white: brandColors.white,
+  overlay: "rgba(26, 30, 23, 0.5)",
 } as const;
 
 // Identidad por app. Las tres comparten la misma marca pero con distinto
@@ -58,40 +67,40 @@ export const semanticColors = {
 // del sidebar (administrativo). Ver docs/UI_UX_GERAS.md §4.
 export const brandPalettes = {
   familia: {
-    primary: brandColors.greenPrimary,
-    primaryPressed: brandColors.greenMedium,
-    primarySoft: brandColors.greenLight,
-    primaryDark: brandColors.greenDark,
-    accent: brandColors.greenPrimary,
-    // El verde principal es luminoso: sobre él el texto oscuro contrasta
-    // mucho mejor que el blanco (blanco sobre #88C043 no alcanza AA).
+    primary: brandColors.accentPrimary,
+    primaryPressed: brandColors.accentOnLight,
+    primarySoft: "#E3EEDA",
+    primaryDark: brandColors.bgBase,
+    accent: brandColors.accentLight,
+    // El acento principal es luminoso: sobre él el texto oscuro contrasta
+    // mucho mejor que el blanco.
     onPrimary: "#16210F",
   },
   profesional: {
-    primary: brandColors.greenMedium,
-    primaryPressed: brandColors.greenDark,
+    primary: brandColors.oliveGreen,
+    primaryPressed: brandColors.bgMid,
     primarySoft: "#E4EFDC",
-    primaryDark: brandColors.greenDark,
-    accent: brandColors.greenPrimary,
+    primaryDark: brandColors.bgBase,
+    accent: brandColors.accentPrimary,
     onPrimary: "#FFFFFF",
   },
   admin: {
-    primary: brandColors.greenDark,
-    primaryPressed: "#132712",
+    primary: brandColors.bgBase,
+    primaryPressed: brandColors.bgDeep,
     primarySoft: "#E4EFDC",
-    primaryDark: brandColors.greenDark,
+    primaryDark: brandColors.bgDeep,
     // Acento de acción activa del panel (item activo sobre sidebar oscuro).
-    accent: brandColors.greenPrimary,
+    accent: brandColors.accentPrimary,
     onPrimary: "#FFFFFF",
   },
 } as const;
 
 // Gradientes institucionales. Usar CON MODERACIÓN: encabezados, login,
 // tarjetas destacadas, acciones principales y pantallas de bienvenida.
-// Nunca como fondo de todas las pantallas.
+// Nunca como fondo de todas las pantallas ni de formularios extensos.
 export const gradients = {
-  primary: [brandColors.greenDark, brandColors.greenMedium, brandColors.greenPrimary],
-  soft: [brandColors.greenMedium, brandColors.greenPrimary],
+  primary: [brandColors.bgDeep, brandColors.bgBase, brandColors.oliveGreen, brandColors.bgLit],
+  soft: [brandColors.oliveGreen, brandColors.bgLit],
 } as const;
 
 /** Identificador de la app cuya paleta se está usando. No confundir con el

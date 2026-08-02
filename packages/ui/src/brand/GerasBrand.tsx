@@ -50,8 +50,8 @@ export function GerasBrand({
   size = "md",
 }: GerasBrandProps) {
   const onDark = tone === "light";
-  const nameColor = onDark ? brandColors.white : brandColors.greenDark;
-  const taglineColor = onDark ? brandColors.greenLight : brandColors.greenMedium;
+  const nameColor = onDark ? brandColors.white : brandColors.bgBase;
+  const taglineColor = onDark ? brandColors.accentLight : brandColors.oliveGreen;
   const dims = SIZES[size];
 
   return (

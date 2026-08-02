@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Geras - Familias",
+    "name": "Geras",
     "slug": "geras-familia",
     "version": "0.0.1",
     "orientation": "portrait",
@@ -24,7 +24,7 @@
           "image": "./assets/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#1F7A5C"
+          "backgroundColor": "#273219"
         }
       ],
       "expo-asset",
@@ -38,7 +38,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#1F7A5C"
+        "backgroundColor": "#273219"
       },
       "package": "cl.geras.familia"
     },

@@ -117,6 +117,8 @@ export default function SignInScreen() {
           ¿No tienes cuenta? Crea una
         </Link>
       </View>
+
+      <Text className="pt-6 text-center text-xs text-gray-400">Desarrollado por Soluciones Mayores</Text>
     </ScrollView>
   );
 }

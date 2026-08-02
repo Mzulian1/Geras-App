@@ -24,7 +24,7 @@
           "image": "./assets/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#1D3557"
+          "backgroundColor": "#1A1E17"
         }
       ],
       "expo-asset",
@@ -38,7 +38,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#1D3557"
+        "backgroundColor": "#1A1E17"
       },
       "package": "cl.geras.profesional"
     },
