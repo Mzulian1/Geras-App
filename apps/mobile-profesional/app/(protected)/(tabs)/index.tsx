@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { Redirect, router } from "expo-router";
 import { Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -7,6 +7,8 @@ import { formatDateTimeCL } from "@geras/shared";
 import { useProfessionalBootstrap } from "@/hooks/useProfessionalBootstrap";
 import { useProfessionalBookings } from "@/hooks/useBookings";
 import { useProfessionalAvailabilityQuery } from "@/hooks/useOnboardingQueries";
+import { useOpportunities } from "@/hooks/useOpportunities";
+import { useGuideGate } from "@/hooks/useGuideGate";
 
 // Tab "Inicio" (Fase 4): saludo, estado del perfil, próxima atención,
 // reservas pendientes de respuesta y una alerta si todavía no
@@ -20,6 +22,16 @@ export default function InicioScreen() {
   const professionalId = bootstrap.status === "approved" ? bootstrap.professionalProfile.id : undefined;
   const bookingsQuery = useProfessionalBookings(professionalId);
   const availabilityQuery = useProfessionalAvailabilityQuery(professionalId);
+  const opportunitiesQuery = useOpportunities();
+  const guideGate = useGuideGate(bootstrap.status === "approved");
+
+  // Guía interactiva al primer ingreso — solo para perfiles ya
+  // aprobados (durante el onboarding no aplica todavía). Se dispara
+  // desde acá y no desde el _layout raíz: ver el comentario equivalente
+  // en Mobile Familia.
+  useEffect(() => {
+    if (guideGate === "show") router.replace("/guia");
+  }, [guideGate]);
 
   const { pendingCount, nextBooking } = useMemo(() => {
     const bookings = bookingsQuery.data ?? [];
@@ -61,6 +73,25 @@ export default function InicioScreen() {
           </View>
         </Card>
       ) : null}
+
+      <View style={{ gap: 12 }}>
+        <SectionHeader title="Oportunidades" actionLabel="Ver todas" onAction={() => router.push("/oportunidades")} />
+        <Card onPress={() => router.push("/oportunidades")} accessibilityLabel="Ver oportunidades compatibles contigo">
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, color: theme.textPrimary }}>
+                {(opportunitiesQuery.data?.opportunities.length ?? 0) === 0
+                  ? "Sin oportunidades nuevas"
+                  : `${opportunitiesQuery.data!.opportunities.length} solicitud${opportunitiesQuery.data!.opportunities.length !== 1 ? "es" : ""} compatible${opportunitiesQuery.data!.opportunities.length !== 1 ? "s" : ""}`}
+              </Text>
+              <Text style={{ fontSize: 13, color: theme.textSecondary, marginTop: 2 }}>
+                Familias buscando un servicio como el tuyo, en tu comuna.
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+          </View>
+        </Card>
+      </View>
 
       {pendingCount > 0 ? (
         <View style={{ gap: 12 }}>

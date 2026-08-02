@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocalSearchParams, router } from "expo-router";
 import { FlatList, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { AppHeader, Card, EmptyState, ErrorState, LoadingState, PrimaryButton, Screen, useGerasTheme } from "@geras/ui";
+import { AppHeader, Avatar, Card, EmptyState, ErrorState, LoadingState, PrimaryButton, Screen, useGerasTheme } from "@geras/ui";
 import { useCreateBooking, useGenerateMatches, type MatchWithProfessional } from "@/hooks/useServiceRequestFlow";
 import { describeMutationError } from "@/lib/errors";
 
@@ -24,7 +24,17 @@ export default function MatchesScreen() {
     if (!id) return;
     generateMatches
       .mutateAsync(id)
-      .then((result) => setMatches(result.matches))
+      .then((result) => {
+        // Profesionales que ya mostraron interés (Oportunidades, en
+        // Mobile Profesional) primero — es información real que ayuda
+        // a decidir, no solo el orden de score.
+        const sorted = [...result.matches].sort((a, b) => {
+          if (a.status === "contacted" && b.status !== "contacted") return -1;
+          if (b.status === "contacted" && a.status !== "contacted") return 1;
+          return b.score - a.score;
+        });
+        setMatches(sorted);
+      })
       .catch((err) => setLoadError(describeMutationError(err)));
     // Solo al entrar a la pantalla — no se quiere regenerar en cada
     // render, solo una vez por solicitud.
@@ -71,8 +81,30 @@ export default function MatchesScreen() {
                 const isBookingThis = createBooking.variables?.professional_id === item.professional_id;
                 return (
                   <Card>
-                    <View style={{ gap: 6 }}>
-                      <Text style={{ fontSize: 16, fontWeight: "600", color: theme.textPrimary }}>{profile?.full_name ?? "Profesional"}</Text>
+                    <View style={{ flexDirection: "row", gap: 12 }}>
+                      <Avatar uri={profile?.profile_photo_url} size={48} />
+                      <View style={{ flex: 1, gap: 6 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                        <Text style={{ fontSize: 16, fontWeight: "600", color: theme.textPrimary, flexShrink: 1 }}>
+                          {profile?.full_name ?? "Profesional"}
+                        </Text>
+                        {item.status === "contacted" ? (
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: 4,
+                              paddingHorizontal: 8,
+                              paddingVertical: 3,
+                              borderRadius: 999,
+                              backgroundColor: theme.successSoft,
+                            }}
+                          >
+                            <Ionicons name="checkmark-circle" size={12} color={theme.success} />
+                            <Text style={{ fontSize: 12, fontWeight: "600", color: theme.success }}>Mostró interés</Text>
+                          </View>
+                        ) : null}
+                      </View>
                       <Text style={{ fontSize: 14, color: theme.textSecondary }}>{profile?.professions?.name}</Text>
                       {profile?.average_rating ? (
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
@@ -94,6 +126,7 @@ export default function MatchesScreen() {
                           loading={isBookingThis && createBooking.isPending}
                           disabled={createBooking.isPending && !isBookingThis}
                         />
+                      </View>
                       </View>
                     </View>
                   </Card>

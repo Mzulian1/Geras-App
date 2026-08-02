@@ -11,7 +11,8 @@ export interface MatchWithProfessional {
   request_id: string;
   professional_id: string;
   score: number;
-  status: string;
+  /** "contacted" = el profesional ya mostró interés en esta solicitud (Oportunidades). */
+  status: "suggested" | "viewed" | "contacted" | "accepted" | "rejected";
   professional_profiles: {
     id: string;
     full_name: string;
