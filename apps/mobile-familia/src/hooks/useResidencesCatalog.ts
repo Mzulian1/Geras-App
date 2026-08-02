@@ -24,7 +24,7 @@ export function useResidencesCatalog(filters: ResidenceFilters = {}) {
     queryFn: async () => {
       let query = supabase
         .from("residences")
-        .select("*, comunas(name, region)")
+        .select("*, comunas(name, region), residence_images(url, sort_order), residence_services(name, kind)")
         .eq("active", true)
         .eq("verified", true)
         .eq("published", true)

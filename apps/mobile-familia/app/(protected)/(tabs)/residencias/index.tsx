@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { router } from "expo-router";
-import { FlatList, Pressable, Text, View } from "react-native";
+import { FlatList, Image, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { MobilityLevel } from "@geras/shared";
-import { Card, EmptyState, FormField, LoadingState, SearchableSelectField, useGerasTheme } from "@geras/ui";
+import { Card, EmptyState, FormField, LoadingState, SearchableSelectField, SecondaryButton, useGerasTheme } from "@geras/ui";
 import { useResidencesCatalog } from "@/hooks/useResidencesCatalog";
 import { useComunasCatalog } from "@/hooks/useCatalogs";
 import { SelectChips } from "@/components/SelectChips";
@@ -108,48 +108,83 @@ export default function ResidenciasScreen() {
           />
         )
       }
-      renderItem={({ item }) => (
-        <Card onPress={() => router.push(`/residencias/${item.id}`)} accessibilityLabel={item.name}>
-          <View style={{ gap: 4 }}>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-              <Text style={{ fontSize: 16, fontWeight: "600", color: theme.textPrimary, flex: 1 }}>{item.name}</Text>
+      renderItem={({ item }) => {
+        const cover = [...(item.residence_images ?? [])].sort((a, b) => a.sort_order - b.sort_order)[0];
+        const characteristics = (item.residence_services ?? []).filter((s) => s.kind === "characteristic").slice(0, 3);
+        return (
+          <Card onPress={() => router.push(`/residencias/${item.id}`)} accessibilityLabel={item.name} padded={false}>
+            {cover ? (
+              <Image source={{ uri: cover.url }} style={{ width: "100%", height: 140, borderTopLeftRadius: 16, borderTopRightRadius: 16 }} resizeMode="cover" />
+            ) : (
               <View
                 style={{
-                  flexDirection: "row",
+                  width: "100%",
+                  height: 140,
+                  borderTopLeftRadius: 16,
+                  borderTopRightRadius: 16,
+                  backgroundColor: theme.primarySoft,
                   alignItems: "center",
-                  gap: 4,
-                  backgroundColor: (item.available_slots ?? 0) > 0 ? theme.successSoft : theme.surfaceSecondary,
-                  paddingHorizontal: 8,
-                  paddingVertical: 3,
-                  borderRadius: 999,
+                  justifyContent: "center",
                 }}
               >
-                <Ionicons
-                  name={(item.available_slots ?? 0) > 0 ? "checkmark-circle" : "time-outline"}
-                  size={12}
-                  color={(item.available_slots ?? 0) > 0 ? theme.success : theme.textSecondary}
-                />
-                <Text
+                <Ionicons name="business" size={36} color={theme.primary} />
+              </View>
+            )}
+            <View style={{ gap: 6, padding: 16 }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                <Text style={{ fontSize: 16, fontWeight: "700", color: theme.textPrimary, flex: 1 }}>{item.name}</Text>
+                <View
                   style={{
-                    fontSize: 12,
-                    fontWeight: "600",
-                    color: (item.available_slots ?? 0) > 0 ? theme.success : theme.textSecondary,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 4,
+                    backgroundColor: (item.available_slots ?? 0) > 0 ? theme.successSoft : theme.surfaceSecondary,
+                    paddingHorizontal: 8,
+                    paddingVertical: 3,
+                    borderRadius: 999,
                   }}
                 >
-                  {(item.available_slots ?? 0) > 0 ? "Cupos disponibles" : "Sin cupos"}
+                  <Ionicons
+                    name={(item.available_slots ?? 0) > 0 ? "checkmark-circle" : "time-outline"}
+                    size={12}
+                    color={(item.available_slots ?? 0) > 0 ? theme.success : theme.textSecondary}
+                  />
+                  <Text
+                    style={{
+                      fontSize: 12,
+                      fontWeight: "600",
+                      color: (item.available_slots ?? 0) > 0 ? theme.success : theme.textSecondary,
+                    }}
+                  >
+                    {(item.available_slots ?? 0) > 0 ? "Cupos disponibles" : "Sin cupos"}
+                  </Text>
+                </View>
+              </View>
+              <Text style={{ fontSize: 14, color: theme.textSecondary }}>{item.comunas?.name ?? "Sin comuna"}</Text>
+              {item.price_from ? (
+                <Text style={{ fontSize: 14, fontWeight: "600", color: theme.textPrimary }}>
+                  Desde ${item.price_from.toLocaleString("es-CL")}
                 </Text>
+              ) : null}
+              {characteristics.length > 0 ? (
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 2 }}>
+                  {characteristics.map((c) => (
+                    <View
+                      key={c.name}
+                      style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, backgroundColor: theme.surfaceSecondary }}
+                    >
+                      <Text style={{ fontSize: 11, color: theme.textSecondary }}>{c.name}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+              <View style={{ marginTop: 8, alignSelf: "flex-start" }}>
+                <SecondaryButton label="Ver residencia" size="compact" onPress={() => router.push(`/residencias/${item.id}`)} />
               </View>
             </View>
-            <Text style={{ fontSize: 14, color: theme.textSecondary }}>{item.comunas?.name ?? "Sin comuna"}</Text>
-            {item.price_from ? (
-              <Text style={{ fontSize: 14, fontWeight: "600", color: theme.textPrimary }}>
-                Desde ${item.price_from.toLocaleString("es-CL")}
-              </Text>
-            ) : null}
-            <Text style={{ fontSize: 13, fontWeight: "600", color: theme.primary, marginTop: 2 }}>Ver residencia</Text>
-          </View>
-        </Card>
-      )}
+          </Card>
+        );
+      }}
     />
   );
 }

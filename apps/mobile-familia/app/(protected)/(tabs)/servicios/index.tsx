@@ -7,9 +7,10 @@ import { useServicesShowcase, type ServiceShowcaseEntry } from "@/hooks/useCatal
 // Catálogo completo de servicios de Geras (orden y catálogo vienen de
 // Admin — un servicio desactivado ahí desaparece de acá porque la
 // query ya filtra `active=true`). Agrupado por categoría de profesión,
-// respetando display_order dentro de cada grupo. Se usa tanto de forma
-// independiente (ruta oculta de la barra) como incrustada dentro del
-// segmento "Servicios" de la tab Explorar.
+// cada grupo en una grilla de 2 columnas con ícono grande — nunca como
+// lista de texto plano. Se usa tanto de forma independiente (ruta
+// oculta de la barra) como incrustada dentro del segmento "Servicios"
+// de la tab Explorar.
 export default function ServiciosScreen() {
   const theme = useGerasTheme();
   const servicesQuery = useServicesShowcase();
@@ -38,39 +39,44 @@ export default function ServiciosScreen() {
       style={{ flex: 1 }}
       data={[...grouped.entries()]}
       keyExtractor={([category]) => category}
-      contentContainerStyle={{ gap: 20, paddingBottom: 24 }}
+      contentContainerStyle={{ gap: 24, paddingBottom: 24 }}
       renderItem={({ item: [category, list] }) => (
-        <View style={{ gap: 8 }}>
-          <Text style={{ fontSize: 13, fontWeight: "600", color: theme.textSecondary, textTransform: "uppercase" }}>
+        <View style={{ gap: 10 }}>
+          <Text style={{ fontSize: 13, fontWeight: "700", color: theme.textSecondary, textTransform: "uppercase", letterSpacing: 0.5 }}>
             {category}
           </Text>
-          <View style={{ gap: 10 }}>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
             {list.map((service) => (
-              <Card key={service.id} onPress={() => router.push(`/servicios/${service.id}`)} accessibilityLabel={service.name}>
-                <View style={{ flexDirection: "row", gap: 12, alignItems: "flex-start" }}>
-                  <View
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 20,
-                      backgroundColor: theme.primarySoft,
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Ionicons name="heart-outline" size={20} color={theme.primary} />
-                  </View>
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <Text style={{ fontSize: 16, fontWeight: "600", color: theme.textPrimary }}>{service.name}</Text>
+              <View key={service.id} style={{ width: "47%" }}>
+                <Card onPress={() => router.push(`/servicios/${service.id}`)} accessibilityLabel={service.name}>
+                  <View style={{ gap: 10 }}>
+                    <View
+                      style={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: 24,
+                        backgroundColor: theme.primarySoft,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Ionicons name="heart-outline" size={24} color={theme.primary} />
+                    </View>
+                    <Text style={{ fontSize: 15, fontWeight: "700", color: theme.textPrimary }} numberOfLines={2}>
+                      {service.name}
+                    </Text>
                     {service.description ? (
-                      <Text style={{ fontSize: 14, color: theme.textSecondary }} numberOfLines={2}>
+                      <Text style={{ fontSize: 13, color: theme.textSecondary }} numberOfLines={3}>
                         {service.description}
                       </Text>
                     ) : null}
-                    <Text style={{ fontSize: 13, fontWeight: "600", color: theme.primary, marginTop: 4 }}>Ver detalle</Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                      <Text style={{ fontSize: 13, fontWeight: "700", color: theme.primary }}>Ver profesionales</Text>
+                      <Ionicons name="arrow-forward" size={14} color={theme.primary} />
+                    </View>
                   </View>
-                </View>
-              </Card>
+                </Card>
+              </View>
             ))}
           </View>
         </View>

@@ -4,13 +4,24 @@ import { FlatList, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { dayOfWeekSchema } from "@geras/shared";
 import type { DayOfWeek, PublicProfessionalView } from "@geras/shared";
-import { Avatar, Card, EmptyState, InlineAlert, LoadingState, SearchableSelectField, StatusBadge, useGerasTheme } from "@geras/ui";
+import {
+  Avatar,
+  Card,
+  EmptyState,
+  InlineAlert,
+  LoadingState,
+  SearchableSelectField,
+  SecondaryButton,
+  StatusBadge,
+  useGerasTheme,
+} from "@geras/ui";
 import { usePublicProfessionals } from "@/hooks/usePublicProfessionals";
 import { useComunasCatalog, useServicesCatalog } from "@/hooks/useCatalogs";
 import { useCareRecipient } from "@/hooks/useCareRecipients";
 import { useSelectedRecipientStore } from "@/state/selectedRecipientStore";
 import { useSelectedServiceStore } from "@/state/selectedServiceStore";
 import { SelectChips } from "@/components/SelectChips";
+import { nextAvailabilityLabel } from "@/lib/availability";
 
 const DAY_LABELS: Record<DayOfWeek, string> = {
   monday: "Lun",
@@ -48,35 +59,6 @@ function minPriceOf(item: PublicProfessionalView): number | null {
   return Math.min(...services.map((s) => s.price));
 }
 
-const WEEKDAY_ORDER: DayOfWeek[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
-const WEEKDAY_FULL_LABELS: Record<DayOfWeek, string> = {
-  monday: "Lunes",
-  tuesday: "Martes",
-  wednesday: "Miércoles",
-  thursday: "Jueves",
-  friday: "Viernes",
-  saturday: "Sábado",
-  sunday: "Domingo",
-};
-
-// "Próxima disponibilidad" para la tarjeta: el día más cercano (desde
-// hoy) en que el profesional tiene al menos un bloque semanal — no
-// calcula horas exactas (eso es la agenda real, ver
-// professionals/[id]/book), solo orienta a la familia antes de entrar.
-function nextAvailabilityLabel(availability: AvailabilityEntry[] | null): string | null {
-  if (!availability || availability.length === 0) return null;
-  const availableDays = new Set(availability.map((a) => a.day));
-  const todayIndex = (new Date().getDay() + 6) % 7; // 0 = lunes
-  for (let offset = 0; offset < 7; offset++) {
-    const day = WEEKDAY_ORDER[(todayIndex + offset) % 7]!;
-    if (availableDays.has(day)) {
-      if (offset === 0) return "Hoy";
-      if (offset === 1) return "Mañana";
-      return WEEKDAY_FULL_LABELS[day];
-    }
-  }
-  return null;
-}
 
 // Marketplace público (Fase 2): filtros por categoría/servicio/comuna/
 // disponibilidad/rating mínimo/precio y orden por relevancia,
@@ -138,11 +120,11 @@ export default function ProfessionalsScreen() {
     const services = (item.services as unknown as ServiceEntry[] | null) ?? [];
     const availability = (item.availability as unknown as AvailabilityEntry[] | null) ?? [];
     const priceFrom = minPriceOf(item);
-    const nextAvailable = nextAvailabilityLabel(availability);
+    const nextAvailable = nextAvailabilityLabel(availability.map((a) => a.day));
     return (
       <Card onPress={() => router.push(`/professionals/${item.id}`)} accessibilityLabel={item.full_name ?? "Profesional"}>
-        <View style={{ flexDirection: "row", gap: 12 }}>
-          <Avatar uri={item.profile_photo_url} size={48} />
+        <View style={{ flexDirection: "row", gap: 14 }}>
+          <Avatar uri={item.profile_photo_url} size={64} />
           <View style={{ flex: 1, gap: 4 }}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
               <Text style={{ fontSize: 16, fontWeight: "600", color: theme.textPrimary, flexShrink: 1 }} numberOfLines={1}>
@@ -183,7 +165,9 @@ export default function ProfessionalsScreen() {
                 </View>
               ) : null}
             </View>
-            <Text style={{ fontSize: 13, fontWeight: "600", color: theme.primary, marginTop: 2 }}>Ver perfil</Text>
+            <View style={{ marginTop: 6, alignSelf: "flex-start" }}>
+              <SecondaryButton label="Ver perfil" size="compact" onPress={() => router.push(`/professionals/${item.id}`)} />
+            </View>
           </View>
         </View>
       </Card>

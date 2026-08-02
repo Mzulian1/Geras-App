@@ -19,6 +19,7 @@ import {
 import { usePublicProfessional } from "@/hooks/usePublicProfessionals";
 import { useSelectedServiceStore } from "@/state/selectedServiceStore";
 import { useSelectedProfessionalStore } from "@/state/selectedProfessionalStore";
+import { nextAvailabilityLabel } from "@/lib/availability";
 
 const DAY_LABELS: Record<DayOfWeek, string> = {
   monday: "Lunes",
@@ -80,6 +81,7 @@ export default function ProfessionalPublicProfileScreen() {
   const availability = (professional.availability as unknown as AvailabilityEntry[] | null) ?? [];
   const coverage = professional.coverage_comunas ?? [];
   const effectiveServiceId = services.length === 1 ? services[0]?.service_id ?? null : pickedServiceId;
+  const nextProfessionalAvailability = nextAvailabilityLabel(availability.map((a) => a.day));
 
   // Conserva professionalId + serviceId al entrar a requests/new, para
   // que ese wizard salte el paso "Servicio" y reserve directo con este
@@ -105,34 +107,53 @@ export default function ProfessionalPublicProfileScreen() {
       }
     >
       <AppHeader title="Detalle del profesional" onBack={() => router.back()} />
-      <View style={{ padding: 16, gap: 20 }}>
+
+      {/* Cabecera visual */}
+      <View style={{ backgroundColor: theme.primaryDark, padding: 20, paddingBottom: 24 }}>
         <View style={{ flexDirection: "row", gap: 14, alignItems: "center" }}>
-          <Avatar uri={professional.profile_photo_url} size={64} />
+          <Avatar uri={professional.profile_photo_url} size={72} />
           <View style={{ flex: 1, gap: 6 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Text style={{ fontSize: 22, fontWeight: "700", color: theme.textPrimary, flexShrink: 1 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <Text style={{ fontSize: 20, fontWeight: "700", color: theme.white, flexShrink: 1 }}>
                 {professional.full_name}
               </Text>
               {professional.verification_status === "approved" ? <StatusBadge kind="verification" value="approved" /> : null}
             </View>
-            <Text style={{ fontSize: 15, color: theme.textSecondary }}>
+            <Text style={{ fontSize: 14, color: theme.accent }}>
               {professional.profession_name} · {professional.base_comuna ?? "Sin comuna"}
             </Text>
+            {professional.average_rating ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <Ionicons name="star" size={15} color="#FFD166" />
+                <Text style={{ fontSize: 14, color: theme.white }}>
+                  {professional.average_rating} · {professional.total_reviews} reseñas
+                </Text>
+              </View>
+            ) : (
+              <Text style={{ fontSize: 13, color: theme.accent }}>Todavía sin reseñas</Text>
+            )}
           </View>
         </View>
+      </View>
 
-        <View style={{ gap: 6 }}>
-          {professional.average_rating ? (
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-              <Ionicons name="star" size={16} color={theme.warning} />
-              <Text style={{ fontSize: 15, color: theme.textSecondary }}>
-                {professional.average_rating} · {professional.total_reviews} reseñas
-              </Text>
-            </View>
-          ) : (
-            <Text style={{ fontSize: 14, color: theme.textSecondary }}>Todavía sin reseñas</Text>
-          )}
-        </View>
+      <View style={{ padding: 16, gap: 20 }}>
+        {nextProfessionalAvailability ? (
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+              padding: 12,
+              borderRadius: 12,
+              backgroundColor: theme.successSoft,
+            }}
+          >
+            <Ionicons name="calendar" size={18} color={theme.success} />
+            <Text style={{ fontSize: 14, fontWeight: "600", color: theme.success }}>
+              Próxima disponibilidad: {nextProfessionalAvailability}
+            </Text>
+          </View>
+        ) : null}
 
         {professional.bio || professional.years_experience ? (
           <Card>

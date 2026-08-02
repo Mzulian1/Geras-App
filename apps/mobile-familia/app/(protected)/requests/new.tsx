@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { Pressable, Text, View } from "react-native";
@@ -513,8 +513,8 @@ export default function NewServiceRequestScreen() {
                 {!values.preferred_date ? (
                   <InlineAlert message="Los días destacados tienen horarios disponibles. Elige uno para ver las horas." icon="calendar-outline" />
                 ) : null}
-                <View>
-                  <Text style={{ fontSize: 14, fontWeight: "500", marginBottom: 8, color: theme.textPrimary }}>
+                <Card>
+                  <Text style={{ fontSize: 14, fontWeight: "600", marginBottom: 10, color: theme.textPrimary }}>
                     Fecha{fieldErrors.preferred_date ? <Text style={{ color: theme.error }}> *</Text> : null}
                   </Text>
                   <CalendarGrid
@@ -528,11 +528,11 @@ export default function NewServiceRequestScreen() {
                   {fieldErrors.preferred_date ? (
                     <Text style={{ fontSize: 12, color: theme.error, marginTop: 4 }}>{fieldErrors.preferred_date}</Text>
                   ) : null}
-                </View>
+                </Card>
 
                 {values.preferred_date ? (
-                  <View>
-                    <Text style={{ fontSize: 14, fontWeight: "500", marginBottom: 8, color: theme.textPrimary }}>
+                  <Card>
+                    <Text style={{ fontSize: 14, fontWeight: "600", marginBottom: 10, color: theme.textPrimary }}>
                       {formatDateLongCL(values.preferred_date)}
                       {fieldErrors.requested_time ? <Text style={{ color: theme.error }}> *</Text> : null}
                     </Text>
@@ -544,7 +544,7 @@ export default function NewServiceRequestScreen() {
                     {fieldErrors.requested_time ? (
                       <Text style={{ fontSize: 12, color: theme.error, marginTop: 4 }}>{fieldErrors.requested_time}</Text>
                     ) : null}
-                  </View>
+                  </Card>
                 ) : null}
               </View>
             )
@@ -569,19 +569,64 @@ export default function NewServiceRequestScreen() {
         ) : null}
 
         {step.key === "review" ? (
-          <>
-            <View style={{ gap: 10 }}>
-              <SummaryRow label="Servicio" value={selectedService?.name ?? "—"} />
-              <SummaryRow label="Para" value={selectedRecipient?.full_name ?? "—"} />
-              <SummaryRow label="Comuna" value={selectedComuna?.name ?? "—"} />
-              <SummaryRow
-                label="Fecha y hora"
-                value={values.preferred_date ? `${formatDateCL(values.preferred_date)} · ${values.requested_time ?? "—"}` : "—"}
-              />
-              {directBooking && selectedService?.base_price_min ? (
-                <SummaryRow label="Precio" value={`Desde $${selectedService.base_price_min.toLocaleString("es-CL")}`} />
-              ) : null}
-            </View>
+          <View style={{ gap: 12 }}>
+            {directBooking && professionalQuery.data ? (
+              <SummaryCard icon="person" title="Profesional">
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                  <Avatar uri={professionalQuery.data.profile_photo_url} size={40} />
+                  <View>
+                    <Text style={{ fontSize: 15, fontWeight: "600", color: theme.textPrimary }}>
+                      {professionalQuery.data.full_name}
+                    </Text>
+                    <Text style={{ fontSize: 13, color: theme.textSecondary }}>{selectedService?.name ?? "—"}</Text>
+                  </View>
+                </View>
+              </SummaryCard>
+            ) : (
+              <SummaryCard icon="heart" title="Servicio">
+                <Text style={{ fontSize: 15, color: theme.textPrimary }}>{selectedService?.name ?? "—"}</Text>
+              </SummaryCard>
+            )}
+
+            <SummaryCard icon="calendar" title="Fecha y hora">
+              <Text style={{ fontSize: 15, color: theme.textPrimary }}>
+                {values.preferred_date ? `${formatDateCL(values.preferred_date)} · ${values.requested_time ?? "—"}` : "—"}
+              </Text>
+            </SummaryCard>
+
+            <SummaryCard icon="person-circle" title="Persona mayor">
+              <Text style={{ fontSize: 15, color: theme.textPrimary }}>{selectedRecipient?.full_name ?? "—"}</Text>
+            </SummaryCard>
+
+            <SummaryCard icon="location" title="Ubicación">
+              <Text style={{ fontSize: 15, color: theme.textPrimary }}>{selectedComuna?.name ?? "—"}</Text>
+            </SummaryCard>
+
+            {directBooking && availabilityQuery.data ? (
+              <SummaryCard icon="pricetag" title="Precio">
+                <Text style={{ fontSize: 15, fontWeight: "700", color: theme.textPrimary }}>
+                  ${availabilityQuery.data.price.toLocaleString("es-CL")} · {availabilityQuery.data.durationMinutes} min
+                </Text>
+              </SummaryCard>
+            ) : selectedService?.base_price_min ? (
+              <SummaryCard icon="pricetag" title="Precio">
+                <Text style={{ fontSize: 15, fontWeight: "700", color: theme.textPrimary }}>
+                  Desde ${selectedService.base_price_min.toLocaleString("es-CL")}
+                </Text>
+              </SummaryCard>
+            ) : null}
+
+            {/* Preparación de pago: sin cobros reales todavía — ver
+                lib/features.ts::paymentsEnabled. Cuando se active, esta
+                sección pasa a pedir un método de pago real. */}
+            <SummaryCard icon="card" title="Estado de pago">
+              <Text style={{ fontSize: 13, color: theme.textSecondary, lineHeight: 19 }}>
+                {paymentsEnabled
+                  ? "Elige tu método de pago para confirmar la reserva."
+                  : "El pago en línea estará disponible próximamente. Por ahora, coordina el pago directamente con el profesional o la residencia."}
+              </Text>
+            </SummaryCard>
+
             <TextField
               label="Observaciones (opcional)"
               value={values.description}
@@ -593,32 +638,8 @@ export default function NewServiceRequestScreen() {
               error={fieldErrors.description}
             />
 
-            {/* Preparación de pago: sin cobros reales todavía — ver
-                lib/features.ts::paymentsEnabled. Cuando se active, esta
-                sección pasa a pedir un método de pago real. */}
-            <View
-              style={{
-                gap: 6,
-                padding: 12,
-                borderRadius: 8,
-                borderWidth: 1,
-                borderColor: theme.borderSoft,
-                backgroundColor: theme.surfaceSecondary,
-              }}
-            >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                <Ionicons name="card-outline" size={18} color={theme.textSecondary} />
-                <Text style={{ fontSize: 14, fontWeight: "600", color: theme.textPrimary }}>Estado de pago</Text>
-              </View>
-              <Text style={{ fontSize: 13, color: theme.textSecondary }}>
-                {paymentsEnabled
-                  ? "Elige tu método de pago para confirmar la reserva."
-                  : "El pago en línea estará disponible próximamente. Por ahora, coordina el pago directamente con el profesional o la residencia."}
-              </Text>
-            </View>
-
             {submitError ? <Text style={{ fontSize: 13, color: theme.error }}>{submitError}</Text> : null}
-          </>
+          </View>
         ) : null}
       </View>
 
@@ -633,12 +654,25 @@ export default function NewServiceRequestScreen() {
   );
 }
 
-function SummaryRow({ label, value }: { label: string; value: string }) {
+function SummaryCard({
+  icon,
+  title,
+  children,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  title: string;
+  children: ReactNode;
+}) {
   const theme = useGerasTheme();
   return (
-    <View style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: theme.borderSoft }}>
-      <Text style={{ fontSize: 14, color: theme.textSecondary }}>{label}</Text>
-      <Text style={{ fontSize: 14, fontWeight: "600", color: theme.textPrimary }}>{value}</Text>
-    </View>
+    <Card>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
+        <Ionicons name={icon} size={16} color={theme.textSecondary} />
+        <Text style={{ fontSize: 13, fontWeight: "600", color: theme.textSecondary, textTransform: "uppercase" }}>
+          {title}
+        </Text>
+      </View>
+      {children}
+    </Card>
   );
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useLocalSearchParams, router } from "expo-router";
 import { Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -147,7 +147,7 @@ export default function BookingConfirmationScreen() {
         </View>
 
         <Card>
-          <View style={{ flexDirection: "row", gap: 12, alignItems: "center", marginBottom: 12 }}>
+          <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
             <Avatar uri={booking.professional_profiles?.profile_photo_url} size={48} />
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 16, fontWeight: "700", color: theme.textPrimary }}>
@@ -157,13 +157,31 @@ export default function BookingConfirmationScreen() {
             </View>
             <StatusBadge kind="booking" value={booking.status} />
           </View>
-          <InfoRow label="Para" value={booking.service_requests?.care_recipients?.full_name ?? "—"} />
+        </Card>
+
+        <SectionCard icon="calendar" title="Fecha y hora">
           <InfoRow label="Fecha" value={formatDateTimeCL(booking.scheduled_at)} />
           <InfoRow label="Duración" value={`${booking.duration_minutes} min`} />
+        </SectionCard>
+
+        <SectionCard icon="person-circle" title="Persona mayor">
+          <InfoRow label="Para" value={booking.service_requests?.care_recipients?.full_name ?? "—"} />
+        </SectionCard>
+
+        <SectionCard icon="location" title="Ubicación">
           <InfoRow label="Comuna" value={booking.service_requests?.comunas?.name ?? "—"} />
+        </SectionCard>
+
+        <SectionCard icon="pricetag" title="Precio">
           <InfoRow label="Precio" value={`$${booking.price.toLocaleString("es-CL")}`} />
           <InfoRow label="Incluye comisión de Geras" value={`$${booking.platform_fee.toLocaleString("es-CL")}`} />
-        </Card>
+        </SectionCard>
+
+        <SectionCard icon="card" title="Estado de pago">
+          <Text style={{ fontSize: 13, color: theme.textSecondary, lineHeight: 19 }}>
+            El pago en línea estará disponible próximamente. Coordina el pago directamente con el profesional.
+          </Text>
+        </SectionCard>
 
         {actionError ? <Text style={{ fontSize: 13, color: theme.error }}>{actionError}</Text> : null}
 
@@ -211,5 +229,20 @@ export default function BookingConfirmationScreen() {
         onCancel={() => setConfirmingCompletion(false)}
       />
     </Screen>
+  );
+}
+
+function SectionCard({ icon, title, children }: { icon: keyof typeof Ionicons.glyphMap; title: string; children: ReactNode }) {
+  const theme = useGerasTheme();
+  return (
+    <Card>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
+        <Ionicons name={icon} size={16} color={theme.textSecondary} />
+        <Text style={{ fontSize: 13, fontWeight: "600", color: theme.textSecondary, textTransform: "uppercase" }}>
+          {title}
+        </Text>
+      </View>
+      {children}
+    </Card>
   );
 }
