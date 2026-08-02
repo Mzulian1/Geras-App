@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useLocalSearchParams, router } from "expo-router";
 import { Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import type { BookingStatus } from "@geras/shared";
 import { useBooking, useBookingReview, useConfirmBookingCompletion, useSubmitBookingReview } from "@/hooks/useBooking";
 import { TextField } from "@/components/TextField";
 import { SelectChips } from "@/components/SelectChips";
@@ -14,11 +16,32 @@ import {
   LoadingState,
   PrimaryButton,
   Screen,
+  SecondaryButton,
   StatusBadge,
   SuccessFeedback,
   TertiaryButton,
   useGerasTheme,
 } from "@geras/ui";
+
+const STATUS_MESSAGE: Record<BookingStatus, string> = {
+  pending: "Tu solicitud de reserva fue registrada correctamente. Te avisaremos cuando el profesional confirme la atención.",
+  confirmed: "El profesional confirmó tu reserva.",
+  en_route: "El profesional está en camino.",
+  in_progress: "La atención está en curso.",
+  professional_completed: "El profesional marcó el servicio como realizado. Confírmalo para completar la reserva.",
+  completed: "Este servicio ya fue completado.",
+  cancelled: "Esta reserva fue cancelada.",
+};
+
+const NEXT_STEP: Record<BookingStatus, string | null> = {
+  pending: "Esperando confirmación del profesional.",
+  confirmed: "Recibirás un aviso cuando el profesional vaya en camino.",
+  en_route: "El profesional llegará pronto.",
+  in_progress: "Te avisaremos cuando el servicio termine.",
+  professional_completed: "Confirma abajo que el servicio se realizó.",
+  completed: null,
+  cancelled: null,
+};
 
 const RATING_OPTIONS = [1, 2, 3, 4, 5].map((value) => ({ value, label: String(value) }));
 
@@ -89,6 +112,7 @@ export default function BookingConfirmationScreen() {
   }
 
   const existingReview = reviewQuery.data;
+  const nextStep = NEXT_STEP[booking.status];
 
   return (
     <Screen scroll padded={false}>
@@ -101,12 +125,28 @@ export default function BookingConfirmationScreen() {
           <StatusBadge kind="booking" value={booking.status} />
         </View>
 
+        <View
+          style={{
+            flexDirection: "row",
+            gap: 10,
+            padding: 12,
+            borderRadius: 8,
+            backgroundColor: theme.successSoft,
+          }}
+        >
+          <Ionicons name="checkmark-circle-outline" size={20} color={theme.success} />
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={{ fontSize: 14, color: theme.textPrimary, lineHeight: 20 }}>{STATUS_MESSAGE[booking.status]}</Text>
+            {nextStep ? <Text style={{ fontSize: 13, color: theme.textSecondary }}>{nextStep}</Text> : null}
+          </View>
+        </View>
+
         <Card>
           <InfoRow label="Profesional" value={booking.professional_profiles?.full_name ?? "—"} />
-          <InfoRow
-            label="Fecha"
-            value={formatDateTimeCL(booking.scheduled_at)}
-          />
+          <InfoRow label="Para" value={booking.service_requests?.care_recipients?.full_name ?? "—"} />
+          <InfoRow label="Fecha" value={formatDateTimeCL(booking.scheduled_at)} />
+          <InfoRow label="Duración" value={`${booking.duration_minutes} min`} />
+          <InfoRow label="Comuna" value={booking.service_requests?.comunas?.name ?? "—"} />
           <InfoRow label="Precio" value={`$${booking.price.toLocaleString("es-CL")}`} />
           <InfoRow label="Incluye comisión de Geras" value={`$${booking.platform_fee.toLocaleString("es-CL")}`} />
         </Card>
@@ -142,7 +182,10 @@ export default function BookingConfirmationScreen() {
           )
         ) : null}
 
-        <TertiaryButton label="Volver al inicio" onPress={() => router.replace("/")} />
+        <View style={{ gap: 8 }}>
+          <SecondaryButton label="Ver actividad" onPress={() => router.replace("/actividad")} fullWidth />
+          <TertiaryButton label="Volver al inicio" onPress={() => router.replace("/")} />
+        </View>
       </View>
 
       <ConfirmationModal

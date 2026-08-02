@@ -1,24 +1,29 @@
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { createServiceRequestSchema, formatDateCL } from "@geras/shared";
+import { createServiceRequestSchema, formatDateCL, formatDateLongCL, toDateKeyCL } from "@geras/shared";
 import type { CreateServiceRequestInput } from "@geras/shared";
 import {
   AppHeader,
   BottomActionBar,
+  CalendarGrid,
   DatePickerField,
   ErrorState,
+  LoadingState,
   PrimaryButton,
   Screen,
   SearchableSelectField,
   TertiaryButton,
+  TimeSlotPicker,
   useGerasTheme,
 } from "@geras/ui";
 import { useFamilyBootstrap } from "@/hooks/useFamilyBootstrap";
 import { useCareRecipients } from "@/hooks/useCareRecipients";
 import { useComunasCatalog, useServicesCatalog } from "@/hooks/useCatalogs";
 import { useCreateBooking, useCreateServiceRequest, useGenerateMatches } from "@/hooks/useServiceRequestFlow";
+import { useProfessionalAvailability } from "@/hooks/useProfessionalAvailability";
 import { useSelectedRecipientStore } from "@/state/selectedRecipientStore";
 import { useSelectedServiceStore } from "@/state/selectedServiceStore";
 import { useSelectedProfessionalStore } from "@/state/selectedProfessionalStore";
@@ -29,6 +34,8 @@ import { TimePickerField } from "@/components/TimePickerField";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { describeMutationError } from "@/lib/errors";
 import { paymentsEnabled } from "@/lib/features";
+
+const AVAILABILITY_WINDOW_DAYS = 30;
 
 const DURATION_OPTIONS = [
   { value: 30, label: "30 min" },
@@ -75,6 +82,7 @@ const EMPTY_VALUES: FormValues = {
 // familia tiene una sola persona registrada se preselecciona sola.
 export default function NewServiceRequestScreen() {
   const theme = useGerasTheme();
+  const queryClient = useQueryClient();
   const bootstrap = useFamilyBootstrap();
   const businessUserId = bootstrap.status === "ready" ? bootstrap.businessUser.id : undefined;
   const recipientsQuery = useCareRecipients(businessUserId);
@@ -106,6 +114,24 @@ export default function NewServiceRequestScreen() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [showRecipientModal, setShowRecipientModal] = useState(false);
   const [professionalUnavailable, setProfessionalUnavailable] = useState(false);
+  const [slotJustTaken, setSlotJustTaken] = useState(false);
+
+  // Ventana fija de 30 días desde hoy — se calcula una sola vez al
+  // montar la pantalla (no en cada render) para que la query de
+  // disponibilidad no cambie de key sin necesidad.
+  const [availabilityRange] = useState(() => {
+    const today = new Date();
+    const from = toDateKeyCL(today);
+    const to = toDateKeyCL(new Date(today.getTime() + AVAILABILITY_WINDOW_DAYS * 24 * 60 * 60 * 1000));
+    return { from, to };
+  });
+
+  const availabilityQuery = useProfessionalAvailability(
+    directBooking ? preselectedProfessionalId : null,
+    values.service_id,
+    availabilityRange.from,
+    availabilityRange.to
+  );
 
   const recipients = recipientsQuery.data ?? [];
 
@@ -119,6 +145,16 @@ export default function NewServiceRequestScreen() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recipients.length]);
+
+  // En reserva directa la duración la define el servicio del
+  // profesional (no una elección libre) — se toma de la agenda real en
+  // cuanto llega, en vez de dejar el default de 60 sin avisar.
+  useEffect(() => {
+    if (directBooking && availabilityQuery.data && values.duration_minutes !== availabilityQuery.data.durationMinutes) {
+      setValues((prev) => ({ ...prev, duration_minutes: availabilityQuery.data!.durationMinutes }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availabilityQuery.data?.durationMinutes]);
 
   if (bootstrap.status !== "ready" || recipientsQuery.isPending || servicesQuery.isPending || comunasQuery.isPending) {
     return <LoadingScreen />;
@@ -201,19 +237,57 @@ export default function NewServiceRequestScreen() {
           professional_id: preselectedProfessionalId,
         });
         setSelectedProfessionalId(null);
+        // El horario recién tomado no debe seguir apareciendo libre ni
+        // en esta misma sesión (agenda de este profesional) ni en
+        // Actividad — sin esto, ambas listas seguirían mostrando el
+        // estado previo hasta que expire el staleTime (60s).
+        void queryClient.invalidateQueries({ queryKey: ["professional-availability", preselectedProfessionalId] });
+        void queryClient.invalidateQueries({ queryKey: ["my-service-requests", businessUserId] });
         router.replace(`/requests/${createdRequest.id}/confirmation?bookingId=${booking.id}`);
         return;
       }
 
       router.replace(`/requests/${createdRequest.id}/matches`);
     } catch (err) {
-      setSubmitError(describeMutationError(err));
+      const message = describeMutationError(err);
+      // El server ya traduce la violación de la restricción de
+      // solapamiento a este mensaje (bookings.ts::mapRpcError) — se
+      // detecta acá para mostrar la pantalla específica en vez del
+      // error genérico de abajo.
+      if (message.includes("ya tiene una reserva en ese horario")) {
+        setSlotJustTaken(true);
+        return;
+      }
+      setSubmitError(message);
     }
   }
 
   const selectedService = servicesQuery.data?.find((s) => s.id === values.service_id);
   const selectedRecipient = recipients.find((r) => r.id === values.care_recipient_id);
   const selectedComuna = comunasQuery.data?.find((c) => c.id === values.comuna_id);
+
+  if (slotJustTaken) {
+    return (
+      <Screen scroll={false} padded={false}>
+        <AppHeader title="Horario ocupado" onBack={() => router.back()} />
+        <View style={{ flex: 1, padding: 16, justifyContent: "center", gap: 16 }}>
+          <Ionicons name="time-outline" size={48} color={theme.textSecondary} style={{ alignSelf: "center" }} />
+          <Text style={{ fontSize: 16, color: theme.textPrimary, textAlign: "center", lineHeight: 22 }}>
+            Este horario acaba de dejar de estar disponible.{"\n"}Selecciona otra hora para continuar.
+          </Text>
+          <PrimaryButton
+            label="Elegir otra hora"
+            onPress={() => {
+              setSlotJustTaken(false);
+              update("requested_time", null);
+              setStepIndex(steps.findIndex((s) => s.key === "schedule"));
+            }}
+            fullWidth
+          />
+        </View>
+      </Screen>
+    );
+  }
 
   if (professionalUnavailable) {
     return (
@@ -370,22 +444,79 @@ export default function NewServiceRequestScreen() {
         ) : null}
 
         {step.key === "schedule" ? (
-          <>
-            <DatePickerField
-              label="Fecha"
-              value={values.preferred_date || null}
-              onChange={(dateKey) => update("preferred_date", dateKey)}
-              required
-              errorText={fieldErrors.preferred_date}
-            />
-            <TimePickerField label="Hora" value={values.requested_time} onChange={(v) => update("requested_time", v)} error={fieldErrors.requested_time} />
-            <SelectChips
-              label="Duración"
-              options={DURATION_OPTIONS}
-              selected={[values.duration_minutes]}
-              onToggle={(value) => update("duration_minutes", value)}
-            />
-          </>
+          directBooking ? (
+            availabilityQuery.isPending ? (
+              <LoadingState variant="card" rows={2} />
+            ) : availabilityQuery.isError ? (
+              <ErrorState
+                message="No pudimos cargar la agenda de este profesional."
+                onRetry={() => availabilityQuery.refetch()}
+              />
+            ) : (availabilityQuery.data?.days.length ?? 0) === 0 ? (
+              <ErrorState
+                title="Sin horarios disponibles"
+                message="Este profesional no tiene horas disponibles en los próximos 30 días para este servicio."
+                retryLabel="Buscar profesionales similares"
+                onRetry={() => {
+                  setSelectedProfessionalId(null);
+                  router.replace("/explorar?segment=profesionales");
+                }}
+              />
+            ) : (
+              <View style={{ gap: 16 }}>
+                <View>
+                  <Text style={{ fontSize: 14, fontWeight: "500", marginBottom: 8, color: theme.textPrimary }}>
+                    Fecha{fieldErrors.preferred_date ? <Text style={{ color: theme.error }}> *</Text> : null}
+                  </Text>
+                  <CalendarGrid
+                    value={values.preferred_date || null}
+                    availableDates={new Set((availabilityQuery.data?.days ?? []).map((d) => d.date))}
+                    onChange={(dateKey) => {
+                      update("preferred_date", dateKey);
+                      update("requested_time", null);
+                    }}
+                  />
+                  {fieldErrors.preferred_date ? (
+                    <Text style={{ fontSize: 12, color: theme.error, marginTop: 4 }}>{fieldErrors.preferred_date}</Text>
+                  ) : null}
+                </View>
+
+                {values.preferred_date ? (
+                  <View>
+                    <Text style={{ fontSize: 14, fontWeight: "500", marginBottom: 8, color: theme.textPrimary }}>
+                      {formatDateLongCL(values.preferred_date)}
+                      {fieldErrors.requested_time ? <Text style={{ color: theme.error }}> *</Text> : null}
+                    </Text>
+                    <TimeSlotPicker
+                      times={availabilityQuery.data?.days.find((d) => d.date === values.preferred_date)?.times ?? []}
+                      value={values.requested_time}
+                      onChange={(time) => update("requested_time", time)}
+                    />
+                    {fieldErrors.requested_time ? (
+                      <Text style={{ fontSize: 12, color: theme.error, marginTop: 4 }}>{fieldErrors.requested_time}</Text>
+                    ) : null}
+                  </View>
+                ) : null}
+              </View>
+            )
+          ) : (
+            <>
+              <DatePickerField
+                label="Fecha"
+                value={values.preferred_date || null}
+                onChange={(dateKey) => update("preferred_date", dateKey)}
+                required
+                errorText={fieldErrors.preferred_date}
+              />
+              <TimePickerField label="Hora" value={values.requested_time} onChange={(v) => update("requested_time", v)} error={fieldErrors.requested_time} />
+              <SelectChips
+                label="Duración"
+                options={DURATION_OPTIONS}
+                selected={[values.duration_minutes]}
+                onToggle={(value) => update("duration_minutes", value)}
+              />
+            </>
+          )
         ) : null}
 
         {step.key === "review" ? (

@@ -2,12 +2,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { callServerApi } from "@/lib/apiClient";
 
+const HAS_ACTIVE_BOOKINGS = (bookings: { status: string }[] | undefined) =>
+  (bookings ?? []).some((b) => ["pending", "confirmed", "en_route", "in_progress"].includes(b.status));
+
 // Lectura directa vía RLS (bookings_select_professional) — es solo
 // mirar las reservas propias, sin ninguna regla de negocio adicional.
 // Trae TODOS los estados (incluye completed/cancelled) porque la tab
 // "Reservas" (Fase 4) necesita también el filtro "Finalizadas" — la
 // query antes solo pedía los estados activos porque nada más los
-// necesitaba todavía.
+// necesitaba todavía. Poll corto mientras haya algo "vivo" — una
+// familia puede reservar en cualquier momento y esta lista debe
+// mostrarlo sin que el profesional tenga que reiniciar la app.
 export function useProfessionalBookings(professionalId: string | undefined) {
   return useQuery({
     queryKey: ["professional-bookings", professionalId],
@@ -21,6 +26,7 @@ export function useProfessionalBookings(professionalId: string | undefined) {
       return data;
     },
     enabled: !!professionalId,
+    refetchInterval: (query) => (HAS_ACTIVE_BOOKINGS(query.state.data) ? 15000 : false),
   });
 }
 

@@ -55,12 +55,13 @@ export function BookingsListPage() {
                 <TableHead>Precio</TableHead>
                 <TableHead>Comisión Geras</TableHead>
                 <TableHead>Estado</TableHead>
+                <TableHead>Creada</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading &&
                 Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}><TableCell colSpan={7}><Skeleton className="h-6 w-full" /></TableCell></TableRow>
+                  <TableRow key={i}><TableCell colSpan={8}><Skeleton className="h-6 w-full" /></TableCell></TableRow>
                 ))}
               {bookings?.map((b) => (
                 <TableRow key={b.id}>
@@ -71,6 +72,7 @@ export function BookingsListPage() {
                   <TableCell>{formatCLP(b.price)}</TableCell>
                   <TableCell>{formatCLP(Math.round(b.price * commissionRate))}</TableCell>
                   <TableCell><Badge variant={BOOKING_STATUS_LABELS[b.status].variant}>{BOOKING_STATUS_LABELS[b.status].label}</Badge></TableCell>
+                  <TableCell>{formatDateTime(b.created_at)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

@@ -15,7 +15,9 @@ export function useBooking(bookingId: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("bookings")
-        .select("*, professional_profiles(full_name), services(name)")
+        .select(
+          "*, professional_profiles(full_name), services(name), service_requests(care_recipients(full_name), comunas(name))"
+        )
         .eq("id", bookingId!)
         .single();
       if (error) throw error;
