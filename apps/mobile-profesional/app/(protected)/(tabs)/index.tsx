@@ -3,6 +3,7 @@ import { Redirect, router } from "expo-router";
 import { Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Card, LoadingState, PrimaryButton, Screen, SectionHeader, StatusBadge, useGerasTheme } from "@geras/ui";
+import { formatDateTimeCL } from "@geras/shared";
 import { useProfessionalBootstrap } from "@/hooks/useProfessionalBootstrap";
 import { useProfessionalBookings } from "@/hooks/useBookings";
 import { useProfessionalAvailabilityQuery } from "@/hooks/useOnboardingQueries";
@@ -85,7 +86,7 @@ export default function InicioScreen() {
               <View style={{ flex: 1, gap: 2 }}>
                 <Text style={{ fontSize: 16, fontWeight: "600", color: theme.textPrimary }}>{nextBooking.services?.name ?? "Servicio"}</Text>
                 <Text style={{ fontSize: 14, color: theme.textSecondary }}>
-                  {new Date(nextBooking.scheduled_at).toLocaleString("es-CL", { dateStyle: "long", timeStyle: "short" })}
+                  {formatDateTimeCL(nextBooking.scheduled_at)}
                 </Text>
               </View>
               <StatusBadge kind="booking" value={nextBooking.status} />

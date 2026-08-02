@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { router, useLocalSearchParams } from "expo-router";
 import { Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -16,6 +17,7 @@ import {
 } from "@geras/ui";
 import { usePublicProfessional } from "@/hooks/usePublicProfessionals";
 import { useSelectedServiceStore } from "@/state/selectedServiceStore";
+import { useSelectedProfessionalStore } from "@/state/selectedProfessionalStore";
 
 const DAY_LABELS: Record<DayOfWeek, string> = {
   monday: "Lunes",
@@ -50,6 +52,8 @@ export default function ProfessionalPublicProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const professionalQuery = usePublicProfessional(id);
   const setSelectedServiceId = useSelectedServiceStore((s) => s.setSelectedServiceId);
+  const setSelectedProfessionalId = useSelectedProfessionalStore((s) => s.setSelectedProfessionalId);
+  const [pickedServiceId, setPickedServiceId] = useState<number | null>(null);
 
   if (professionalQuery.isPending) {
     return (
@@ -74,9 +78,16 @@ export default function ProfessionalPublicProfileScreen() {
   const services = (professional.services as unknown as ServiceEntry[] | null) ?? [];
   const availability = (professional.availability as unknown as AvailabilityEntry[] | null) ?? [];
   const coverage = professional.coverage_comunas ?? [];
+  const effectiveServiceId = services.length === 1 ? services[0]?.service_id ?? null : pickedServiceId;
 
+  // Conserva professionalId + serviceId al entrar a requests/new, para
+  // que ese wizard salte el paso "Servicio" y reserve directo con este
+  // profesional en vez de pasar por el browse de matches (Bloque 2:
+  // "Flujo desde perfil profesional").
   function startRequest() {
-    if (services[0]) setSelectedServiceId(services[0].service_id);
+    if (!effectiveServiceId) return;
+    setSelectedServiceId(effectiveServiceId);
+    setSelectedProfessionalId(id);
     router.push("/requests/new");
   }
 
@@ -85,7 +96,11 @@ export default function ProfessionalPublicProfileScreen() {
       scroll
       padded={false}
       footer={
-        <BottomActionBar primary={<PrimaryButton label="Solicitar servicio" onPress={startRequest} fullWidth />} />
+        <BottomActionBar
+          primary={
+            <PrimaryButton label="Solicitar atención" onPress={startRequest} disabled={!effectiveServiceId} fullWidth />
+          }
+        />
       }
     >
       <AppHeader title="Detalle del profesional" onBack={() => router.back()} />
@@ -125,15 +140,43 @@ export default function ProfessionalPublicProfileScreen() {
 
         <View style={{ gap: 10 }}>
           <Text style={{ fontSize: 18, fontWeight: "600", color: theme.textPrimary }}>Servicios y precios</Text>
+          {services.length > 1 ? (
+            <Text style={{ fontSize: 13, color: theme.textSecondary }}>Elige qué servicio quieres solicitar:</Text>
+          ) : null}
           {services.length > 0 ? (
-            <Card>
-              {services.map((s, index) => (
-                <View key={s.service_id}>
-                  {index > 0 ? <View style={{ height: 1, backgroundColor: theme.borderSoft, marginVertical: 8 }} /> : null}
-                  <InfoRow label={s.service_name} value={`$${s.price.toLocaleString("es-CL")}`} />
-                </View>
-              ))}
-            </Card>
+            services.length > 1 ? (
+              <View style={{ gap: 8 }}>
+                {services.map((s) => {
+                  const isSelected = s.service_id === pickedServiceId;
+                  return (
+                    <Card
+                      key={s.service_id}
+                      onPress={() => setPickedServiceId(s.service_id)}
+                      accessibilityLabel={`${s.service_name}, $${s.price.toLocaleString("es-CL")}`}
+                      style={isSelected ? { borderWidth: 2, borderColor: theme.primary } : undefined}
+                    >
+                      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                        <InfoRow label={s.service_name} value={`$${s.price.toLocaleString("es-CL")}`} />
+                        <Ionicons
+                          name={isSelected ? "checkmark-circle" : "ellipse-outline"}
+                          size={20}
+                          color={isSelected ? theme.primary : theme.borderSoft}
+                        />
+                      </View>
+                    </Card>
+                  );
+                })}
+              </View>
+            ) : (
+              <Card>
+                {services.map((s, index) => (
+                  <View key={s.service_id}>
+                    {index > 0 ? <View style={{ height: 1, backgroundColor: theme.borderSoft, marginVertical: 8 }} /> : null}
+                    <InfoRow label={s.service_name} value={`$${s.price.toLocaleString("es-CL")}`} />
+                  </View>
+                ))}
+              </Card>
+            )
           ) : (
             <Text style={{ fontSize: 14, color: theme.textSecondary }}>Sin servicios publicados.</Text>
           )}

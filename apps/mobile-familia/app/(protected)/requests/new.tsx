@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import { router } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { createServiceRequestSchema } from "@geras/shared";
+import { createServiceRequestSchema, formatDateCL } from "@geras/shared";
 import type { CreateServiceRequestInput } from "@geras/shared";
 import {
   AppHeader,
   BottomActionBar,
+  DatePickerField,
   ErrorState,
   PrimaryButton,
   Screen,
@@ -17,15 +18,17 @@ import {
 import { useFamilyBootstrap } from "@/hooks/useFamilyBootstrap";
 import { useCareRecipients } from "@/hooks/useCareRecipients";
 import { useComunasCatalog, useServicesCatalog } from "@/hooks/useCatalogs";
-import { useCreateServiceRequest, useGenerateMatches } from "@/hooks/useServiceRequestFlow";
+import { useCreateBooking, useCreateServiceRequest, useGenerateMatches } from "@/hooks/useServiceRequestFlow";
 import { useSelectedRecipientStore } from "@/state/selectedRecipientStore";
 import { useSelectedServiceStore } from "@/state/selectedServiceStore";
+import { useSelectedProfessionalStore } from "@/state/selectedProfessionalStore";
 import { TextField } from "@/components/TextField";
 import { SelectChips } from "@/components/SelectChips";
 import { RecipientSelectModal } from "@/components/RecipientSelectModal";
 import { TimePickerField } from "@/components/TimePickerField";
 import { LoadingScreen } from "@/components/LoadingScreen";
 import { describeMutationError } from "@/lib/errors";
+import { paymentsEnabled } from "@/lib/features";
 
 const DURATION_OPTIONS = [
   { value: 30, label: "30 min" },
@@ -79,9 +82,19 @@ export default function NewServiceRequestScreen() {
   const comunasQuery = useComunasCatalog();
   const preselectedRecipientId = useSelectedRecipientStore((s) => s.selectedRecipientId);
   const preselectedServiceId = useSelectedServiceStore((s) => s.selectedServiceId);
+  const preselectedProfessionalId = useSelectedProfessionalStore((s) => s.selectedProfessionalId);
+  const setSelectedProfessionalId = useSelectedProfessionalStore((s) => s.setSelectedProfessionalId);
 
   const createRequest = useCreateServiceRequest();
   const generateMatches = useGenerateMatches();
+  const createBooking = useCreateBooking();
+
+  // Si venimos de "Solicitar atención" en el perfil de un profesional,
+  // ya sabemos qué servicio y con quién — el paso "Servicio" sobra, y al
+  // confirmar se reserva directo con ese profesional en vez de mostrar
+  // la lista de matches (Bloque 2: "Flujo desde perfil profesional").
+  const directBooking = Boolean(preselectedProfessionalId);
+  const steps = directBooking ? STEPS.filter((s) => s.key !== "service") : STEPS;
 
   const [stepIndex, setStepIndex] = useState(0);
   const [values, setValues] = useState<FormValues>({
@@ -92,6 +105,7 @@ export default function NewServiceRequestScreen() {
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof CreateServiceRequestInput, string>>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [showRecipientModal, setShowRecipientModal] = useState(false);
+  const [professionalUnavailable, setProfessionalUnavailable] = useState(false);
 
   const recipients = recipientsQuery.data ?? [];
 
@@ -110,9 +124,9 @@ export default function NewServiceRequestScreen() {
     return <LoadingScreen />;
   }
 
-  const submitting = createRequest.isPending || generateMatches.isPending;
-  const step = STEPS[stepIndex] ?? STEPS[0];
-  const isLastStep = stepIndex === STEPS.length - 1;
+  const submitting = createRequest.isPending || generateMatches.isPending || createBooking.isPending;
+  const step = steps[stepIndex] ?? steps[0];
+  const isLastStep = stepIndex === steps.length - 1;
 
   function update<K extends keyof FormValues>(key: K, value: FormValues[K]) {
     setValues((prev) => ({ ...prev, [key]: value }));
@@ -138,7 +152,7 @@ export default function NewServiceRequestScreen() {
       void handleSubmit();
       return;
     }
-    setStepIndex((i) => Math.min(i + 1, STEPS.length - 1));
+    setStepIndex((i) => Math.min(i + 1, steps.length - 1));
   }
 
   function goBack() {
@@ -151,6 +165,7 @@ export default function NewServiceRequestScreen() {
 
   async function handleSubmit() {
     setSubmitError(null);
+    setProfessionalUnavailable(false);
     const result = createServiceRequestSchema.safeParse(values);
     if (!result.success) {
       const flat = result.error.flatten().fieldErrors;
@@ -164,7 +179,32 @@ export default function NewServiceRequestScreen() {
 
     try {
       const { request: createdRequest } = await createRequest.mutateAsync(result.data);
-      await generateMatches.mutateAsync(createdRequest.id);
+      // Vuelve a validar disponibilidad real en el momento de confirmar
+      // (Bloque 2: "antes de confirmar, volver a validar el horario") —
+      // generate-matches recalcula cobertura/servicio/disponibilidad
+      // contra el estado actual, no contra lo que se veía en el perfil.
+      const { matches } = await generateMatches.mutateAsync(createdRequest.id);
+
+      if (directBooking && preselectedProfessionalId) {
+        const match = matches.find((m) => m.professional_id === preselectedProfessionalId);
+        if (!match) {
+          // El profesional elegido ya no es un resultado válido para
+          // este horario/comuna/servicio — la reserva SÍ está protegida
+          // (create_booking_from_match la habría rechazado igual), pero
+          // acá se detecta antes de intentarlo para mostrar el mensaje
+          // específico en vez de un error genérico.
+          setProfessionalUnavailable(true);
+          return;
+        }
+        const { booking } = await createBooking.mutateAsync({
+          request_id: createdRequest.id,
+          professional_id: preselectedProfessionalId,
+        });
+        setSelectedProfessionalId(null);
+        router.replace(`/requests/${createdRequest.id}/confirmation?bookingId=${booking.id}`);
+        return;
+      }
+
       router.replace(`/requests/${createdRequest.id}/matches`);
     } catch (err) {
       setSubmitError(describeMutationError(err));
@@ -175,23 +215,63 @@ export default function NewServiceRequestScreen() {
   const selectedRecipient = recipients.find((r) => r.id === values.care_recipient_id);
   const selectedComuna = comunasQuery.data?.find((c) => c.id === values.comuna_id);
 
+  if (professionalUnavailable) {
+    return (
+      <Screen scroll={false} padded={false}>
+        <AppHeader title="Sin disponibilidad" onBack={() => router.back()} />
+        <View style={{ flex: 1, padding: 16, justifyContent: "center", gap: 16 }}>
+          <Ionicons name="calendar-outline" size={48} color={theme.textSecondary} style={{ alignSelf: "center" }} />
+          <Text style={{ fontSize: 16, color: theme.textPrimary, textAlign: "center", lineHeight: 22 }}>
+            Este profesional no tiene horarios disponibles para la fecha seleccionada.{"\n"}Puedes elegir otra fecha o
+            revisar profesionales similares.
+          </Text>
+          <View style={{ gap: 10, marginTop: 8 }}>
+            <PrimaryButton
+              label="Ver otra fecha"
+              onPress={() => {
+                setProfessionalUnavailable(false);
+                setStepIndex(steps.findIndex((s) => s.key === "schedule"));
+              }}
+              fullWidth
+            />
+            <TertiaryButton
+              label="Buscar profesionales similares"
+              onPress={() => {
+                setSelectedProfessionalId(null);
+                router.replace(`/explorar?segment=profesionales`);
+              }}
+            />
+            <TertiaryButton label="Volver al perfil" onPress={() => router.back()} />
+          </View>
+        </View>
+      </Screen>
+    );
+  }
+
   return (
     <Screen
       scroll
       padded={false}
       footer={
         <BottomActionBar
-          primary={<PrimaryButton label={isLastStep ? "Buscar profesionales" : "Continuar"} onPress={goNext} loading={submitting} fullWidth />}
+          primary={
+            <PrimaryButton
+              label={isLastStep ? (directBooking ? "Confirmar reserva" : "Buscar profesionales") : "Continuar"}
+              onPress={goNext}
+              loading={submitting}
+              fullWidth
+            />
+          }
           secondary={<TertiaryButton label="Atrás" onPress={goBack} />}
         />
       }
     >
-      <AppHeader title={step.title} subtitle={`Paso ${stepIndex + 1} de ${STEPS.length}`} onBack={goBack} />
+      <AppHeader title={step.title} subtitle={`Paso ${stepIndex + 1} de ${steps.length}`} onBack={goBack} />
       <View style={{ height: 4, backgroundColor: theme.surfaceSecondary }}>
         <View
           style={{
             height: 4,
-            width: `${((stepIndex + 1) / STEPS.length) * 100}%`,
+            width: `${((stepIndex + 1) / steps.length) * 100}%`,
             backgroundColor: theme.primary,
           }}
         />
@@ -291,12 +371,12 @@ export default function NewServiceRequestScreen() {
 
         {step.key === "schedule" ? (
           <>
-            <TextField
-              label="Fecha (AAAA-MM-DD)"
-              value={values.preferred_date}
-              onChangeText={(v) => update("preferred_date", v)}
-              placeholder="2026-08-01"
-              error={fieldErrors.preferred_date}
+            <DatePickerField
+              label="Fecha"
+              value={values.preferred_date || null}
+              onChange={(dateKey) => update("preferred_date", dateKey)}
+              required
+              errorText={fieldErrors.preferred_date}
             />
             <TimePickerField label="Hora" value={values.requested_time} onChange={(v) => update("requested_time", v)} error={fieldErrors.requested_time} />
             <SelectChips
@@ -314,7 +394,13 @@ export default function NewServiceRequestScreen() {
               <SummaryRow label="Servicio" value={selectedService?.name ?? "—"} />
               <SummaryRow label="Para" value={selectedRecipient?.full_name ?? "—"} />
               <SummaryRow label="Comuna" value={selectedComuna?.name ?? "—"} />
-              <SummaryRow label="Fecha y hora" value={`${values.preferred_date} ${values.requested_time ?? ""}`.trim()} />
+              <SummaryRow
+                label="Fecha y hora"
+                value={values.preferred_date ? `${formatDateCL(values.preferred_date)} · ${values.requested_time ?? "—"}` : "—"}
+              />
+              {directBooking && selectedService?.base_price_min ? (
+                <SummaryRow label="Precio" value={`Desde $${selectedService.base_price_min.toLocaleString("es-CL")}`} />
+              ) : null}
             </View>
             <TextField
               label="Observaciones (opcional)"
@@ -326,6 +412,31 @@ export default function NewServiceRequestScreen() {
               textAlignVertical="top"
               error={fieldErrors.description}
             />
+
+            {/* Preparación de pago: sin cobros reales todavía — ver
+                lib/features.ts::paymentsEnabled. Cuando se active, esta
+                sección pasa a pedir un método de pago real. */}
+            <View
+              style={{
+                gap: 6,
+                padding: 12,
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: theme.borderSoft,
+                backgroundColor: theme.surfaceSecondary,
+              }}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Ionicons name="card-outline" size={18} color={theme.textSecondary} />
+                <Text style={{ fontSize: 14, fontWeight: "600", color: theme.textPrimary }}>Estado de pago</Text>
+              </View>
+              <Text style={{ fontSize: 13, color: theme.textSecondary }}>
+                {paymentsEnabled
+                  ? "Elige tu método de pago para confirmar la reserva."
+                  : "El pago en línea estará disponible próximamente. Por ahora, coordina el pago directamente con el profesional o la residencia."}
+              </Text>
+            </View>
+
             {submitError ? <Text style={{ fontSize: 13, color: theme.error }}>{submitError}</Text> : null}
           </>
         ) : null}

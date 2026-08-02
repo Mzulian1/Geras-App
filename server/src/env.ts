@@ -26,6 +26,10 @@ const envSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, "SUPABASE_SERVICE_ROLE_KEY es obligatorio"),
 
   RESEND_API_KEY: z.string().min(1, "RESEND_API_KEY es obligatorio"),
+  // Remitente de los correos transaccionales (confirmación de reserva,
+  // etc). Debe ser un dominio verificado en Resend en producción; el
+  // default sirve para desarrollo/pruebas.
+  EMAIL_FROM_ADDRESS: z.string().email().default("reservas@geras.cl"),
 
   // Lista separada por comas de orígenes permitidos para CORS. Opcional:
   // sin esta variable se usa un default seguro para desarrollo local.

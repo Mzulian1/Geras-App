@@ -24,6 +24,7 @@ import { asyncHandler } from "../../lib/asyncHandler.js";
 import { AppErrors } from "../../errors/AppError.js";
 import { supabaseAdmin } from "../../lib/supabase.js";
 import { logger } from "../../lib/logger.js";
+import { sendBookingConfirmationEmail } from "../../lib/emails/bookingConfirmation.js";
 
 export const bookingsRouter = Router();
 
@@ -113,12 +114,25 @@ bookingsRouter.post(
 
     const { data: booking, error: fetchError } = await supabaseAdmin
       .from("bookings")
-      .select("*")
+      .select("*, services(name), professional_profiles(full_name)")
       .eq("id", bookingId)
       .single();
     if (fetchError) throw new Error(fetchError.message);
 
     logger.info("booking_created", { bookingId, serviceRequestId: request_id, professionalId: professional_id });
+
+    // El correo nunca bloquea la respuesta: se dispara sin esperar (la
+    // función interna ya atrapa y loguea cualquier error de envío).
+    void sendBookingConfirmationEmail({
+      to: req.businessUser!.email,
+      professionalName: (booking as unknown as { professional_profiles: { full_name: string } | null }).professional_profiles?.full_name ?? "tu profesional",
+      serviceName: (booking as unknown as { services: { name: string } | null }).services?.name ?? "Servicio",
+      scheduledAt: booking.scheduled_at,
+      durationMinutes: booking.duration_minutes,
+      price: booking.price,
+      status: booking.status,
+    });
+
     res.status(201).json({ booking });
   })
 );

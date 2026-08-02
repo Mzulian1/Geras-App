@@ -4,3 +4,4 @@ export * from "./supabase";
 export * from "./query-client";
 export * from "./professional-onboarding";
 export * from "./booking-lifecycle";
+export * from "./dates";

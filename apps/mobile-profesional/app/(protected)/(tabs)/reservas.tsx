@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useLocalSearchParams } from "expo-router";
 import { FlatList, Text, View } from "react-native";
 import type { Booking, BookingStatus, ProfessionalBookingAction } from "@geras/shared";
-import { getNextProfessionalAction } from "@geras/shared";
+import { getNextProfessionalAction, formatDateTimeCL } from "@geras/shared";
 import {
   Card,
   ConfirmationModal,
@@ -148,7 +148,7 @@ export default function ReservasScreen() {
                     <StatusBadge kind="booking" value={item.status} />
                   </View>
                   <Text style={{ fontSize: 14, color: theme.textSecondary }}>
-                    {new Date(item.scheduled_at).toLocaleString("es-CL", { dateStyle: "long", timeStyle: "short" })}
+                    {formatDateTimeCL(item.scheduled_at)}
                   </Text>
                   <Text style={{ fontSize: 14, color: theme.textSecondary }}>
                     {item.duration_minutes} min · ${item.price.toLocaleString("es-CL")}

@@ -5,7 +5,7 @@ import { useBooking, useBookingReview, useConfirmBookingCompletion, useSubmitBoo
 import { TextField } from "@/components/TextField";
 import { SelectChips } from "@/components/SelectChips";
 import { describeMutationError } from "@/lib/errors";
-import { canFamilyConfirmCompletion, canReviewBooking } from "@geras/shared";
+import { canFamilyConfirmCompletion, canReviewBooking, formatDateTimeCL } from "@geras/shared";
 import {
   AppHeader,
   Card,
@@ -105,7 +105,7 @@ export default function BookingConfirmationScreen() {
           <InfoRow label="Profesional" value={booking.professional_profiles?.full_name ?? "—"} />
           <InfoRow
             label="Fecha"
-            value={new Date(booking.scheduled_at).toLocaleString("es-CL", { dateStyle: "long", timeStyle: "short" })}
+            value={formatDateTimeCL(booking.scheduled_at)}
           />
           <InfoRow label="Precio" value={`$${booking.price.toLocaleString("es-CL")}`} />
           <InfoRow label="Incluye comisión de Geras" value={`$${booking.platform_fee.toLocaleString("es-CL")}`} />

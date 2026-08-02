@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { router, useLocalSearchParams } from "expo-router";
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from "react-native";
-import { createResidenceInquirySchema, type CreateResidenceInquiryInput } from "@geras/shared";
+import { createResidenceInquirySchema, formatDateCL, type CreateResidenceInquiryInput } from "@geras/shared";
+import { DatePickerField } from "@geras/ui";
 import { useFamilyBootstrap } from "@/hooks/useFamilyBootstrap";
 import { useCareRecipients } from "@/hooks/useCareRecipients";
 import { useCreateResidenceInquiry } from "@/hooks/useResidenceInquiries";
@@ -209,12 +210,12 @@ export default function ResidenceInquiryScreen() {
           {step.key === "date" ? (
             inquiryType === "visit" ? (
               <>
-                <TextField
-                  label="Fecha preferida (AAAA-MM-DD)"
-                  value={values.preferred_date}
-                  onChangeText={(v) => update("preferred_date", v)}
-                  placeholder="2026-08-15"
-                  error={fieldErrors.preferred_date}
+                <DatePickerField
+                  label="Fecha preferida"
+                  value={values.preferred_date || null}
+                  onChange={(dateKey) => update("preferred_date", dateKey)}
+                  required
+                  errorText={fieldErrors.preferred_date}
                 />
                 <TimePickerField
                   label="Horario preferido"
@@ -271,7 +272,10 @@ export default function ResidenceInquiryScreen() {
                 <SummaryRow label="Para" value={selectedRecipient?.full_name ?? "No especificado"} />
                 <SummaryRow label="Tipo" value={inquiryType === "visit" ? "Visita" : "Información"} />
                 {inquiryType === "visit" ? (
-                  <SummaryRow label="Fecha y hora" value={`${values.preferred_date} ${values.preferred_time ?? ""}`.trim()} />
+                  <SummaryRow
+                    label="Fecha y hora"
+                    value={values.preferred_date ? `${formatDateCL(values.preferred_date)} · ${values.preferred_time ?? "—"}` : "—"}
+                  />
                 ) : null}
                 <SummaryRow label="Contacto" value={`${values.contact_name} · ${values.contact_phone}`} />
               </View>

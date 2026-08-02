@@ -34,4 +34,6 @@ export * from "./components/SearchableSelectModal";
 export * from "./components/SearchableSelectField";
 export * from "./components/MultiSelectModal";
 export * from "./components/MultiSelectField";
+export * from "./components/CalendarGrid";
+export * from "./components/DatePickerField";
 export * from "./components/SuccessFeedback";
