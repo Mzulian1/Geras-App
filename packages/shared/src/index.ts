@@ -5,3 +5,4 @@ export * from "./query-client";
 export * from "./professional-onboarding";
 export * from "./booking-lifecycle";
 export * from "./dates";
+export * from "./legal/content";

@@ -112,6 +112,24 @@ export default function PerfilScreen() {
             icon={<Ionicons name="help-circle-outline" size={18} color={theme.textSecondary} />}
           />
         </Card>
+        <Card onPress={() => router.push("/guia")} accessibilityLabel="Ver la guía de Geras nuevamente">
+          <InfoRow
+            label="¿Cómo funciona Geras?"
+            value="Ver guía"
+            icon={<Ionicons name="compass-outline" size={18} color={theme.textSecondary} />}
+          />
+        </Card>
+      </View>
+
+      <View style={{ gap: 12 }}>
+        <SectionHeader title="Legal y privacidad" />
+        <Card onPress={() => router.push("/legal")} accessibilityLabel="Ver documentos legales">
+          <InfoRow
+            label="Política de privacidad, términos y aviso legal"
+            value="Ver"
+            icon={<Ionicons name="shield-checkmark-outline" size={18} color={theme.textSecondary} />}
+          />
+        </Card>
       </View>
 
       <SecondaryButton label="Cerrar sesión" onPress={() => signOut()} fullWidth />

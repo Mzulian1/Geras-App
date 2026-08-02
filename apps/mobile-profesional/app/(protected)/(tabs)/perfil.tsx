@@ -1,4 +1,6 @@
+import { router } from "expo-router";
 import { useClerk } from "@clerk/clerk-expo";
+import { Ionicons } from "@expo/vector-icons";
 import { Text, View } from "react-native";
 import type { DocumentType } from "@geras/shared";
 import { Card, InfoRow, LoadingState, Screen, SecondaryButton, SectionHeader, StatusBadge, useGerasTheme } from "@geras/ui";
@@ -119,6 +121,28 @@ export default function PerfilScreen() {
               </View>
             ))
           )}
+        </Card>
+      </View>
+
+      <View style={{ gap: 12 }}>
+        <SectionHeader title="Ayuda" />
+        <Card onPress={() => router.push("/guia")} accessibilityLabel="Ver la guía de Geras Profesional nuevamente">
+          <InfoRow
+            label="¿Cómo funciona Geras Profesional?"
+            value="Ver guía"
+            icon={<Ionicons name="compass-outline" size={18} color={theme.textSecondary} />}
+          />
+        </Card>
+      </View>
+
+      <View style={{ gap: 12 }}>
+        <SectionHeader title="Legal y privacidad" />
+        <Card onPress={() => router.push("/legal")} accessibilityLabel="Ver documentos legales">
+          <InfoRow
+            label="Política de privacidad, términos y aviso legal"
+            value="Ver"
+            icon={<Ionicons name="shield-checkmark-outline" size={18} color={theme.textSecondary} />}
+          />
         </Card>
       </View>
 

@@ -36,4 +36,6 @@ export * from "./components/MultiSelectModal";
 export * from "./components/MultiSelectField";
 export * from "./components/CalendarGrid";
 export * from "./components/DatePickerField";
+export * from "./components/LegalDocumentScreen";
+export * from "./components/GuidedTour";
 export * from "./components/SuccessFeedback";
