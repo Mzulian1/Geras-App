@@ -4,6 +4,7 @@ import { Animated, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { BookingStatus } from "@geras/shared";
 import { useBooking, useBookingReview, useConfirmBookingCompletion, useSubmitBookingReview } from "@/hooks/useBooking";
+import { useLastBookingViewStore } from "@/state/lastBookingViewStore";
 import { TextField } from "@/components/TextField";
 import { SelectChips } from "@/components/SelectChips";
 import { describeMutationError } from "@/lib/errors";
@@ -47,6 +48,19 @@ const NEXT_STEP: Record<BookingStatus, string | null> = {
 
 const RATING_OPTIONS = [1, 2, 3, 4, 5].map((value) => ({ value, label: String(value) }));
 
+interface BookingView {
+  status: BookingStatus;
+  price: number;
+  platformFee: number;
+  scheduledAt: string;
+  durationMinutes: number;
+  professionalFullName: string;
+  professionalPhotoUrl: string | null;
+  serviceName: string;
+  recipientFullName: string | null;
+  comunaName: string | null;
+}
+
 // Paso 6-8 del flujo: la reserva ya quedó creada con precio y comisión
 // congelados por el server. Esta pantalla lee su estado (RLS propia,
 // useBooking hace polling mientras sigue "viva") y ofrece las dos
@@ -59,6 +73,7 @@ export default function BookingConfirmationScreen() {
   const theme = useGerasTheme();
   const { bookingId } = useLocalSearchParams<{ id: string; bookingId: string }>();
   const bookingQuery = useBooking(bookingId);
+  const seeded = useLastBookingViewStore((s) => (bookingId ? s.byId[bookingId] : undefined));
   const reviewQuery = useBookingReview(bookingId);
   const confirmCompletion = useConfirmBookingCompletion(bookingId);
   const submitReview = useSubmitBookingReview(bookingId);
@@ -76,22 +91,66 @@ export default function BookingConfirmationScreen() {
     Animated.spring(successScale, { toValue: 1, useNativeDriver: true, speed: 14, bounciness: 10 }).start();
   }, [successScale]);
 
-  if (bookingQuery.isPending) {
-    return (
-      <Screen>
-        <LoadingState variant="text" />
-      </Screen>
-    );
-  }
+  // La reserva recién creada (seeded, armada en requests/new.tsx con
+  // datos que el propio cliente ya tenía) permite mostrar la
+  // confirmación de inmediato — nunca depende únicamente de que la
+  // segunda lectura (useBooking, RLS directa) resuelva primero. Si
+  // ninguna de las dos existe todavía, se distingue "sigue cargando/
+  // reintentando" (no es un error real) de "confirmado que no existe"
+  // (bookingQuery ya agotó sus reintentos y no hay nada sembrado).
+  const live = bookingQuery.data;
+  const view: BookingView | null = live
+    ? {
+        status: live.status,
+        price: live.price,
+        platformFee: live.platform_fee,
+        scheduledAt: live.scheduled_at,
+        durationMinutes: live.duration_minutes,
+        professionalFullName: live.professional_profiles?.full_name ?? "—",
+        professionalPhotoUrl: live.professional_profiles?.profile_photo_url ?? null,
+        serviceName: live.services?.name ?? "Servicio",
+        recipientFullName: live.service_requests?.care_recipients?.full_name ?? null,
+        comunaName: live.service_requests?.comunas?.name ?? null,
+      }
+    : seeded
+      ? {
+          status: seeded.status as BookingStatus,
+          price: seeded.price,
+          platformFee: seeded.platformFee,
+          scheduledAt: seeded.scheduledAt,
+          durationMinutes: seeded.durationMinutes,
+          professionalFullName: seeded.professionalFullName,
+          professionalPhotoUrl: seeded.professionalPhotoUrl,
+          serviceName: seeded.serviceName,
+          recipientFullName: seeded.recipientFullName,
+          comunaName: seeded.comunaName,
+        }
+      : null;
 
-  const booking = bookingQuery.data;
-  if (!booking) {
+  if (!view) {
+    if (!bookingQuery.isError) {
+      return (
+        <Screen scroll={false} padded={false}>
+          <AppHeader title="Reserva" onBack={() => router.back()} />
+          <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 12 }}>
+            <LoadingState variant="text" />
+            <Text style={{ fontSize: 14, color: theme.textSecondary, textAlign: "center" }}>
+              Estamos confirmando los datos de tu reserva…
+            </Text>
+          </View>
+        </Screen>
+      );
+    }
     return (
       <Screen scroll={false} padded={false}>
         <AppHeader title="Reserva" onBack={() => router.back()} />
-        <Text style={{ fontSize: 15, color: theme.textSecondary, textAlign: "center", marginTop: 24 }}>
-          No encontramos esta reserva.
-        </Text>
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 12 }}>
+          <Ionicons name="alert-circle-outline" size={40} color={theme.textSecondary} />
+          <Text style={{ fontSize: 15, color: theme.textPrimary, textAlign: "center" }}>
+            No pudimos encontrar esta reserva.{"\n"}Puedes revisarla desde tu actividad.
+          </Text>
+          <SecondaryButton label="Ver mi actividad" onPress={() => router.replace("/actividad")} />
+        </View>
       </Screen>
     );
   }
@@ -121,9 +180,10 @@ export default function BookingConfirmationScreen() {
   }
 
   const existingReview = reviewQuery.data;
-  const nextStep = NEXT_STEP[booking.status];
+  const nextStep = NEXT_STEP[view.status];
 
-  const isFreshSuccess = booking.status === "pending" || booking.status === "confirmed";
+  const isFreshSuccess = view.status === "pending" || view.status === "confirmed";
+  const isLiveData = Boolean(live);
 
   return (
     <Screen scroll padded={false}>
@@ -148,45 +208,48 @@ export default function BookingConfirmationScreen() {
             />
           </Animated.View>
           <Text style={{ fontSize: 18, fontWeight: "700", color: theme.textPrimary, textAlign: "center" }}>
-            {STATUS_MESSAGE[booking.status]}
+            {STATUS_MESSAGE[view.status]}
           </Text>
           {nextStep ? (
             <Text style={{ fontSize: 14, color: theme.textSecondary, textAlign: "center" }}>{nextStep}</Text>
+          ) : null}
+          {!isLiveData ? (
+            <Text style={{ fontSize: 12, color: theme.textSecondary, textAlign: "center" }}>Confirmando estado actual…</Text>
           ) : null}
         </View>
 
         <Card>
           <View style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
-            <Avatar uri={booking.professional_profiles?.profile_photo_url} size={48} />
+            <Avatar uri={view.professionalPhotoUrl} size={48} />
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 16, fontWeight: "700", color: theme.textPrimary }}>
-                {booking.professional_profiles?.full_name ?? "—"}
+                {view.professionalFullName}
               </Text>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                <ServiceIcon service={{ name: booking.services?.name }} size={20} />
-                <Text style={{ fontSize: 14, color: theme.textSecondary }}>{booking.services?.name ?? "Servicio"}</Text>
+                <ServiceIcon service={{ name: view.serviceName }} size={20} />
+                <Text style={{ fontSize: 14, color: theme.textSecondary }}>{view.serviceName}</Text>
               </View>
             </View>
-            <StatusBadge kind="booking" value={booking.status} />
+            <StatusBadge kind="booking" value={view.status} />
           </View>
         </Card>
 
         <SectionCard icon="calendar" title="Fecha y hora">
-          <InfoRow label="Fecha" value={formatDateTimeCL(booking.scheduled_at)} />
-          <InfoRow label="Duración" value={`${booking.duration_minutes} min`} />
+          <InfoRow label="Fecha" value={formatDateTimeCL(view.scheduledAt)} />
+          <InfoRow label="Duración" value={`${view.durationMinutes} min`} />
         </SectionCard>
 
         <SectionCard icon="person-circle" title="Persona mayor">
-          <InfoRow label="Para" value={booking.service_requests?.care_recipients?.full_name ?? "—"} />
+          <InfoRow label="Para" value={view.recipientFullName ?? "—"} />
         </SectionCard>
 
         <SectionCard icon="location" title="Ubicación">
-          <InfoRow label="Comuna" value={booking.service_requests?.comunas?.name ?? "—"} />
+          <InfoRow label="Comuna" value={view.comunaName ?? "—"} />
         </SectionCard>
 
         <SectionCard icon="pricetag" title="Precio">
-          <InfoRow label="Precio" value={`$${booking.price.toLocaleString("es-CL")}`} />
-          <InfoRow label="Incluye comisión de Geras" value={`$${booking.platform_fee.toLocaleString("es-CL")}`} />
+          <InfoRow label="Precio" value={`$${view.price.toLocaleString("es-CL")}`} />
+          <InfoRow label="Incluye comisión de Geras" value={`$${view.platformFee.toLocaleString("es-CL")}`} />
         </SectionCard>
 
         <SectionCard icon="card" title="Estado de pago">
@@ -197,11 +260,11 @@ export default function BookingConfirmationScreen() {
 
         {actionError ? <Text style={{ fontSize: 13, color: theme.error }}>{actionError}</Text> : null}
 
-        {canFamilyConfirmCompletion(booking.status) ? (
+        {canFamilyConfirmCompletion(view.status) ? (
           <PrimaryButton label="Confirmar que el servicio se realizó" onPress={() => setConfirmingCompletion(true)} fullWidth />
         ) : null}
 
-        {canReviewBooking(booking.status) ? (
+        {canReviewBooking(view.status) ? (
           reviewQuery.isPending ? (
             <LoadingState variant="text" />
           ) : existingReview ? (

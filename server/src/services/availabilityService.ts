@@ -1,4 +1,4 @@
-import type { DayOfWeek } from "@geras/shared";
+import { combineChileDateAndTime, type DayOfWeek } from "@geras/shared";
 
 // Fuente única de la disponibilidad real de un profesional: el endpoint
 // GET /professionals/:id/availability y la validación previa a crear una
@@ -73,32 +73,6 @@ function minutesToTime(minutes: number): string {
     .padStart(2, "0");
   const m = (minutes % 60).toString().padStart(2, "0");
   return `${h}:${m}`;
-}
-
-// Convierte una hora de pared en Chile (dateKey + minutos desde
-// medianoche) al instante UTC real que representa — el inverso de
-// toSantiagoDateAndMinutes. Sin depender de una tabla de zonas horarias:
-// arranca con una conversión ingenua y se corrige contra cómo esa misma
-// marca de tiempo se lee de vuelta en hora de Chile (converge en una
-// iteración salvo justo en el instante de un cambio de horario, que
-// Chile no tiene desde 2019).
-function santiagoWallTimeToUtcIso(dateKey: string, minutesSinceMidnight: number): string {
-  const [y, m, d] = dateKey.split("-").map(Number);
-  const h = Math.floor(minutesSinceMidnight / 60);
-  const min = minutesSinceMidnight % 60;
-  let guess = Date.UTC(y!, (m ?? 1) - 1, d, h, min);
-
-  for (let i = 0; i < 3; i++) {
-    const read = toSantiagoDateAndMinutes(new Date(guess));
-    const [ry, rm, rd] = read.dateKey.split("-").map(Number);
-    const readAsUtcEquivalent = Date.UTC(ry!, (rm ?? 1) - 1, rd, Math.floor(read.minutes / 60), read.minutes % 60);
-    const targetAsUtcEquivalent = Date.UTC(y!, (m ?? 1) - 1, d, h, min);
-    const drift = targetAsUtcEquivalent - readAsUtcEquivalent;
-    if (drift === 0) break;
-    guess += drift;
-  }
-
-  return new Date(guess).toISOString();
 }
 
 // Un `dateKey` (YYYY-MM-DD) es una fecha calendario pura, sin horario —
@@ -182,8 +156,8 @@ export function computeAvailableDays(params: {
         if (overlaps) continue;
         slots.push({
           time: minutesToTime(start),
-          startAt: santiagoWallTimeToUtcIso(cursor, start),
-          endAt: santiagoWallTimeToUtcIso(cursor, end),
+          startAt: combineChileDateAndTime(cursor, minutesToTime(start)),
+          endAt: combineChileDateAndTime(cursor, minutesToTime(end)),
         });
       }
     }

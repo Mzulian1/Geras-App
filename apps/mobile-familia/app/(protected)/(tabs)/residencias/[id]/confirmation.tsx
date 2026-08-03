@@ -4,6 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { formatDateCL } from "@geras/shared";
 import { InfoRow, LoadingState, PrimaryButton, Screen, TertiaryButton, useGerasTheme } from "@geras/ui";
 import { useResidenceInquiry } from "@/hooks/useResidenceInquiries";
+import { useLastInquiryViewStore } from "@/state/lastInquiryViewStore";
 
 const STATUS_LABEL: Record<string, string> = {
   new: "Recibida",
@@ -14,16 +15,55 @@ const STATUS_LABEL: Record<string, string> = {
   discarded: "Descartada",
 };
 
+interface InquiryView {
+  residenceName: string;
+  isVisit: boolean;
+  preferredDate: string | null;
+  preferredTime: string | null;
+  recipientFullName: string | null;
+  contactName: string;
+  contactPhone: string;
+  status: string;
+}
+
 // Confirmación de envío — la solicitud ya quedó guardada en el server
-// (RPC create_residence_inquiry) antes de llegar acá; se vuelve a leer
-// (RLS propia, sin pasar por el server) para mostrar el resumen real en
-// vez de solo un mensaje genérico de éxito.
+// (RPC create_residence_inquiry) antes de llegar acá. Se muestra de
+// inmediato con lo que inquiry.tsx ya sembró al confirmar (misma idea
+// que la confirmación de reserva de profesional); useResidenceInquiry
+// (RLS directa) reemplaza esos datos en cuanto resuelve, sin bloquear
+// el render inicial.
 export default function ResidenceInquiryConfirmationScreen() {
   const theme = useGerasTheme();
   const { inquiryId, type } = useLocalSearchParams<{ id: string; inquiryId: string; type?: string }>();
   const inquiryQuery = useResidenceInquiry(inquiryId);
+  const seeded = useLastInquiryViewStore((s) => (inquiryId ? s.byId[inquiryId] : undefined));
 
-  if (inquiryQuery.isPending) {
+  const live = inquiryQuery.data;
+  const view: InquiryView | null = live
+    ? {
+        residenceName: live.residences?.name ?? "—",
+        isVisit: live.inquiry_type === "visit",
+        preferredDate: live.preferred_date,
+        preferredTime: live.preferred_time?.slice(0, 5) ?? null,
+        recipientFullName: live.care_recipients?.full_name ?? null,
+        contactName: live.contact_name,
+        contactPhone: live.contact_phone,
+        status: live.status,
+      }
+    : seeded
+      ? {
+          residenceName: seeded.residenceName,
+          isVisit: seeded.inquiryType === "visit",
+          preferredDate: seeded.preferredDate,
+          preferredTime: seeded.preferredTime,
+          recipientFullName: seeded.recipientFullName,
+          contactName: seeded.contactName,
+          contactPhone: seeded.contactPhone,
+          status: seeded.status,
+        }
+      : null;
+
+  if (!view && !inquiryQuery.isError) {
     return (
       <Screen>
         <LoadingState variant="text" />
@@ -31,8 +71,7 @@ export default function ResidenceInquiryConfirmationScreen() {
     );
   }
 
-  const inquiry = inquiryQuery.data;
-  const isVisit = (inquiry?.inquiry_type ?? type) === "visit";
+  const isVisit = view?.isVisit ?? type === "visit";
 
   return (
     <Screen scroll contentContainerStyle={{ alignItems: "center", gap: 16, padding: 16 }}>
@@ -56,7 +95,7 @@ export default function ResidenceInquiryConfirmationScreen() {
           : "Le avisamos a la residencia que quieres más información. Te contactaremos pronto."}
       </Text>
 
-      {inquiry ? (
+      {view ? (
         <View
           style={{
             width: "100%",
@@ -68,19 +107,23 @@ export default function ResidenceInquiryConfirmationScreen() {
             padding: 16,
           }}
         >
-          <InfoRow label="Residencia" value={inquiry.residences?.name ?? "—"} />
+          <InfoRow label="Residencia" value={view.residenceName} />
           <InfoRow label="Tipo de solicitud" value={isVisit ? "Visita" : "Información"} />
           {isVisit ? (
             <InfoRow
               label="Fecha y hora"
-              value={inquiry.preferred_date ? `${formatDateCL(inquiry.preferred_date)} · ${inquiry.preferred_time?.slice(0, 5) ?? "A coordinar"}` : "A coordinar"}
+              value={view.preferredDate ? `${formatDateCL(view.preferredDate)} · ${view.preferredTime ?? "A coordinar"}` : "A coordinar"}
             />
           ) : null}
-          <InfoRow label="Persona interesada" value={inquiry.care_recipients?.full_name ?? "No especificado"} />
-          <InfoRow label="Contacto" value={`${inquiry.contact_name} · ${inquiry.contact_phone}`} />
-          <InfoRow label="Estado" value={STATUS_LABEL[inquiry.status] ?? inquiry.status} />
+          <InfoRow label="Persona interesada" value={view.recipientFullName ?? "No especificado"} />
+          <InfoRow label="Contacto" value={`${view.contactName} · ${view.contactPhone}`} />
+          <InfoRow label="Estado" value={STATUS_LABEL[view.status] ?? view.status} />
         </View>
-      ) : null}
+      ) : (
+        <Text style={{ fontSize: 14, color: theme.textSecondary, textAlign: "center" }}>
+          Tu solicitud quedó registrada. Puedes revisar el detalle desde tu actividad.
+        </Text>
+      )}
 
       <Text style={{ fontSize: 13, color: theme.textSecondary, textAlign: "center" }}>
         Siguiente paso: la residencia se pondrá en contacto contigo directamente.

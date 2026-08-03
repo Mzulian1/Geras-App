@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { toDateKeyCL } from "@geras/shared";
+import { parseDateOnly, toDateKeyCL } from "@geras/shared";
 import { useGerasTheme } from "../theme/GerasThemeProvider";
 import { radii } from "../tokens/radii";
 import { spacing } from "../tokens/spacing";
@@ -34,7 +34,11 @@ export function CalendarGrid({ value, onChange, availableDates, minDate, maxDate
   const effectiveMin = minDate ?? today;
   const effectiveMax = maxDate ?? new Date(today.getFullYear(), today.getMonth(), today.getDate() + 60);
 
-  const [visibleMonth, setVisibleMonth] = useState(() => startOfMonth(value ? new Date(value) : today));
+  const [visibleMonth, setVisibleMonth] = useState(() => {
+    if (!value) return startOfMonth(today);
+    const { year, month, day } = parseDateOnly(value);
+    return startOfMonth(new Date(year, month - 1, day));
+  });
 
   const firstOfMonth = startOfMonth(visibleMonth);
   const daysInMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 0).getDate();

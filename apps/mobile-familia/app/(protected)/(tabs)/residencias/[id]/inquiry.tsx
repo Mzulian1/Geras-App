@@ -8,6 +8,7 @@ import { useFamilyBootstrap } from "@/hooks/useFamilyBootstrap";
 import { useCareRecipients } from "@/hooks/useCareRecipients";
 import { useCreateResidenceInquiry } from "@/hooks/useResidenceInquiries";
 import { useResidenceDetail } from "@/hooks/useResidencesCatalog";
+import { useLastInquiryViewStore } from "@/state/lastInquiryViewStore";
 import { SelectChips } from "@/components/SelectChips";
 import { TextField } from "@/components/TextField";
 import { TimePickerField } from "@/components/TimePickerField";
@@ -59,6 +60,7 @@ export default function ResidenceInquiryScreen() {
   const recipientsQuery = useCareRecipients(businessUserId);
   const residenceQuery = useResidenceDetail(id);
   const createInquiry = useCreateResidenceInquiry();
+  const setLastInquiryView = useLastInquiryViewStore((s) => s.setInquiryView);
 
   const [stepIndex, setStepIndex] = useState(0);
   const [inquiryType, setInquiryType] = useState<"information" | "visit">(type === "visit" ? "visit" : "information");
@@ -159,6 +161,21 @@ export default function ResidenceInquiryScreen() {
 
     try {
       const { inquiryId } = await createInquiry.mutateAsync(result.data);
+      // Igual que en la reserva de profesional: la confirmación se
+      // renderiza de inmediato con lo que ya sabemos acá, sin depender
+      // únicamente de que la lectura RLS directa (useResidenceInquiry)
+      // resuelva primero.
+      setLastInquiryView({
+        id: inquiryId,
+        inquiryType,
+        status: "new",
+        residenceName: residence!.name,
+        recipientFullName: selectedRecipient?.full_name ?? null,
+        contactName: values.contact_name,
+        contactPhone: values.contact_phone,
+        preferredDate: inquiryType === "visit" ? values.preferred_date || null : null,
+        preferredTime: inquiryType === "visit" ? values.preferred_time : null,
+      });
       router.replace(`/residencias/${id}/confirmation?inquiryId=${inquiryId}&type=${inquiryType}`);
     } catch (err) {
       setSubmitError(describeMutationError(err));
