@@ -3,7 +3,8 @@ import { router } from "expo-router";
 import { SectionList, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { BookingStatus, RequestStatus, ResidenceInquiryStatus } from "@geras/shared";
-import { Card, EmptyState, getServiceIcon, InlineAlert, LoadingState, Screen, StatusBadge, useGerasTheme } from "@geras/ui";
+import { Card, EmptyState, getServiceIcon, HelpBanner, LoadingState, Screen, StatusBadge, useGerasTheme } from "@geras/ui";
+import { useDismissibleHelp } from "@/hooks/useDismissibleHelp";
 import { useFamilyBootstrap } from "@/hooks/useFamilyBootstrap";
 import { useMyServiceRequests } from "@/hooks/useMyRequests";
 import { useMyResidenceInquiries } from "@/hooks/useResidenceInquiries";
@@ -48,6 +49,7 @@ const GROUP_ORDER: ActivityGroup[] = ["pending", "ongoing", "done"];
 // misma data, misma navegación de detalle.
 export default function ActividadScreen() {
   const theme = useGerasTheme();
+  const actividadHelp = useDismissibleHelp("actividad");
   const bootstrap = useFamilyBootstrap();
   const businessUserId = bootstrap.status === "ready" ? bootstrap.businessUser.id : undefined;
   const requestsQuery = useMyServiceRequests(businessUserId);
@@ -114,7 +116,12 @@ export default function ActividadScreen() {
         </Text>
       </View>
 
-      <InlineAlert message="Revisa aquí el estado de tus solicitudes y reservas." />
+      {actividadHelp.visible ? (
+        <HelpBanner
+          message="Aquí puedes revisar el estado de tus reservas y solicitudes."
+          onDismiss={actividadHelp.dismiss}
+        />
+      ) : null}
 
       {isLoading ? (
         <LoadingState variant="card" rows={3} />

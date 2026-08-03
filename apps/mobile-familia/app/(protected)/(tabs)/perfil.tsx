@@ -1,9 +1,11 @@
 import { router } from "expo-router";
 import { Linking, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import Constants from "expo-constants";
 import { useClerk, useUser } from "@clerk/clerk-expo";
 import type { CareRecipient } from "@geras/shared";
 import {
+  BrandFooter,
   Card,
   EmptyState,
   InfoRow,
@@ -133,6 +135,7 @@ export default function PerfilScreen() {
       </View>
 
       <SecondaryButton label="Cerrar sesión" onPress={() => signOut()} fullWidth />
+      <BrandFooter version={Constants.expoConfig?.version} />
     </Screen>
   );
 }

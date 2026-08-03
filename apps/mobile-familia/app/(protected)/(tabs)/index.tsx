@@ -2,12 +2,14 @@ import { useEffect, useMemo } from "react";
 import { router } from "expo-router";
 import { FlatList, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import Constants from "expo-constants";
 import { useUser } from "@clerk/clerk-expo";
 import type { BookingStatus } from "@geras/shared";
 import {
+  BrandFooter,
   Card,
   GerasBrand,
-  InlineAlert,
+  HelpBanner,
   LoadingState,
   PrimaryButton,
   Screen,
@@ -16,6 +18,7 @@ import {
   StatusBadge,
   useGerasTheme,
 } from "@geras/ui";
+import { useDismissibleHelp } from "@/hooks/useDismissibleHelp";
 import { useServicesShowcase, type ServiceShowcaseEntry } from "@/hooks/useCatalogs";
 import { useFamilyBootstrap } from "@/hooks/useFamilyBootstrap";
 import { useMyServiceRequests } from "@/hooks/useMyRequests";
@@ -35,6 +38,7 @@ export default function InicioScreen() {
   const businessUserId = bootstrap.status === "ready" ? bootstrap.businessUser.id : undefined;
   const requestsQuery = useMyServiceRequests(businessUserId);
   const guideGate = useGuideGate(bootstrap.status === "ready");
+  const inicioHelp = useDismissibleHelp("inicio");
 
   // Guía interactiva al primer ingreso: se dispara desde acá (no desde
   // el _layout raíz) para que /guia siga siendo una ruta alcanzable —
@@ -102,7 +106,12 @@ export default function InicioScreen() {
       </View>
 
       <View style={{ paddingHorizontal: 20, gap: 24 }}>
-        <InlineAlert message="Aquí puedes encontrar profesionales verificados para el cuidado de tu familia." />
+        {inicioHelp.visible ? (
+          <HelpBanner
+            message="Encuentra profesionales, servicios y residencias para personas mayores."
+            onDismiss={inicioHelp.dismiss}
+          />
+        ) : null}
 
         {/* Tarjeta destacada */}
         {activeRequest ? (
@@ -208,6 +217,8 @@ export default function InicioScreen() {
             </Card>
           </View>
         </View>
+
+        <BrandFooter version={Constants.expoConfig?.version} />
       </View>
     </Screen>
   );

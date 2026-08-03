@@ -44,5 +44,8 @@ export * from "./components/ErrorBoundary";
 export * from "./components/InlineAlert";
 export * from "./components/SuccessFeedback";
 export * from "./components/ServiceIcon";
+export * from "./components/GradientBackground";
+export * from "./components/HelpBanner";
+export * from "./components/BrandFooter";
 
 export * from "./icons/serviceIconMap";

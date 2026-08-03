@@ -3,10 +3,11 @@ import { router } from "expo-router";
 import { FlatList, Image, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { MobilityLevel } from "@geras/shared";
-import { Card, EmptyState, FormField, LoadingState, SearchableSelectField, SecondaryButton, useGerasTheme } from "@geras/ui";
+import { Card, EmptyState, FormField, HelpBanner, LoadingState, SearchableSelectField, SecondaryButton, useGerasTheme } from "@geras/ui";
 import { useResidencesCatalog } from "@/hooks/useResidencesCatalog";
 import { useComunasCatalog } from "@/hooks/useCatalogs";
 import { SelectChips } from "@/components/SelectChips";
+import { useDismissibleHelp } from "@/hooks/useDismissibleHelp";
 
 const MOBILITY_OPTIONS: { value: MobilityLevel; label: string }[] = [
   { value: "independent", label: "Independiente" },
@@ -22,6 +23,7 @@ const MOBILITY_OPTIONS: { value: MobilityLevel; label: string }[] = [
 // deja de venir en esta query — no hace falta lógica adicional acá.
 export default function ResidenciasScreen() {
   const theme = useGerasTheme();
+  const residenciasHelp = useDismissibleHelp("residencias");
   const comunasQuery = useComunasCatalog();
   const [comunaId, setComunaId] = useState<number | null>(null);
   const [region, setRegion] = useState<string | null>(null);
@@ -51,6 +53,12 @@ export default function ResidenciasScreen() {
       contentContainerStyle={{ gap: 12, paddingBottom: 24 }}
       ListHeaderComponent={
         <View style={{ gap: 12, paddingBottom: 16, marginBottom: 4, borderBottomWidth: 1, borderBottomColor: theme.borderSoft }}>
+          {residenciasHelp.visible ? (
+            <HelpBanner
+              message="Puedes solicitar información o coordinar una visita."
+              onDismiss={residenciasHelp.dismiss}
+            />
+          ) : null}
           <View style={{ gap: 4 }}>
             <SearchableSelectField
               label="Región"

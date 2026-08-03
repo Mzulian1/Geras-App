@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { ScrollView, Text, TextInput, View } from "react-native";
 import { Link, router } from "expo-router";
 import { useSignIn } from "@clerk/clerk-expo";
-import { GerasBrand } from "@geras/ui";
+import { GerasBrand, GradientBackground, PrimaryButton, useGerasTheme } from "@geras/ui";
 import { getClerkErrorMessage } from "@/lib/clerkError";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 
@@ -11,10 +11,13 @@ import { GoogleSignInButton } from "@/components/GoogleSignInButton";
 //    contraseña, que es la principal fuente de fricción y de abandono.
 //  - Etiquetas visibles arriba de cada campo, no solo `placeholder`: el
 //    placeholder desaparece al escribir y deja al usuario sin contexto.
-//  - Áreas táctiles de 48px+ (py-4) y tipografía grande (text-lg / text-xl).
+//  - Áreas táctiles de 48px+ y tipografía grande.
 //  - ScrollView para que con el teclado abierto, o con el tamaño de letra
 //    del sistema aumentado, nada quede inaccesible.
+//  - Gradiente institucional solo en la cabecera de marca; los campos y el
+//    botón de envío quedan sobre superficie clara para contraste garantizado.
 export default function SignInScreen() {
+  const theme = useGerasTheme();
   const { isLoaded, signIn, setActive } = useSignIn();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -41,90 +44,104 @@ export default function SignInScreen() {
   }
 
   return (
-    <ScrollView
-      className="flex-1 bg-white"
-      contentContainerClassName="grow justify-center gap-5 px-6 py-10"
-      keyboardShouldPersistTaps="handled"
-    >
-      <View className="items-center gap-3">
-        <GerasBrand variant="horizontal" tone="dark" size="lg" showTagline={false} />
-        <Text className="text-center text-base text-gray-600">
-          El ecosistema de cuidado y bienestar para personas mayores y sus familias
-        </Text>
-      </View>
-
-      {error ? (
-        <View className="rounded-lg bg-red-50 p-4">
-          <Text className="text-base text-red-700">{error}</Text>
+    <ScrollView style={{ flex: 1, backgroundColor: theme.surface }} keyboardShouldPersistTaps="handled">
+      <GradientBackground variant="primary" style={{ paddingTop: 64, paddingBottom: 32, paddingHorizontal: 24 }}>
+        <View style={{ alignItems: "center", gap: 12 }}>
+          <GerasBrand variant="horizontal" tone="light" size="lg" showTagline={false} />
+          <Text style={{ textAlign: "center", fontSize: 15, color: theme.white, paddingHorizontal: 8 }}>
+            El ecosistema de cuidado y bienestar para personas mayores y sus familias
+          </Text>
         </View>
-      ) : null}
+      </GradientBackground>
 
-      <View className="gap-2">
-        <GoogleSignInButton onError={setError} disabled={submitting} />
-        <Text className="text-center text-sm text-gray-500">
-          La forma más rápida. No necesitas recordar una contraseña.
+      <View style={{ gap: 20, padding: 24 }}>
+        {error ? (
+          <View style={{ borderRadius: 12, backgroundColor: theme.errorSoft, padding: 16 }}>
+            <Text style={{ fontSize: 15, color: theme.error }}>{error}</Text>
+          </View>
+        ) : null}
+
+        <View style={{ gap: 8 }}>
+          <GoogleSignInButton onError={setError} disabled={submitting} />
+          <Text style={{ textAlign: "center", fontSize: 13, color: theme.textSecondary }}>
+            La forma más rápida. No necesitas recordar una contraseña.
+          </Text>
+        </View>
+
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 4 }}>
+          <View style={{ height: 1, flex: 1, backgroundColor: theme.borderSoft }} />
+          <Text style={{ fontSize: 13, color: theme.textSecondary }}>o con tu email</Text>
+          <View style={{ height: 1, flex: 1, backgroundColor: theme.borderSoft }} />
+        </View>
+
+        <View style={{ gap: 6 }}>
+          <Text style={{ fontSize: 15, fontWeight: "500", color: theme.textPrimary }}>Email</Text>
+          <TextInput
+            style={{
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: theme.borderSoft,
+              paddingHorizontal: 16,
+              paddingVertical: 14,
+              fontSize: 16,
+              color: theme.textPrimary,
+              backgroundColor: theme.surface,
+            }}
+            placeholder="tucorreo@ejemplo.com"
+            placeholderTextColor={theme.textDisabled}
+            autoCapitalize="none"
+            autoComplete="email"
+            keyboardType="email-address"
+            value={email}
+            onChangeText={setEmail}
+            accessibilityLabel="Email"
+          />
+        </View>
+
+        <View style={{ gap: 6 }}>
+          <Text style={{ fontSize: 15, fontWeight: "500", color: theme.textPrimary }}>Contraseña</Text>
+          <TextInput
+            style={{
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: theme.borderSoft,
+              paddingHorizontal: 16,
+              paddingVertical: 14,
+              fontSize: 16,
+              color: theme.textPrimary,
+              backgroundColor: theme.surface,
+            }}
+            placeholder="Tu contraseña"
+            placeholderTextColor={theme.textDisabled}
+            secureTextEntry
+            autoComplete="password"
+            value={password}
+            onChangeText={setPassword}
+            accessibilityLabel="Contraseña"
+          />
+        </View>
+
+        <PrimaryButton
+          label="Iniciar sesión"
+          onPress={onSubmit}
+          loading={submitting}
+          disabled={!email || !password}
+          fullWidth
+        />
+
+        <View style={{ gap: 16, paddingTop: 8, alignItems: "center" }}>
+          <Link href="/forgot-password" style={{ fontSize: 15, color: theme.textSecondary }}>
+            ¿Olvidaste tu contraseña?
+          </Link>
+          <Link href="/sign-up" style={{ fontSize: 15, color: theme.textSecondary }}>
+            ¿No tienes cuenta? Crea una
+          </Link>
+        </View>
+
+        <Text style={{ textAlign: "center", fontSize: 12, color: theme.textDisabled, paddingTop: 16 }}>
+          Desarrollado por Soluciones Mayores
         </Text>
       </View>
-
-      <View className="flex-row items-center gap-3 py-2">
-        <View className="h-px flex-1 bg-gray-200" />
-        <Text className="text-sm text-gray-500">o con tu email</Text>
-        <View className="h-px flex-1 bg-gray-200" />
-      </View>
-
-      <View className="gap-2">
-        <Text className="text-base font-medium text-gray-700">Email</Text>
-        <TextInput
-          className="rounded-lg border border-gray-300 px-4 py-4 text-lg text-gray-900"
-          placeholder="tucorreo@ejemplo.com"
-          placeholderTextColor="#9ca3af"
-          autoCapitalize="none"
-          autoComplete="email"
-          keyboardType="email-address"
-          value={email}
-          onChangeText={setEmail}
-          accessibilityLabel="Email"
-        />
-      </View>
-
-      <View className="gap-2">
-        <Text className="text-base font-medium text-gray-700">Contraseña</Text>
-        <TextInput
-          className="rounded-lg border border-gray-300 px-4 py-4 text-lg text-gray-900"
-          placeholder="Tu contraseña"
-          placeholderTextColor="#9ca3af"
-          secureTextEntry
-          autoComplete="password"
-          value={password}
-          onChangeText={setPassword}
-          accessibilityLabel="Contraseña"
-        />
-      </View>
-
-      <Pressable
-        className="items-center justify-center rounded-lg bg-black py-4 disabled:opacity-50"
-        onPress={onSubmit}
-        disabled={submitting || !email || !password}
-        accessibilityRole="button"
-        accessibilityLabel="Iniciar sesión"
-      >
-        {submitting ? (
-          <ActivityIndicator color="#ffffff" />
-        ) : (
-          <Text className="text-lg font-semibold text-white">Iniciar sesión</Text>
-        )}
-      </Pressable>
-
-      <View className="gap-4 pt-2">
-        <Link href="/forgot-password" className="text-center text-base text-gray-600">
-          ¿Olvidaste tu contraseña?
-        </Link>
-        <Link href="/sign-up" className="text-center text-base text-gray-600">
-          ¿No tienes cuenta? Crea una
-        </Link>
-      </View>
-
-      <Text className="pt-6 text-center text-xs text-gray-400">Desarrollado por Soluciones Mayores</Text>
     </ScrollView>
   );
 }
