@@ -26,6 +26,7 @@ import { supabaseAdmin } from "../../lib/supabase.js";
 import { logger } from "../../lib/logger.js";
 import { sendBookingConfirmationEmail } from "../../lib/emails/bookingConfirmation.js";
 import { isWithinWeeklyBlock } from "../../services/availabilityService.js";
+import { checkProfessionalCoverage } from "../../services/coverageService.js";
 
 export const bookingsRouter = Router();
 
@@ -100,18 +101,28 @@ bookingsRouter.post(
 
     const { data: request, error: requestError } = await supabaseAdmin
       .from("service_requests")
-      .select("id, preferred_date, requested_time, duration_minutes")
+      .select("id, preferred_date, requested_time, duration_minutes, comuna_id")
       .eq("id", request_id)
       .eq("family_user_id", familyUserId)
       .maybeSingle();
     if (requestError) throw new Error(requestError.message);
     if (!request) throw AppErrors.notFound("No existe esa solicitud");
 
-    // Revalidación previa a la RPC, con la misma lógica que ya usa el
-    // endpoint de disponibilidad (availabilityService) — para devolver el
-    // mensaje específico de "sin disponibilidad" antes de la excepción
-    // cruda de Postgres. create_booking_from_match (migración 020/031)
-    // sigue siendo la validación atómica y final.
+    // Revalidaciones previas a la RPC — misma lógica que ya usan el
+    // endpoint de disponibilidad y coverageService, para devolver un
+    // mensaje específico antes de la excepción cruda de Postgres.
+    // create_booking_from_match (migración 020/031) sigue siendo la
+    // validación atómica y final para ambas reglas.
+    if (request.comuna_id) {
+      const coverage = await checkProfessionalCoverage(supabaseAdmin, {
+        professionalId: professional_id,
+        communeId: request.comuna_id,
+      });
+      if (!coverage.covered) {
+        throw AppErrors.validation(undefined, "Este profesional no presta atención en la comuna seleccionada");
+      }
+    }
+
     if (request.preferred_date && request.requested_time && request.duration_minutes) {
       const { data: weeklyBlocks, error: weeklyBlocksError } = await supabaseAdmin
         .from("professional_availability")

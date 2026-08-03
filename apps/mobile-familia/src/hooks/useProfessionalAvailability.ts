@@ -46,3 +46,22 @@ export function useProfessionalAvailability(
     staleTime: 60 * 1000,
   });
 }
+
+export interface CoverageCheckResult {
+  covered: boolean;
+  coverageType: "commune";
+  reason: "outside_coverage" | null;
+}
+
+// Se consulta ANTES de mostrar el calendario (GET
+// /api/v1/professionals/:id/coverage) — misma fuente que usa el server
+// para validar la reserva (coverageService.ts), así que nunca deja
+// avanzar a una comuna que la reserva rechazaría igual.
+export function useProfessionalCoverage(professionalId: string | null, communeId: number | null) {
+  return useQuery({
+    queryKey: ["professional-coverage", professionalId, communeId],
+    queryFn: () => callServerApi<CoverageCheckResult>(`/api/v1/professionals/${professionalId}/coverage?communeId=${communeId}`),
+    enabled: Boolean(professionalId && communeId),
+    staleTime: 60 * 1000,
+  });
+}

@@ -6,6 +6,7 @@ import { asyncHandler } from "../../lib/asyncHandler.js";
 import { AppErrors } from "../../errors/AppError.js";
 import { supabaseAdmin } from "../../lib/supabase.js";
 import { addDays, computeAvailableDays } from "../../services/availabilityService.js";
+import { checkProfessionalCoverage } from "../../services/coverageService.js";
 
 export const professionalsRouter = Router();
 
@@ -109,6 +110,33 @@ professionalsRouter.get(
       price,
       days,
     });
+  })
+);
+
+const coverageQuerySchema = z.object({
+  communeId: z.coerce.number().int().positive(),
+});
+
+// GET /api/v1/professionals/:id/coverage?communeId=
+//
+// Se consulta ANTES de mostrar el calendario: si la comuna elegida no
+// está entre las que cubre el profesional, no tiene sentido dejar
+// avanzar a "Fecha y hora" — coverageService usa la misma tabla
+// (professional_coverage) que ya revalida create_booking_from_match,
+// así que nunca puede aprobar acá un horario que la reserva rechazaría.
+professionalsRouter.get(
+  "/:id/coverage",
+  asyncHandler(async (req, res) => {
+    const professionalId = req.params.id as string;
+    const parsed = coverageQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      throw AppErrors.validation(parsed.error.flatten().fieldErrors, "Parámetros inválidos");
+    }
+    const result = await checkProfessionalCoverage(supabaseAdmin, {
+      professionalId,
+      communeId: parsed.data.communeId,
+    });
+    res.json(result);
   })
 );
 

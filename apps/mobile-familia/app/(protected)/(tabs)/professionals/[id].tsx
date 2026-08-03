@@ -123,6 +123,13 @@ export default function ProfessionalPublicProfileScreen() {
             <Text style={{ fontSize: 14, color: theme.accent }}>
               {professional.profession_name} · {professional.base_comuna ?? "Sin comuna"}
             </Text>
+            {coverage.length > 0 ? (
+              <Text style={{ fontSize: 13, color: theme.accent }} numberOfLines={1}>
+                {coverage.length <= 2
+                  ? `Atiende en: ${coverage.join(" y ")}`
+                  : `Atiende en: ${coverage.slice(0, 2).join(", ")} y ${coverage.length - 2} comunas más`}
+              </Text>
+            ) : null}
             {professional.average_rating ? (
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                 <Ionicons name="star" size={15} color="#FFD166" />

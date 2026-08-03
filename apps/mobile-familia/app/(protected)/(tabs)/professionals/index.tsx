@@ -8,7 +8,7 @@ import {
   Avatar,
   Card,
   EmptyState,
-  InlineAlert,
+  HelpBanner,
   LoadingState,
   SearchableSelectField,
   SecondaryButton,
@@ -21,6 +21,7 @@ import { useCareRecipient } from "@/hooks/useCareRecipients";
 import { useSelectedRecipientStore } from "@/state/selectedRecipientStore";
 import { useSelectedServiceStore } from "@/state/selectedServiceStore";
 import { SelectChips } from "@/components/SelectChips";
+import { useDismissibleHelp } from "@/hooks/useDismissibleHelp";
 import { nextAvailabilityLabel } from "@/lib/availability";
 
 const DAY_LABELS: Record<DayOfWeek, string> = {
@@ -59,6 +60,15 @@ function minPriceOf(item: PublicProfessionalView): number | null {
   return Math.min(...services.map((s) => s.price));
 }
 
+// Síntesis de cobertura para la tarjeta: "Atiende en: X, Y y N comunas
+// más" — nunca lista todas si son muchas, evita saturar la tarjeta.
+function coverageSummary(coverageComunas: string[] | null | undefined): string | null {
+  const comunas = coverageComunas ?? [];
+  if (comunas.length === 0) return null;
+  if (comunas.length <= 2) return `Atiende en: ${comunas.join(" y ")}`;
+  return `Atiende en: ${comunas.slice(0, 2).join(", ")} y ${comunas.length - 2} comunas más`;
+}
+
 
 // Marketplace público (Fase 2): filtros por categoría/servicio/comuna/
 // disponibilidad/rating mínimo/precio y orden por relevancia,
@@ -68,6 +78,7 @@ function minPriceOf(item: PublicProfessionalView): number | null {
 // tamaño de dataset de un marketplace en etapa MVP.
 export default function ProfessionalsScreen() {
   const theme = useGerasTheme();
+  const professionalsHelp = useDismissibleHelp("profesionales");
   const professionalsQuery = usePublicProfessionals();
   const servicesQuery = useServicesCatalog();
   const comunasQuery = useComunasCatalog();
@@ -135,6 +146,11 @@ export default function ProfessionalsScreen() {
             <Text style={{ fontSize: 14, color: theme.textSecondary }}>
               {item.profession_name} · {item.base_comuna ?? "Sin comuna"}
             </Text>
+            {coverageSummary(item.coverage_comunas) ? (
+              <Text style={{ fontSize: 12, color: theme.textSecondary }} numberOfLines={1}>
+                {coverageSummary(item.coverage_comunas)}
+              </Text>
+            ) : null}
             {item.average_rating || item.years_experience ? (
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                 {item.average_rating ? <Ionicons name="star" size={14} color={theme.warning} /> : null}
@@ -182,7 +198,12 @@ export default function ProfessionalsScreen() {
       contentContainerStyle={{ gap: 12, paddingBottom: 24 }}
       ListHeaderComponent={
         <View style={{ gap: 12, paddingBottom: 16, marginBottom: 4, borderBottomWidth: 1, borderBottomColor: theme.borderSoft }}>
-          <InlineAlert message="Aquí puedes encontrar profesionales verificados. Los días destacados en su agenda tienen horarios disponibles." />
+          {professionalsHelp.visible ? (
+            <HelpBanner
+              message="Selecciona tu comuna para mostrar profesionales que pueden atenderte."
+              onDismiss={professionalsHelp.dismiss}
+            />
+          ) : null}
           {recipientQuery.data ? (
             <Text style={{ fontSize: 14, color: theme.textSecondary }}>Buscando para {recipientQuery.data.full_name}</Text>
           ) : null}

@@ -127,6 +127,55 @@ describe("POST /api/v1/bookings", () => {
     });
   });
 
+  it("rechaza antes del RPC si el profesional no cubre la comuna de la solicitud", async () => {
+    const requestBuilder = makeQueryBuilder({
+      data: { id: "req-1", preferred_date: null, requested_time: null, duration_minutes: null, comuna_id: 9 },
+      error: null,
+    });
+    const coverageBuilder = makeQueryBuilder({ data: null, error: null }); // sin fila = no cubre esa comuna
+    fromMock.mockImplementation((table: string) => {
+      if (table === "service_requests") return requestBuilder;
+      if (table === "professional_coverage") return coverageBuilder;
+      throw new Error(`Tabla no mockeada: ${table}`);
+    });
+
+    const res = await request(app).post("/api/v1/bookings").send({
+      request_id: "11111111-1111-1111-1111-111111111111",
+      professional_id: "22222222-2222-2222-2222-222222222222",
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.message).toMatch(/no presta atención en la comuna seleccionada/);
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
+
+  it("sigue creando la reserva cuando el profesional sí cubre la comuna", async () => {
+    const requestBuilder = makeQueryBuilder({
+      data: { id: "req-1", preferred_date: null, requested_time: null, duration_minutes: null, comuna_id: 9 },
+      error: null,
+    });
+    const coverageBuilder = makeQueryBuilder({ data: { comuna_id: 9 }, error: null });
+    const bookingBuilder = makeQueryBuilder({
+      data: { id: "booking-1", price: 30000, platform_fee: 1800, status: "pending" },
+      error: null,
+    });
+    fromMock.mockImplementation((table: string) => {
+      if (table === "service_requests") return requestBuilder;
+      if (table === "professional_coverage") return coverageBuilder;
+      if (table === "bookings") return bookingBuilder;
+      throw new Error(`Tabla no mockeada: ${table}`);
+    });
+    rpcMock.mockResolvedValue({ data: "booking-1", error: null });
+
+    const res = await request(app).post("/api/v1/bookings").send({
+      request_id: "11111111-1111-1111-1111-111111111111",
+      professional_id: "22222222-2222-2222-2222-222222222222",
+    });
+
+    expect(res.status).toBe(201);
+    expect(rpcMock).toHaveBeenCalled();
+  });
+
   it("rechaza antes del RPC si el horario ya no cae en el bloque semanal del profesional", async () => {
     const requestBuilder = makeQueryBuilder({
       data: { id: "req-1", preferred_date: "2026-08-10", requested_time: "09:00", duration_minutes: 60 },

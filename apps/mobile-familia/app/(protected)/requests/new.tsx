@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { createServiceRequestSchema, formatDateCL, formatDateLongCL, toDateKeyCL } from "@geras/shared";
+import { combineChileDateAndTime, createServiceRequestSchema, formatDateCL, formatDateLongCL, toDateKeyCL } from "@geras/shared";
 import type { CreateServiceRequestInput } from "@geras/shared";
 import {
   AppHeader,
@@ -18,6 +18,7 @@ import {
   PrimaryButton,
   Screen,
   SearchableSelectField,
+  SecondaryButton,
   TertiaryButton,
   TimeSlotPicker,
   getServiceIcon,
@@ -27,11 +28,12 @@ import { useFamilyBootstrap } from "@/hooks/useFamilyBootstrap";
 import { useCareRecipients } from "@/hooks/useCareRecipients";
 import { useComunasCatalog, useServicesCatalog } from "@/hooks/useCatalogs";
 import { useCreateBooking, useCreateServiceRequest, useGenerateMatches } from "@/hooks/useServiceRequestFlow";
-import { useProfessionalAvailability } from "@/hooks/useProfessionalAvailability";
+import { useProfessionalAvailability, useProfessionalCoverage } from "@/hooks/useProfessionalAvailability";
 import { usePublicProfessional } from "@/hooks/usePublicProfessionals";
 import { useSelectedRecipientStore } from "@/state/selectedRecipientStore";
 import { useSelectedServiceStore } from "@/state/selectedServiceStore";
 import { useSelectedProfessionalStore } from "@/state/selectedProfessionalStore";
+import { useLastBookingViewStore } from "@/state/lastBookingViewStore";
 import { TextField } from "@/components/TextField";
 import { SelectChips } from "@/components/SelectChips";
 import { RecipientSelectModal } from "@/components/RecipientSelectModal";
@@ -97,6 +99,7 @@ export default function NewServiceRequestScreen() {
   const preselectedServiceId = useSelectedServiceStore((s) => s.selectedServiceId);
   const preselectedProfessionalId = useSelectedProfessionalStore((s) => s.selectedProfessionalId);
   const setSelectedProfessionalId = useSelectedProfessionalStore((s) => s.setSelectedProfessionalId);
+  const setLastBookingView = useLastBookingViewStore((s) => s.setBookingView);
 
   const createRequest = useCreateServiceRequest();
   const generateMatches = useGenerateMatches();
@@ -138,6 +141,10 @@ export default function NewServiceRequestScreen() {
     availabilityRange.to
   );
   const professionalQuery = usePublicProfessional(directBooking ? (preselectedProfessionalId ?? undefined) : undefined);
+  // Cobertura territorial: se valida ANTES de dejar abrir el calendario
+  // (coverageService.ts en el server es la misma fuente que ya usa
+  // create_booking_from_match) — nunca se calcula en el cliente.
+  const coverageQuery = useProfessionalCoverage(directBooking ? preselectedProfessionalId : null, values.comuna_id);
 
   const recipients = recipientsQuery.data ?? [];
 
@@ -151,6 +158,17 @@ export default function NewServiceRequestScreen() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recipients.length]);
+
+  // Si la persona elegida ya tiene una comuna guardada, se precarga acá
+  // (el usuario igual puede cambiarla en el paso "Ubicación") — evita
+  // pedir de nuevo un dato que Geras ya tiene.
+  useEffect(() => {
+    const recipient = recipients.find((r) => r.id === values.care_recipient_id);
+    if (recipient?.comuna_id && !values.comuna_id) {
+      setValues((prev) => ({ ...prev, comuna_id: recipient.comuna_id }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [values.care_recipient_id]);
 
   // En reserva directa la duración la define el servicio del
   // profesional (no una elección libre) — se toma de la agenda real en
@@ -255,6 +273,24 @@ export default function NewServiceRequestScreen() {
         const { booking } = await createBooking.mutateAsync({
           request_id: createdRequest.id,
           professional_id: preselectedProfessionalId,
+        });
+        // La pantalla de confirmación debe poder renderizarse de
+        // inmediato con lo que ya sabemos acá (profesional, servicio,
+        // persona mayor, comuna) — no depende de que useBooking (lectura
+        // RLS directa) resuelva primero, así nunca muestra "No
+        // encontramos esta reserva" por una condición temporal.
+        setLastBookingView({
+          id: booking.id,
+          status: booking.status,
+          price: booking.price,
+          platformFee: booking.platform_fee,
+          scheduledAt: combineChileDateAndTime(values.preferred_date, values.requested_time!),
+          durationMinutes: values.duration_minutes,
+          professionalFullName: professionalQuery.data?.full_name ?? "Profesional",
+          professionalPhotoUrl: professionalQuery.data?.profile_photo_url ?? null,
+          serviceName: availabilityQuery.data?.serviceName ?? selectedService?.name ?? "Servicio",
+          recipientFullName: selectedRecipient?.full_name ?? null,
+          comunaName: selectedComuna?.name ?? null,
         });
         setSelectedProfessionalId(null);
         // El horario recién tomado no debe seguir apareciendo libre ni
@@ -499,7 +535,38 @@ export default function NewServiceRequestScreen() {
 
         {step.key === "schedule" ? (
           directBooking ? (
-            availabilityQuery.isPending ? (
+            coverageQuery.isPending ? (
+              <LoadingState variant="card" rows={2} />
+            ) : coverageQuery.data && !coverageQuery.data.covered ? (
+              <View style={{ gap: 16 }}>
+                <Ionicons name="location-outline" size={40} color={theme.textSecondary} style={{ alignSelf: "center" }} />
+                <Text style={{ fontSize: 15, color: theme.textPrimary, textAlign: "center", lineHeight: 21 }}>
+                  Este profesional no presta atención en tu comuna actualmente.
+                </Text>
+                <View style={{ gap: 10 }}>
+                  <PrimaryButton
+                    label="Ver profesionales que cubren mi comuna"
+                    onPress={() => {
+                      setSelectedProfessionalId(null);
+                      router.replace("/explorar?segment=profesionales");
+                    }}
+                    fullWidth
+                  />
+                  <SecondaryButton
+                    label="Cambiar comuna"
+                    onPress={() => setStepIndex(steps.findIndex((s) => s.key === "location"))}
+                    fullWidth
+                  />
+                  <TertiaryButton
+                    label="Crear una solicitud general"
+                    onPress={() => {
+                      setSelectedProfessionalId(null);
+                      setStepIndex(0);
+                    }}
+                  />
+                </View>
+              </View>
+            ) : availabilityQuery.isPending ? (
               <LoadingState variant="card" rows={2} />
             ) : availabilityQuery.isError ? (
               <ErrorState
