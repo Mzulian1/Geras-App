@@ -13,6 +13,7 @@ import {
   LoadingState,
   PrimaryButton,
   Screen,
+  ServiceIcon,
   StatusBadge,
   useGerasTheme,
 } from "@geras/ui";
@@ -183,8 +184,11 @@ export default function ProfessionalPublicProfileScreen() {
                       accessibilityLabel={`${s.service_name}, $${s.price.toLocaleString("es-CL")}`}
                       style={isSelected ? { borderWidth: 2, borderColor: theme.primary } : undefined}
                     >
-                      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                        <InfoRow label={s.service_name} value={`$${s.price.toLocaleString("es-CL")}`} />
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                        <ServiceIcon service={{ name: s.service_name }} size={32} />
+                        <View style={{ flex: 1 }}>
+                          <InfoRow label={s.service_name} value={`$${s.price.toLocaleString("es-CL")}`} />
+                        </View>
                         <Ionicons
                           name={isSelected ? "checkmark-circle" : "ellipse-outline"}
                           size={20}
@@ -200,7 +204,12 @@ export default function ProfessionalPublicProfileScreen() {
                 {services.map((s, index) => (
                   <View key={s.service_id}>
                     {index > 0 ? <View style={{ height: 1, backgroundColor: theme.borderSoft, marginVertical: 8 }} /> : null}
-                    <InfoRow label={s.service_name} value={`$${s.price.toLocaleString("es-CL")}`} />
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                      <ServiceIcon service={{ name: s.service_name }} size={32} />
+                      <View style={{ flex: 1 }}>
+                        <InfoRow label={s.service_name} value={`$${s.price.toLocaleString("es-CL")}`} />
+                      </View>
+                    </View>
                   </View>
                 ))}
               </Card>

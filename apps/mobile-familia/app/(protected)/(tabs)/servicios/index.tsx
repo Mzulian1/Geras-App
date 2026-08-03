@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { FlatList, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Card, EmptyState, LoadingState, useGerasTheme } from "@geras/ui";
+import { Card, EmptyState, LoadingState, ServiceIcon, useGerasTheme } from "@geras/ui";
 import { useServicesShowcase, type ServiceShowcaseEntry } from "@/hooks/useCatalogs";
 
 // Catálogo completo de servicios de Geras (orden y catálogo vienen de
@@ -50,18 +50,7 @@ export default function ServiciosScreen() {
               <View key={service.id} style={{ width: "47%" }}>
                 <Card onPress={() => router.push(`/servicios/${service.id}`)} accessibilityLabel={service.name}>
                   <View style={{ gap: 10 }}>
-                    <View
-                      style={{
-                        width: 48,
-                        height: 48,
-                        borderRadius: 24,
-                        backgroundColor: theme.primarySoft,
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <Ionicons name="heart-outline" size={24} color={theme.primary} />
-                    </View>
+                    <ServiceIcon service={{ name: service.name, category: service.professions?.category }} size={48} />
                     <Text style={{ fontSize: 15, fontWeight: "700", color: theme.textPrimary }} numberOfLines={2}>
                       {service.name}
                     </Text>

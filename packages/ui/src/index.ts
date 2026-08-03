@@ -43,3 +43,6 @@ export * from "./components/Avatar";
 export * from "./components/ErrorBoundary";
 export * from "./components/InlineAlert";
 export * from "./components/SuccessFeedback";
+export * from "./components/ServiceIcon";
+
+export * from "./icons/serviceIconMap";

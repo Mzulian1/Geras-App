@@ -20,6 +20,7 @@ import {
   SearchableSelectField,
   TertiaryButton,
   TimeSlotPicker,
+  getServiceIcon,
   useGerasTheme,
 } from "@geras/ui";
 import { useFamilyBootstrap } from "@/hooks/useFamilyBootstrap";
@@ -385,9 +386,16 @@ export default function NewServiceRequestScreen() {
                 <Text style={{ fontSize: 15, fontWeight: "700", color: theme.textPrimary }}>
                   {professionalQuery.data.full_name}
                 </Text>
-                <Text style={{ fontSize: 13, color: theme.textSecondary }}>
-                  {availabilityQuery.data?.serviceName ?? professionalQuery.data.profession_name}
-                </Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <Ionicons
+                    name={getServiceIcon(availabilityQuery.data ? { name: availabilityQuery.data.serviceName } : null)}
+                    size={14}
+                    color={theme.textSecondary}
+                  />
+                  <Text style={{ fontSize: 13, color: theme.textSecondary }}>
+                    {availabilityQuery.data?.serviceName ?? professionalQuery.data.profession_name}
+                  </Text>
+                </View>
                 {availabilityQuery.data ? (
                   <Text style={{ fontSize: 13, color: theme.textSecondary }}>
                     ${availabilityQuery.data.price.toLocaleString("es-CL")} · {availabilityQuery.data.durationMinutes} min
@@ -583,7 +591,7 @@ export default function NewServiceRequestScreen() {
                 </View>
               </SummaryCard>
             ) : (
-              <SummaryCard icon="heart" title="Servicio">
+              <SummaryCard icon={getServiceIcon(selectedService ? { name: selectedService.name } : null)} title="Servicio">
                 <Text style={{ fontSize: 15, color: theme.textPrimary }}>{selectedService?.name ?? "—"}</Text>
               </SummaryCard>
             )}

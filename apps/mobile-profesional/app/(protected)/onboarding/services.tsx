@@ -3,7 +3,7 @@ import { Redirect, router } from "expo-router";
 import { Text, View } from "react-native";
 import { serviceModalitySchema } from "@geras/shared";
 import type { ServiceModality } from "@geras/shared";
-import { MultiSelectField, useGerasTheme } from "@geras/ui";
+import { MultiSelectField, ServiceIcon, useGerasTheme } from "@geras/ui";
 import { useProfessionalBootstrap } from "@/hooks/useProfessionalBootstrap";
 import { useServicesCatalog } from "@/hooks/useCatalogs";
 import { useProfessionalServicesQuery } from "@/hooks/useOnboardingQueries";
@@ -130,7 +130,10 @@ export default function ServicesStep() {
               {selectedServices.map((service) => (
                 <View key={service.id} style={{ gap: 8, borderRadius: 8, borderWidth: 1, borderColor: theme.borderSoft, padding: 12 }}>
                   <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                    <Text style={{ fontWeight: "600", color: theme.textPrimary }}>{service.name}</Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flex: 1 }}>
+                      <ServiceIcon service={{ name: service.name }} size={30} />
+                      <Text style={{ fontWeight: "600", color: theme.textPrimary, flex: 1 }}>{service.name}</Text>
+                    </View>
                     <Text
                       onPress={() => removeService(service.id)}
                       accessibilityRole="button"

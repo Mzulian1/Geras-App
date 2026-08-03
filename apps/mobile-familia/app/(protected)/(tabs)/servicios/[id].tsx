@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { Text, View } from "react-native";
-import { AppHeader, LoadingState, PrimaryButton, Screen, SecondaryButton, useGerasTheme } from "@geras/ui";
+import { AppHeader, LoadingState, PrimaryButton, Screen, SecondaryButton, ServiceIcon, useGerasTheme } from "@geras/ui";
 import { useServicesShowcase } from "@/hooks/useCatalogs";
 import { useSelectedServiceStore } from "@/state/selectedServiceStore";
 
@@ -49,6 +49,7 @@ export default function ServiceDetailScreen() {
     <Screen scroll={false} padded={false}>
       <AppHeader title={service.name} subtitle={service.professions?.category ?? undefined} onBack={() => router.back()} />
       <View style={{ flex: 1, padding: 16, gap: 12 }}>
+        <ServiceIcon service={{ name: service.name, category: service.professions?.category }} size={56} />
         {service.description ? (
           <Text style={{ fontSize: 15, color: theme.textSecondary, lineHeight: 22 }}>{service.description}</Text>
         ) : null}

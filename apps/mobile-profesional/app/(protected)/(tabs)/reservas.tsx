@@ -12,6 +12,7 @@ import {
   PrimaryButton,
   Screen,
   SecondaryButton,
+  ServiceIcon,
   StatusBadge,
   useGerasTheme,
 } from "@geras/ui";
@@ -143,7 +144,8 @@ export default function ReservasScreen() {
             return (
               <Card>
                 <View style={{ gap: 6 }}>
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                    <ServiceIcon service={{ name: item.services?.name }} size={36} />
                     <Text style={{ fontSize: 16, fontWeight: "600", color: theme.textPrimary, flex: 1 }}>{item.services?.name ?? "Servicio"}</Text>
                     <StatusBadge kind="booking" value={item.status} />
                   </View>

@@ -12,6 +12,7 @@ import {
   PrimaryButton,
   Screen,
   SectionHeader,
+  ServiceIcon,
   StatusBadge,
   useGerasTheme,
 } from "@geras/ui";
@@ -117,18 +118,7 @@ export default function InicioScreen() {
               accessibilityLabel="Ver tu solicitud activa"
             >
               <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                <View
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 22,
-                    backgroundColor: theme.primarySoft,
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Ionicons name="calendar" size={22} color={theme.primary} />
-                </View>
+                <ServiceIcon service={{ name: activeRequest.services?.name }} size={44} />
                 <View style={{ flex: 1, gap: 2 }}>
                   <Text style={{ fontSize: 16, fontWeight: "600", color: theme.textPrimary }}>
                     {activeRequest.services?.name ?? "Servicio"}
@@ -182,18 +172,7 @@ export default function InicioScreen() {
               <View style={{ flex: 1 }}>
                 <Card onPress={() => goToServiceDetail(item)} accessibilityLabel={item.name}>
                   <View style={{ gap: 8 }}>
-                    <View
-                      style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: 22,
-                        backgroundColor: theme.primarySoft,
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <Ionicons name="heart-outline" size={22} color={theme.primary} />
-                    </View>
+                    <ServiceIcon service={{ name: item.name, category: item.professions?.category }} size={44} />
                     <Text style={{ fontSize: 15, fontWeight: "700", color: theme.textPrimary }} numberOfLines={2}>
                       {item.name}
                     </Text>

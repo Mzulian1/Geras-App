@@ -1,6 +1,6 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocalSearchParams, router } from "expo-router";
-import { Text, View } from "react-native";
+import { Animated, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { BookingStatus } from "@geras/shared";
 import { useBooking, useBookingReview, useConfirmBookingCompletion, useSubmitBookingReview } from "@/hooks/useBooking";
@@ -18,6 +18,7 @@ import {
   PrimaryButton,
   Screen,
   SecondaryButton,
+  ServiceIcon,
   StatusBadge,
   SuccessFeedback,
   TertiaryButton,
@@ -67,6 +68,13 @@ export default function BookingConfirmationScreen() {
   const [rating, setRating] = useState<number | null>(null);
   const [comment, setComment] = useState("");
   const [reviewSent, setReviewSent] = useState(false);
+
+  // Animación de éxito al llegar a esta pantalla: el círculo entra con un
+  // pequeño rebote en vez de aparecer estático — sutil, una sola vez.
+  const successScale = useRef(new Animated.Value(0.6)).current;
+  useEffect(() => {
+    Animated.spring(successScale, { toValue: 1, useNativeDriver: true, speed: 14, bounciness: 10 }).start();
+  }, [successScale]);
 
   if (bookingQuery.isPending) {
     return (
@@ -122,7 +130,7 @@ export default function BookingConfirmationScreen() {
       <AppHeader title="Detalle de reserva" onBack={() => router.back()} />
       <View style={{ padding: 16, gap: 16 }}>
         <View style={{ alignItems: "center", gap: 8, paddingVertical: 8 }}>
-          <View
+          <Animated.View
             style={{
               width: 72,
               height: 72,
@@ -130,6 +138,7 @@ export default function BookingConfirmationScreen() {
               backgroundColor: theme.successSoft,
               alignItems: "center",
               justifyContent: "center",
+              transform: [{ scale: successScale }],
             }}
           >
             <Ionicons
@@ -137,7 +146,7 @@ export default function BookingConfirmationScreen() {
               size={44}
               color={theme.success}
             />
-          </View>
+          </Animated.View>
           <Text style={{ fontSize: 18, fontWeight: "700", color: theme.textPrimary, textAlign: "center" }}>
             {STATUS_MESSAGE[booking.status]}
           </Text>
@@ -153,7 +162,10 @@ export default function BookingConfirmationScreen() {
               <Text style={{ fontSize: 16, fontWeight: "700", color: theme.textPrimary }}>
                 {booking.professional_profiles?.full_name ?? "—"}
               </Text>
-              <Text style={{ fontSize: 14, color: theme.textSecondary }}>{booking.services?.name ?? "Servicio"}</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                <ServiceIcon service={{ name: booking.services?.name }} size={20} />
+                <Text style={{ fontSize: 14, color: theme.textSecondary }}>{booking.services?.name ?? "Servicio"}</Text>
+              </View>
             </View>
             <StatusBadge kind="booking" value={booking.status} />
           </View>

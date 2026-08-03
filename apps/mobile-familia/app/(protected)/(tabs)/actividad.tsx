@@ -3,7 +3,7 @@ import { router } from "expo-router";
 import { SectionList, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { BookingStatus, RequestStatus, ResidenceInquiryStatus } from "@geras/shared";
-import { Card, EmptyState, InlineAlert, LoadingState, Screen, StatusBadge, useGerasTheme } from "@geras/ui";
+import { Card, EmptyState, getServiceIcon, InlineAlert, LoadingState, Screen, StatusBadge, useGerasTheme } from "@geras/ui";
 import { useFamilyBootstrap } from "@/hooks/useFamilyBootstrap";
 import { useMyServiceRequests } from "@/hooks/useMyRequests";
 import { useMyResidenceInquiries } from "@/hooks/useResidenceInquiries";
@@ -19,6 +19,7 @@ interface ActivityItem {
   id: string;
   title: string;
   subtitle: string;
+  icon: ReturnType<typeof getServiceIcon>;
   badge: ActivityBadge;
   group: ActivityGroup;
   createdAt: string;
@@ -71,6 +72,7 @@ export default function ActividadScreen() {
         id: `request-${item.id}`,
         title: item.services?.name ?? "Servicio",
         subtitle: "Solicitud de servicio",
+        icon: getServiceIcon({ name: item.services?.name }),
         badge: booking ? { kind: "booking", value: booking.status } : { kind: "request", value: item.status },
         group,
         createdAt: item.created_at,
@@ -85,6 +87,7 @@ export default function ActividadScreen() {
       id: `inquiry-${item.id}`,
       title: item.residences?.name ?? "Residencia",
       subtitle: item.inquiry_type === "visit" ? "Solicitud de visita" : "Solicitud de información",
+      icon: getServiceIcon({ name: "residencia" }),
       badge: { kind: "residenceInquiry", value: item.status },
       group: PENDING_INQUIRY.includes(item.status) ? "pending" : DONE_INQUIRY.includes(item.status) ? "done" : "ongoing",
       createdAt: item.created_at,
@@ -144,7 +147,19 @@ export default function ActividadScreen() {
           renderItem={({ item }) => (
             <View style={{ paddingBottom: 10 }}>
               <Card onPress={item.onPress} accessibilityLabel={item.title}>
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                  <View
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 20,
+                      backgroundColor: theme.primarySoft,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Ionicons name={item.icon} size={20} color={theme.primary} />
+                  </View>
                   <View style={{ flex: 1, gap: 2 }}>
                     <Text style={{ fontSize: 16, fontWeight: "600", color: theme.textPrimary }}>{item.title}</Text>
                     <Text style={{ fontSize: 14, color: theme.textSecondary }}>{item.subtitle}</Text>

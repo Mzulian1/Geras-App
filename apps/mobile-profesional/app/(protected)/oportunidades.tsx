@@ -2,7 +2,7 @@ import { router } from "expo-router";
 import { FlatList, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { formatDateCL } from "@geras/shared";
-import { AppHeader, Card, EmptyState, ErrorState, LoadingState, PrimaryButton, Screen, useGerasTheme } from "@geras/ui";
+import { AppHeader, Card, EmptyState, ErrorState, LoadingState, PrimaryButton, Screen, ServiceIcon, useGerasTheme } from "@geras/ui";
 import { useOpportunities, useShowInterest, type Opportunity } from "@/hooks/useOpportunities";
 
 const STATUS_LABEL: Record<Opportunity["status"], string> = {
@@ -46,7 +46,8 @@ export default function OportunidadesScreen() {
               return (
                 <Card>
                   <View style={{ gap: 8 }}>
-                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                      <ServiceIcon service={{ name: item.serviceName }} size={36} />
                       <Text style={{ fontSize: 16, fontWeight: "600", color: theme.textPrimary, flex: 1 }}>
                         {item.serviceName}
                       </Text>
