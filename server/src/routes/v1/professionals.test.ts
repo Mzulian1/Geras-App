@@ -94,8 +94,10 @@ describe("GET /api/v1/professionals/:id/availability", () => {
     push({ price: 30000, services: { duration_minutes: 60, name: "Kinesiología domiciliaria" } });
     // Lunes 10-08-2026, bloque 09:00-11:00 (dos horarios de 60 min posibles: 09:00 y 09:30/10:00...)
     push([{ day_of_week: "monday", start_time: "09:00:00", end_time: "11:00:00" }]);
-    // Reserva activa el mismo día a las 09:00 (60 min) — debe excluir ese slot
-    push([{ scheduled_at: "2026-08-10T09:00:00Z", duration_minutes: 60 }]);
+    // Reserva activa el mismo día a las 09:00 hora de Chile (60 min) — 13:00 UTC
+    // (Chile = UTC-4) — debe excluir ese slot. scheduled_at es un instante
+    // real; el bucketing por fecha/hora de Chile lo hace computeAvailableDays.
+    push([{ scheduled_at: "2026-08-10T13:00:00Z", duration_minutes: 60 }]);
     fromMock.mockImplementation(fromImpl);
 
     const res = await request(app)

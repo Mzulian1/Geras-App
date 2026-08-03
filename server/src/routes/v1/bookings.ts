@@ -25,6 +25,7 @@ import { AppErrors } from "../../errors/AppError.js";
 import { supabaseAdmin } from "../../lib/supabase.js";
 import { logger } from "../../lib/logger.js";
 import { sendBookingConfirmationEmail } from "../../lib/emails/bookingConfirmation.js";
+import { isWithinWeeklyBlock } from "../../services/availabilityService.js";
 
 export const bookingsRouter = Router();
 
@@ -99,12 +100,36 @@ bookingsRouter.post(
 
     const { data: request, error: requestError } = await supabaseAdmin
       .from("service_requests")
-      .select("id")
+      .select("id, preferred_date, requested_time, duration_minutes")
       .eq("id", request_id)
       .eq("family_user_id", familyUserId)
       .maybeSingle();
     if (requestError) throw new Error(requestError.message);
     if (!request) throw AppErrors.notFound("No existe esa solicitud");
+
+    // Revalidación previa a la RPC, con la misma lógica que ya usa el
+    // endpoint de disponibilidad (availabilityService) — para devolver el
+    // mensaje específico de "sin disponibilidad" antes de la excepción
+    // cruda de Postgres. create_booking_from_match (migración 020/031)
+    // sigue siendo la validación atómica y final.
+    if (request.preferred_date && request.requested_time && request.duration_minutes) {
+      const { data: weeklyBlocks, error: weeklyBlocksError } = await supabaseAdmin
+        .from("professional_availability")
+        .select("day_of_week, start_time, end_time")
+        .eq("professional_id", professional_id)
+        .eq("active", true);
+      if (weeklyBlocksError) throw new Error(weeklyBlocksError.message);
+
+      const bookable = isWithinWeeklyBlock({
+        dateKey: request.preferred_date,
+        timeHHmm: request.requested_time,
+        durationMinutes: request.duration_minutes,
+        weeklyBlocks: weeklyBlocks ?? [],
+      });
+      if (!bookable) {
+        throw AppErrors.validation(undefined, "Ese profesional ya no tiene disponibilidad para ese horario");
+      }
+    }
 
     const { data: bookingId, error } = await supabaseAdmin.rpc("create_booking_from_match", {
       p_request_id: request_id,

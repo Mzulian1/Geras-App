@@ -10,6 +10,7 @@
 // ============================================================
 import { z } from "zod";
 import { Constants } from "../types/database.types";
+import { toDateKeyCL } from "../dates";
 
 const enums = Constants.public.Enums;
 
@@ -320,7 +321,12 @@ export const createServiceRequestSchema = z
     preferred_date: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/, "Usa el formato AAAA-MM-DD")
-      .refine((value) => new Date(value) >= new Date(new Date().toDateString()), "La fecha no puede ser en el pasado"),
+      // Comparación de claves YYYY-MM-DD en huso de Chile (toDateKeyCL) —
+      // nunca new Date(value) vs new Date(new Date().toDateString()): la
+      // primera parsea como medianoche UTC y la segunda como medianoche
+      // del huso local del proceso, así que en un server en UTC (Chile
+      // va detrás) esa comparación rechazaba "hoy" como si fuera pasado.
+      .refine((value) => value >= toDateKeyCL(new Date()), "La fecha no puede ser en el pasado"),
     requested_time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Hora inválida"),
     duration_minutes: z.coerce.number().int().positive("Duración inválida").max(480, "Máximo 8 horas"),
     description: z.string().trim().max(1000, "Máximo 1000 caracteres").optional().or(z.literal("")),

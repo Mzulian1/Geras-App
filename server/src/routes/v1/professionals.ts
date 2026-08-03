@@ -1,57 +1,21 @@
 import { Router } from "express";
 import { z } from "zod";
-import type { DayOfWeek } from "@geras/shared";
 import { requireAuth } from "../../middleware/requireAuth.js";
 import { requireRole } from "../../middleware/requireRole.js";
 import { asyncHandler } from "../../lib/asyncHandler.js";
 import { AppErrors } from "../../errors/AppError.js";
 import { supabaseAdmin } from "../../lib/supabase.js";
+import { addDays, computeAvailableDays } from "../../services/availabilityService.js";
 
 export const professionalsRouter = Router();
 
 professionalsRouter.use(requireAuth, requireRole("family"));
-
-const DAY_BY_ISODOW: Record<number, DayOfWeek> = {
-  1: "monday",
-  2: "tuesday",
-  3: "wednesday",
-  4: "thursday",
-  5: "friday",
-  6: "saturday",
-  7: "sunday",
-};
-
-// Cada media hora — mismo grano que TimePickerField en el cliente, para
-// que las horas que se muestran sean exactamente las que se pueden
-// elegir. No es una regla de negocio: es solo la resolución con la que
-// se ofrecen bloques dentro de una ventana de disponibilidad.
-const SLOT_GRANULARITY_MINUTES = 30;
 
 const querySchema = z.object({
   serviceId: z.coerce.number().int().positive(),
   from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "from debe ser YYYY-MM-DD"),
   to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "to debe ser YYYY-MM-DD"),
 });
-
-function addDays(dateKey: string, days: number): string {
-  const [y, m, d] = dateKey.split("-").map(Number);
-  const date = new Date(Date.UTC(y!, (m ?? 1) - 1, d));
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
-}
-
-function timeToMinutes(time: string): number {
-  const [h, m] = time.split(":").map(Number);
-  return (h ?? 0) * 60 + (m ?? 0);
-}
-
-function minutesToTime(minutes: number): string {
-  const h = Math.floor(minutes / 60)
-    .toString()
-    .padStart(2, "0");
-  const m = (minutes % 60).toString().padStart(2, "0");
-  return `${h}:${m}`;
-}
 
 // GET /api/v1/professionals/:id/availability?serviceId=&from=&to=
 //
@@ -115,62 +79,28 @@ professionalsRouter.get(
       .eq("active", true);
     if (availabilityError) throw new Error(availabilityError.message);
 
-    const blocksByDay = new Map<DayOfWeek, { start: number; end: number }[]>();
-    for (const block of weeklyBlocks ?? []) {
-      const list = blocksByDay.get(block.day_of_week) ?? [];
-      list.push({ start: timeToMinutes(block.start_time.slice(0, 5)), end: timeToMinutes(block.end_time.slice(0, 5)) });
-      blocksByDay.set(block.day_of_week, list);
-    }
-
     // Mismo set de estados que protege bookings_no_overlap — ver
-    // definición de la constraint (migración de bookings).
+    // definición de la constraint (migración de bookings). El rango se
+    // amplía un día a cada lado: scheduled_at es un instante UTC real, y
+    // su fecha en hora de Chile (la que importa acá) puede caer un día
+    // antes o después de su fecha calendario en UTC — computeAvailableDays
+    // ya bucketiza cada reserva por su fecha real en Chile.
     const { data: activeBookings, error: bookingsError } = await supabaseAdmin
       .from("bookings")
       .select("scheduled_at, duration_minutes")
       .eq("professional_id", professionalId)
       .in("status", ["pending", "confirmed", "en_route", "in_progress"])
-      .gte("scheduled_at", `${from}T00:00:00Z`)
-      .lte("scheduled_at", `${to}T23:59:59Z`);
+      .gte("scheduled_at", `${addDays(from, -1)}T00:00:00Z`)
+      .lte("scheduled_at", `${addDays(to, 1)}T23:59:59Z`);
     if (bookingsError) throw new Error(bookingsError.message);
 
-    const occupiedByDate = new Map<string, { start: number; end: number }[]>();
-    for (const booking of activeBookings ?? []) {
-      const scheduled = new Date(booking.scheduled_at);
-      const dateKey = scheduled.toISOString().slice(0, 10);
-      const startMinutes = scheduled.getUTCHours() * 60 + scheduled.getUTCMinutes();
-      const list = occupiedByDate.get(dateKey) ?? [];
-      list.push({ start: startMinutes, end: startMinutes + booking.duration_minutes });
-      occupiedByDate.set(dateKey, list);
-    }
-
-    const now = new Date();
-    const todayKey = now.toISOString().slice(0, 10);
-    const nowMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
-
-    const days: { date: string; times: string[] }[] = [];
-    let cursor = from;
-    while (cursor <= to) {
-      const isoDow = ((new Date(`${cursor}T00:00:00Z`).getUTCDay() + 6) % 7) + 1; // 1=lunes..7=domingo
-      const dayOfWeek = DAY_BY_ISODOW[isoDow]!;
-      const blocks = blocksByDay.get(dayOfWeek) ?? [];
-      const occupied = occupiedByDate.get(cursor) ?? [];
-
-      const times: string[] = [];
-      for (const block of blocks) {
-        for (let start = block.start; start + durationMinutes <= block.end; start += SLOT_GRANULARITY_MINUTES) {
-          const end = start + durationMinutes;
-          if (cursor === todayKey && start <= nowMinutes) continue;
-          const overlaps = occupied.some((o) => start < o.end && end > o.start);
-          if (overlaps) continue;
-          times.push(minutesToTime(start));
-        }
-      }
-
-      if (times.length > 0) {
-        days.push({ date: cursor, times: times.sort() });
-      }
-      cursor = addDays(cursor, 1);
-    }
+    const days = computeAvailableDays({
+      from,
+      to,
+      durationMinutes,
+      weeklyBlocks: weeklyBlocks ?? [],
+      activeBookings: activeBookings ?? [],
+    });
 
     res.json({
       serviceId,

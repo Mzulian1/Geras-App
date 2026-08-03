@@ -126,6 +126,63 @@ describe("POST /api/v1/bookings", () => {
       p_professional_id: "22222222-2222-2222-2222-222222222222",
     });
   });
+
+  it("rechaza antes del RPC si el horario ya no cae en el bloque semanal del profesional", async () => {
+    const requestBuilder = makeQueryBuilder({
+      data: { id: "req-1", preferred_date: "2026-08-10", requested_time: "09:00", duration_minutes: 60 },
+      error: null,
+    });
+    // Lunes 09:00-11:00 no cubre un horario que dure hasta las 09:00-10:00... pero acá
+    // el profesional solo atiende de tarde: la solicitud (mañana) ya no encaja.
+    const weeklyBlocksBuilder = makeQueryBuilder({
+      data: [{ day_of_week: "monday", start_time: "14:00:00", end_time: "19:00:00" }],
+      error: null,
+    });
+    fromMock.mockImplementation((table: string) => {
+      if (table === "service_requests") return requestBuilder;
+      if (table === "professional_availability") return weeklyBlocksBuilder;
+      throw new Error(`Tabla no mockeada: ${table}`);
+    });
+
+    const res = await request(app).post("/api/v1/bookings").send({
+      request_id: "11111111-1111-1111-1111-111111111111",
+      professional_id: "22222222-2222-2222-2222-222222222222",
+    });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.message).toMatch(/ya no tiene disponibilidad para ese horario/);
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
+
+  it("sigue creando la reserva cuando el horario sí cae en el bloque semanal", async () => {
+    const requestBuilder = makeQueryBuilder({
+      data: { id: "req-1", preferred_date: "2026-08-10", requested_time: "09:00", duration_minutes: 60 },
+      error: null,
+    });
+    const weeklyBlocksBuilder = makeQueryBuilder({
+      data: [{ day_of_week: "monday", start_time: "08:00:00", end_time: "12:00:00" }],
+      error: null,
+    });
+    const bookingBuilder = makeQueryBuilder({
+      data: { id: "booking-1", price: 30000, platform_fee: 1800, status: "pending" },
+      error: null,
+    });
+    fromMock.mockImplementation((table: string) => {
+      if (table === "service_requests") return requestBuilder;
+      if (table === "professional_availability") return weeklyBlocksBuilder;
+      if (table === "bookings") return bookingBuilder;
+      throw new Error(`Tabla no mockeada: ${table}`);
+    });
+    rpcMock.mockResolvedValue({ data: "booking-1", error: null });
+
+    const res = await request(app).post("/api/v1/bookings").send({
+      request_id: "11111111-1111-1111-1111-111111111111",
+      professional_id: "22222222-2222-2222-2222-222222222222",
+    });
+
+    expect(res.status).toBe(201);
+    expect(rpcMock).toHaveBeenCalled();
+  });
 });
 
 describe("POST /api/v1/bookings/:id/accept y /reject", () => {
