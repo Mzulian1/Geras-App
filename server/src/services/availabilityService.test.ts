@@ -17,6 +17,20 @@ describe("computeAvailableDays", () => {
     expect(monday?.times).toEqual(["09:00", "09:30", "10:00"]);
   });
 
+  it("expone startAt/endAt como el instante UTC real (09:00 Chile = 13:00 UTC, Chile = UTC-4)", () => {
+    const days = computeAvailableDays({
+      from: "2026-08-10",
+      to: "2026-08-10",
+      durationMinutes: 60,
+      weeklyBlocks,
+      activeBookings: [],
+      now: new Date("2026-08-01T12:00:00Z"),
+    });
+    const slot = days.find((d) => d.date === "2026-08-10")?.slots.find((s) => s.time === "09:00");
+    expect(slot?.startAt).toBe("2026-08-10T13:00:00.000Z");
+    expect(slot?.endAt).toBe("2026-08-10T14:00:00.000Z");
+  });
+
   it("excluye un horario que se solapa con una reserva activa (scheduled_at es un instante real en Santiago)", () => {
     // 09:00 hora de Chile = 13:00 UTC (Chile = UTC-4)
     const days = computeAvailableDays({

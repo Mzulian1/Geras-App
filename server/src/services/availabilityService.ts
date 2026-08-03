@@ -39,9 +39,20 @@ export interface ActiveBooking {
   duration_minutes: number;
 }
 
+export interface AvailabilitySlot {
+  /** Hora de inicio en formato HH:mm, hora de Chile — lo que ya mostraba el cliente. */
+  time: string;
+  /** Instante real (ISO 8601, UTC) de inicio — para consumidores que prefieran
+   *  guardar/enviar un instante en vez de reconstruir fecha+hora con strings. */
+  startAt: string;
+  endAt: string;
+}
+
 export interface AvailabilityDay {
   date: string;
+  /** Compatibilidad: mismas horas que `slots`, solo la etiqueta HH:mm. */
   times: string[];
+  slots: AvailabilitySlot[];
 }
 
 export function addDays(dateKey: string, days: number): string {
@@ -62,6 +73,32 @@ function minutesToTime(minutes: number): string {
     .padStart(2, "0");
   const m = (minutes % 60).toString().padStart(2, "0");
   return `${h}:${m}`;
+}
+
+// Convierte una hora de pared en Chile (dateKey + minutos desde
+// medianoche) al instante UTC real que representa — el inverso de
+// toSantiagoDateAndMinutes. Sin depender de una tabla de zonas horarias:
+// arranca con una conversión ingenua y se corrige contra cómo esa misma
+// marca de tiempo se lee de vuelta en hora de Chile (converge en una
+// iteración salvo justo en el instante de un cambio de horario, que
+// Chile no tiene desde 2019).
+function santiagoWallTimeToUtcIso(dateKey: string, minutesSinceMidnight: number): string {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  const h = Math.floor(minutesSinceMidnight / 60);
+  const min = minutesSinceMidnight % 60;
+  let guess = Date.UTC(y!, (m ?? 1) - 1, d, h, min);
+
+  for (let i = 0; i < 3; i++) {
+    const read = toSantiagoDateAndMinutes(new Date(guess));
+    const [ry, rm, rd] = read.dateKey.split("-").map(Number);
+    const readAsUtcEquivalent = Date.UTC(ry!, (rm ?? 1) - 1, rd, Math.floor(read.minutes / 60), read.minutes % 60);
+    const targetAsUtcEquivalent = Date.UTC(y!, (m ?? 1) - 1, d, h, min);
+    const drift = targetAsUtcEquivalent - readAsUtcEquivalent;
+    if (drift === 0) break;
+    guess += drift;
+  }
+
+  return new Date(guess).toISOString();
 }
 
 // Un `dateKey` (YYYY-MM-DD) es una fecha calendario pura, sin horario —
@@ -136,18 +173,25 @@ export function computeAvailableDays(params: {
     const blocks = blocksByDay.get(dayOfWeek) ?? [];
     const occupied = occupiedByDate.get(cursor) ?? [];
 
-    const times: string[] = [];
+    const slots: AvailabilitySlot[] = [];
     for (const block of blocks) {
       for (let start = block.start; start + durationMinutes <= block.end; start += SLOT_GRANULARITY_MINUTES) {
         const end = start + durationMinutes;
         if (cursor === todayKey && start <= nowMinutes) continue;
         const overlaps = occupied.some((o) => start < o.end && end > o.start);
         if (overlaps) continue;
-        times.push(minutesToTime(start));
+        slots.push({
+          time: minutesToTime(start),
+          startAt: santiagoWallTimeToUtcIso(cursor, start),
+          endAt: santiagoWallTimeToUtcIso(cursor, end),
+        });
       }
     }
 
-    if (times.length > 0) days.push({ date: cursor, times: times.sort() });
+    if (slots.length > 0) {
+      slots.sort((a, b) => a.time.localeCompare(b.time));
+      days.push({ date: cursor, times: slots.map((s) => s.time), slots });
+    }
     cursor = addDays(cursor, 1);
   }
 

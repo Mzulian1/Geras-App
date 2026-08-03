@@ -1,9 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 import { callServerApi } from "@/lib/apiClient";
 
+export interface AvailabilitySlot {
+  /** Hora de inicio en formato HH:mm, hora de Chile — igual a `times`. */
+  time: string;
+  /** Instante real (ISO 8601, UTC) de inicio/fin del bloque — para no
+   *  tener que reconstruir fecha+hora en el cliente si algún consumidor
+   *  lo necesita como instante en vez de como par fecha/hora. */
+  startAt: string;
+  endAt: string;
+}
+
 export interface AvailabilityDay {
   date: string;
   times: string[];
+  slots: AvailabilitySlot[];
 }
 
 export interface ProfessionalAvailability {
