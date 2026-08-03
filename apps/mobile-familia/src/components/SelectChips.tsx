@@ -1,4 +1,5 @@
 import { Pressable, Text, View } from "react-native";
+import { useGerasTheme } from "@geras/ui";
 import { ErrorText } from "./ErrorText";
 
 export interface ChipOption<T extends string | number> {
@@ -23,21 +24,29 @@ export function SelectChips<T extends string | number>({
   onToggle,
   error,
 }: SelectChipsProps<T>) {
+  const theme = useGerasTheme();
   return (
-    <View className="gap-1.5">
-      {label ? <Text className="text-sm font-medium text-gray-700">{label}</Text> : null}
-      <View className="flex-row flex-wrap gap-2">
+    <View style={{ gap: 6 }}>
+      {label ? <Text style={{ fontSize: 14, fontWeight: "500", color: theme.textPrimary }}>{label}</Text> : null}
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
         {options.map((option) => {
           const isSelected = selected.includes(option.value);
           return (
             <Pressable
               key={option.value}
               onPress={() => onToggle(option.value)}
-              className={`rounded-full border px-4 py-2 ${
-                isSelected ? "border-black bg-black" : "border-gray-300 bg-white"
-              }`}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isSelected }}
+              style={{
+                borderRadius: 999,
+                borderWidth: 1,
+                paddingHorizontal: 16,
+                paddingVertical: 8,
+                borderColor: isSelected ? theme.primary : theme.borderSoft,
+                backgroundColor: isSelected ? theme.primary : theme.surface,
+              }}
             >
-              <Text className={isSelected ? "text-sm text-white" : "text-sm text-gray-800"}>{option.label}</Text>
+              <Text style={{ fontSize: 14, color: isSelected ? theme.white : theme.textPrimary }}>{option.label}</Text>
             </Pressable>
           );
         })}

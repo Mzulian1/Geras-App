@@ -16,6 +16,28 @@ export function useCreateResidenceInquiry() {
   });
 }
 
+// Lectura de una sola solicitud ya creada (misma RLS que el historial)
+// — para la pantalla de confirmación, que necesita mostrar residencia,
+// tipo, fecha/hora, persona interesada, contacto y estado sin volver a
+// pedirle esos datos al usuario ni pasar por el server.
+export function useResidenceInquiry(inquiryId: string | undefined) {
+  return useQuery({
+    queryKey: ["residence-inquiry", inquiryId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("residence_inquiries")
+        .select(
+          "id, inquiry_type, status, preferred_date, preferred_time, contact_name, contact_phone, contact_email, residences(name), care_recipients(full_name)"
+        )
+        .eq("id", inquiryId!)
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!inquiryId,
+  });
+}
+
 // Historial propio (RLS residence_inquiries_select_family) — lectura
 // directa, sin pasar por el server. Solo se expone `status`, nunca
 // `internal_notes` (observaciones internas de Admin).

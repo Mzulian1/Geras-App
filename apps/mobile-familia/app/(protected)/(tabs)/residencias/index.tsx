@@ -111,6 +111,7 @@ export default function ResidenciasScreen() {
       renderItem={({ item }) => {
         const cover = [...(item.residence_images ?? [])].sort((a, b) => a.sort_order - b.sort_order)[0];
         const characteristics = (item.residence_services ?? []).filter((s) => s.kind === "characteristic").slice(0, 3);
+        const roomType = (item.residence_room_types ?? []).find((rt) => rt.active);
         return (
           <Card onPress={() => router.push(`/residencias/${item.id}`)} accessibilityLabel={item.name} padded={false}>
             {cover ? (
@@ -165,6 +166,12 @@ export default function ResidenciasScreen() {
                 <Text style={{ fontSize: 14, fontWeight: "600", color: theme.textPrimary }}>
                   Desde ${item.price_from.toLocaleString("es-CL")}
                 </Text>
+              ) : null}
+              {roomType ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <Ionicons name="bed-outline" size={13} color={theme.textSecondary} />
+                  <Text style={{ fontSize: 13, color: theme.textSecondary }}>{roomType.name}</Text>
+                </View>
               ) : null}
               {characteristics.length > 0 ? (
                 <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 2 }}>
