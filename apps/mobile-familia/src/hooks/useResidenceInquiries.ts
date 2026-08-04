@@ -47,7 +47,7 @@ export function useMyResidenceInquiries(familyUserId: string | undefined) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("residence_inquiries")
-        .select("id, residence_id, inquiry_type, status, created_at, residences(name)")
+        .select("id, residence_id, inquiry_type, status, created_at, preferred_date, preferred_time, residences(name)")
         .eq("family_user_id", familyUserId!)
         .order("created_at", { ascending: false });
       if (error) throw error;

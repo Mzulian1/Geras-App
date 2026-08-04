@@ -3,6 +3,7 @@ import { router } from "expo-router";
 import { SectionList, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { BookingStatus, RequestStatus, ResidenceInquiryStatus } from "@geras/shared";
+import { formatDateCL, formatDateTimeCL } from "@geras/shared";
 import { Card, EmptyState, getServiceIcon, HelpBanner, LoadingState, Screen, StatusBadge, useGerasTheme } from "@geras/ui";
 import { useDismissibleHelp } from "@/hooks/useDismissibleHelp";
 import { useFamilyBootstrap } from "@/hooks/useFamilyBootstrap";
@@ -20,6 +21,8 @@ interface ActivityItem {
   id: string;
   title: string;
   subtitle: string;
+  /** Fecha agendada/preferida ya formateada, cuando la hay. */
+  meta: string | null;
   icon: ReturnType<typeof getServiceIcon>;
   badge: ActivityBadge;
   group: ActivityGroup;
@@ -74,6 +77,12 @@ export default function ActividadScreen() {
         id: `request-${item.id}`,
         title: item.services?.name ?? "Servicio",
         subtitle: "Solicitud de servicio",
+        // scheduled_at es un instante real; preferred_date es fecha civil.
+        meta: booking?.scheduled_at
+          ? formatDateTimeCL(booking.scheduled_at)
+          : item.preferred_date
+            ? formatDateCL(item.preferred_date)
+            : null,
         icon: getServiceIcon({ name: item.services?.name }),
         badge: booking ? { kind: "booking", value: booking.status } : { kind: "request", value: item.status },
         group,
@@ -89,6 +98,9 @@ export default function ActividadScreen() {
       id: `inquiry-${item.id}`,
       title: item.residences?.name ?? "Residencia",
       subtitle: item.inquiry_type === "visit" ? "Solicitud de visita" : "Solicitud de información",
+      meta: item.preferred_date
+        ? `${formatDateCL(item.preferred_date)}${item.preferred_time ? ` · ${item.preferred_time.slice(0, 5)}` : ""}`
+        : null,
       icon: getServiceIcon({ name: "residencia" }),
       badge: { kind: "residenceInquiry", value: item.status },
       group: PENDING_INQUIRY.includes(item.status) ? "pending" : DONE_INQUIRY.includes(item.status) ? "done" : "ongoing",
@@ -167,9 +179,17 @@ export default function ActividadScreen() {
                   >
                     <Ionicons name={item.icon} size={20} color={theme.primary} />
                   </View>
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <Text style={{ fontSize: 16, fontWeight: "600", color: theme.textPrimary }}>{item.title}</Text>
-                    <Text style={{ fontSize: 14, color: theme.textSecondary }}>{item.subtitle}</Text>
+                  <View style={{ flex: 1, gap: 3 }}>
+                    <Text style={{ fontSize: 16, fontWeight: "700", color: theme.textPrimary }} numberOfLines={1}>
+                      {item.title}
+                    </Text>
+                    <Text style={{ fontSize: 13, color: theme.textSecondary }}>{item.subtitle}</Text>
+                    {item.meta ? (
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                        <Ionicons name="calendar-outline" size={12} color={theme.textSecondary} />
+                        <Text style={{ fontSize: 12, color: theme.textSecondary }}>{item.meta}</Text>
+                      </View>
+                    ) : null}
                   </View>
                   <StatusBadge kind={item.badge.kind as "booking"} value={item.badge.value as BookingStatus} />
                 </View>

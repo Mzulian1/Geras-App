@@ -7,6 +7,7 @@ import type { DayOfWeek, PublicProfessionalView } from "@geras/shared";
 import {
   Avatar,
   Card,
+  CategoryPill,
   EmptyState,
   HelpBanner,
   LoadingState,
@@ -136,52 +137,64 @@ export default function ProfessionalsScreen() {
       <Card onPress={() => router.push(`/professionals/${item.id}`)} accessibilityLabel={item.full_name ?? "Profesional"}>
         <View style={{ flexDirection: "row", gap: 14 }}>
           <Avatar uri={item.profile_photo_url} size={64} />
-          <View style={{ flex: 1, gap: 4 }}>
+          <View style={{ flex: 1, gap: 6 }}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-              <Text style={{ fontSize: 16, fontWeight: "600", color: theme.textPrimary, flexShrink: 1 }} numberOfLines={1}>
+              <Text style={{ fontSize: 16, fontWeight: "700", color: theme.textPrimary, flexShrink: 1 }} numberOfLines={1}>
                 {item.full_name}
               </Text>
               <StatusBadge kind="verification" value="approved" />
             </View>
-            <Text style={{ fontSize: 14, color: theme.textSecondary }}>
-              {item.profession_name} · {item.base_comuna ?? "Sin comuna"}
-            </Text>
+
+            {/* Profesión + evaluación: el par que más pesa al elegir. */}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              {item.profession_name ? <CategoryPill label={item.profession_name} /> : null}
+              {item.average_rating ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                  <Ionicons name="star" size={13} color={theme.warning} />
+                  <Text style={{ fontSize: 13, color: theme.textSecondary }}>
+                    {item.average_rating} ({item.total_reviews})
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+
+            {/* Cobertura: reemplaza a "comuna base", que decía menos. */}
             {coverageSummary(item.coverage_comunas) ? (
-              <Text style={{ fontSize: 12, color: theme.textSecondary }} numberOfLines={1}>
-                {coverageSummary(item.coverage_comunas)}
-              </Text>
-            ) : null}
-            {item.average_rating || item.years_experience ? (
               <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                {item.average_rating ? <Ionicons name="star" size={14} color={theme.warning} /> : null}
-                <Text style={{ fontSize: 14, color: theme.textSecondary }}>
-                  {item.average_rating ? `${item.average_rating} (${item.total_reviews} reseñas)` : null}
-                  {item.average_rating && item.years_experience ? " · " : null}
-                  {item.years_experience ? `${item.years_experience} años` : null}
+                <Ionicons name="location-outline" size={13} color={theme.textSecondary} />
+                <Text style={{ fontSize: 13, color: theme.textSecondary, flex: 1 }} numberOfLines={1}>
+                  {coverageSummary(item.coverage_comunas)}
                 </Text>
               </View>
             ) : null}
-            {services.length > 0 ? (
-              <Text style={{ fontSize: 13, color: theme.textSecondary }} numberOfLines={1}>
-                {services.map((s) => s.service_name).join(" · ")}
-              </Text>
-            ) : null}
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 2 }}>
+
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
               {priceFrom ? (
-                <Text style={{ fontSize: 14, fontWeight: "600", color: theme.textPrimary }}>
+                <Text style={{ fontSize: 15, fontWeight: "700", color: theme.textPrimary }}>
                   Desde ${priceFrom.toLocaleString("es-CL")}
                 </Text>
               ) : (
                 <View />
               )}
               {nextAvailable ? (
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                  <Ionicons name="calendar-outline" size={13} color={theme.success} />
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 4,
+                    backgroundColor: theme.successSoft,
+                    paddingHorizontal: 8,
+                    paddingVertical: 3,
+                    borderRadius: 999,
+                  }}
+                >
+                  <Ionicons name="calendar-outline" size={12} color={theme.success} />
                   <Text style={{ fontSize: 12, fontWeight: "600", color: theme.success }}>{nextAvailable}</Text>
                 </View>
               ) : null}
             </View>
-            <View style={{ marginTop: 6, alignSelf: "flex-start" }}>
+
+            <View style={{ alignSelf: "flex-start", marginTop: 2 }}>
               <SecondaryButton label="Ver perfil" size="compact" onPress={() => router.push(`/professionals/${item.id}`)} />
             </View>
           </View>

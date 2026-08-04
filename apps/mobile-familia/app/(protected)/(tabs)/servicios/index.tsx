@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { FlatList, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Card, EmptyState, LoadingState, ServiceIcon, useGerasTheme } from "@geras/ui";
+import { Card, CategoryPill, EmptyState, LoadingState, ServiceIcon, useGerasTheme } from "@geras/ui";
 import { useServicesShowcase, type ServiceShowcaseEntry } from "@/hooks/useCatalogs";
 
 // Catálogo completo de servicios de Geras (orden y catálogo vienen de
@@ -55,9 +55,12 @@ export default function ServiciosScreen() {
                       {service.name}
                     </Text>
                     {service.description ? (
-                      <Text style={{ fontSize: 13, color: theme.textSecondary }} numberOfLines={3}>
+                      <Text style={{ fontSize: 13, color: theme.textSecondary }} numberOfLines={2}>
                         {service.description}
                       </Text>
+                    ) : null}
+                    {service.duration_minutes ? (
+                      <CategoryPill label={`${service.duration_minutes} min`} tone="neutral" />
                     ) : null}
                     <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                       <Text style={{ fontSize: 13, fontWeight: "700", color: theme.primary }}>Ver profesionales</Text>

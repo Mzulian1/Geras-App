@@ -1,9 +1,18 @@
 import { useMemo, useState } from "react";
 import { router } from "expo-router";
-import { FlatList, Image, Pressable, Text, View } from "react-native";
+import { FlatList, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { MobilityLevel } from "@geras/shared";
-import { Card, EmptyState, FormField, HelpBanner, LoadingState, SearchableSelectField, SecondaryButton, useGerasTheme } from "@geras/ui";
+import {
+  EmptyState,
+  FormField,
+  HelpBanner,
+  LoadingState,
+  MediaListCard,
+  SearchableSelectField,
+  SecondaryButton,
+  useGerasTheme,
+} from "@geras/ui";
 import { useResidencesCatalog } from "@/hooks/useResidencesCatalog";
 import { useComunasCatalog } from "@/hooks/useCatalogs";
 import { SelectChips } from "@/components/SelectChips";
@@ -118,86 +127,64 @@ export default function ResidenciasScreen() {
       }
       renderItem={({ item }) => {
         const cover = [...(item.residence_images ?? [])].sort((a, b) => a.sort_order - b.sort_order)[0];
-        const characteristics = (item.residence_services ?? []).filter((s) => s.kind === "characteristic").slice(0, 3);
         const roomType = (item.residence_room_types ?? []).find((rt) => rt.active);
+        const hasSlots = (item.available_slots ?? 0) > 0;
+        const openResidence = () => router.push(`/residencias/${item.id}`);
         return (
-          <Card onPress={() => router.push(`/residencias/${item.id}`)} accessibilityLabel={item.name} padded={false}>
-            {cover ? (
-              <Image source={{ uri: cover.url }} style={{ width: "100%", height: 140, borderTopLeftRadius: 16, borderTopRightRadius: 16 }} resizeMode="cover" />
-            ) : (
-              <View
-                style={{
-                  width: "100%",
-                  height: 140,
-                  borderTopLeftRadius: 16,
-                  borderTopRightRadius: 16,
-                  backgroundColor: theme.primarySoft,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Ionicons name="business" size={36} color={theme.primary} />
-              </View>
-            )}
-            <View style={{ gap: 6, padding: 16 }}>
-              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                <Text style={{ fontSize: 16, fontWeight: "700", color: theme.textPrimary, flex: 1 }}>{item.name}</Text>
+          <MediaListCard
+            title={item.name}
+            imageUri={cover?.url}
+            fallbackIcon="business"
+            category={item.residence_type ?? undefined}
+            meta={item.comunas?.name ?? "Sin comuna"}
+            onPress={openResidence}
+            accessibilityLabel={`${item.name}, ${item.comunas?.name ?? "sin comuna"}`}
+          >
+            <View style={{ gap: 6, marginTop: 2 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                {item.price_from ? (
+                  <Text style={{ fontSize: 14, fontWeight: "700", color: theme.textPrimary }}>
+                    Desde ${item.price_from.toLocaleString("es-CL")}
+                  </Text>
+                ) : null}
                 <View
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
                     gap: 4,
-                    backgroundColor: (item.available_slots ?? 0) > 0 ? theme.successSoft : theme.surfaceSecondary,
+                    backgroundColor: hasSlots ? theme.successSoft : theme.surfaceSecondary,
                     paddingHorizontal: 8,
                     paddingVertical: 3,
                     borderRadius: 999,
                   }}
                 >
                   <Ionicons
-                    name={(item.available_slots ?? 0) > 0 ? "checkmark-circle" : "time-outline"}
+                    name={hasSlots ? "checkmark-circle" : "time-outline"}
                     size={12}
-                    color={(item.available_slots ?? 0) > 0 ? theme.success : theme.textSecondary}
+                    color={hasSlots ? theme.success : theme.textSecondary}
                   />
                   <Text
-                    style={{
-                      fontSize: 12,
-                      fontWeight: "600",
-                      color: (item.available_slots ?? 0) > 0 ? theme.success : theme.textSecondary,
-                    }}
+                    style={{ fontSize: 12, fontWeight: "600", color: hasSlots ? theme.success : theme.textSecondary }}
                   >
-                    {(item.available_slots ?? 0) > 0 ? "Cupos disponibles" : "Sin cupos"}
+                    {hasSlots ? "Cupos disponibles" : "Sin cupos"}
                   </Text>
                 </View>
               </View>
-              <Text style={{ fontSize: 14, color: theme.textSecondary }}>{item.comunas?.name ?? "Sin comuna"}</Text>
-              {item.price_from ? (
-                <Text style={{ fontSize: 14, fontWeight: "600", color: theme.textPrimary }}>
-                  Desde ${item.price_from.toLocaleString("es-CL")}
-                </Text>
-              ) : null}
+
               {roomType ? (
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
                   <Ionicons name="bed-outline" size={13} color={theme.textSecondary} />
-                  <Text style={{ fontSize: 13, color: theme.textSecondary }}>{roomType.name}</Text>
+                  <Text style={{ fontSize: 13, color: theme.textSecondary }} numberOfLines={1}>
+                    {roomType.name}
+                  </Text>
                 </View>
               ) : null}
-              {characteristics.length > 0 ? (
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 2 }}>
-                  {characteristics.map((c) => (
-                    <View
-                      key={c.name}
-                      style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, backgroundColor: theme.surfaceSecondary }}
-                    >
-                      <Text style={{ fontSize: 11, color: theme.textSecondary }}>{c.name}</Text>
-                    </View>
-                  ))}
-                </View>
-              ) : null}
-              <View style={{ marginTop: 8, alignSelf: "flex-start" }}>
-                <SecondaryButton label="Ver residencia" size="compact" onPress={() => router.push(`/residencias/${item.id}`)} />
+
+              <View style={{ alignSelf: "flex-start", marginTop: 4 }}>
+                <SecondaryButton label="Ver residencia" size="compact" onPress={openResidence} />
               </View>
             </View>
-          </Card>
+          </MediaListCard>
         );
       }}
     />

@@ -47,5 +47,11 @@ export * from "./components/ServiceIcon";
 export * from "./components/GradientBackground";
 export * from "./components/HelpBanner";
 export * from "./components/BrandFooter";
+export * from "./components/HeroHeader";
+export * from "./components/CategoryPill";
+export * from "./components/ActionPill";
+export * from "./components/MediaListCard";
+export * from "./components/CarouselSection";
+export * from "./components/CircleIconButton";
 
 export * from "./icons/serviceIconMap";

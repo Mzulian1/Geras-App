@@ -9,6 +9,7 @@ import {
   BottomActionBar,
   Card,
   FilterChip,
+  GradientBackground,
   InfoRow,
   LoadingState,
   PrimaryButton,
@@ -109,8 +110,13 @@ export default function ProfessionalPublicProfileScreen() {
     >
       <AppHeader title="Detalle del profesional" onBack={() => router.back()} />
 
-      {/* Cabecera visual */}
-      <View style={{ backgroundColor: theme.primaryDark, padding: 20, paddingBottom: 24 }}>
+      {/* Cabecera visual: gradiente suave (2 tonos) con esquinas
+          inferiores redondeadas — el gradiente completo de 4 tonos queda
+          reservado a Inicio y login (guía §4, "usar con moderación"). */}
+      <GradientBackground
+        variant="soft"
+        style={{ padding: 20, paddingBottom: 24, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}
+      >
         <View style={{ flexDirection: "row", gap: 14, alignItems: "center" }}>
           <Avatar uri={professional.profile_photo_url} size={72} />
           <View style={{ flex: 1, gap: 6 }}>
@@ -142,7 +148,7 @@ export default function ProfessionalPublicProfileScreen() {
             )}
           </View>
         </View>
-      </View>
+      </GradientBackground>
 
       <View style={{ padding: 16, gap: 20 }}>
         {nextProfessionalAvailability ? (

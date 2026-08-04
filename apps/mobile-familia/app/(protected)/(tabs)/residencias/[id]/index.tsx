@@ -2,7 +2,16 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Image, Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { MobilityLevel } from "@geras/shared";
-import { AppHeader, Card, LoadingState, PrimaryButton, Screen, SecondaryButton, useGerasTheme } from "@geras/ui";
+import {
+  AppHeader,
+  Card,
+  CategoryPill,
+  LoadingState,
+  PrimaryButton,
+  Screen,
+  SecondaryButton,
+  useGerasTheme,
+} from "@geras/ui";
 import {
   useResidenceDetail,
   useResidenceImages,
@@ -83,7 +92,12 @@ export default function ResidenceDetailScreen() {
       <AppHeader title="Detalle de residencia" onBack={() => router.back()} />
 
       {images[0] ? (
-        <Pressable onPress={() => router.push(`/residencias/${id}/gallery`)}>
+        <Pressable
+          onPress={() => router.push(`/residencias/${id}/gallery`)}
+          accessibilityRole="button"
+          accessibilityLabel={`Ver las ${images.length} fotos de ${residence.name}`}
+          style={{ marginHorizontal: 16, borderRadius: 20, overflow: "hidden" }}
+        >
           <Image source={{ uri: images[0].url }} style={{ width: "100%", height: 220 }} resizeMode="cover" />
           {images.length > 1 ? (
             <View
@@ -106,19 +120,31 @@ export default function ResidenceDetailScreen() {
           ) : null}
         </Pressable>
       ) : (
-        <View style={{ width: "100%", height: 180, backgroundColor: theme.primarySoft, alignItems: "center", justifyContent: "center" }}>
+        <View
+          style={{
+            marginHorizontal: 16,
+            height: 180,
+            borderRadius: 20,
+            backgroundColor: theme.primarySoft,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
           <Ionicons name="business" size={48} color={theme.primary} />
         </View>
       )}
 
       <View style={{ padding: 16, gap: 20 }}>
-        <View style={{ gap: 4 }}>
-          <Text style={{ fontSize: 22, fontWeight: "700", color: theme.textPrimary }}>{residence.name}</Text>
-          <Text style={{ fontSize: 15, color: theme.textSecondary }}>
-            {residence.comunas?.name ?? "Sin comuna"}
-            {residence.comunas?.region ? ` · ${residence.comunas.region}` : ""}
-          </Text>
-          {residence.residence_type ? <Text style={{ fontSize: 14, color: theme.textSecondary }}>{residence.residence_type}</Text> : null}
+        <View style={{ gap: 8 }}>
+          {residence.residence_type ? <CategoryPill label={residence.residence_type} /> : null}
+          <Text style={{ fontSize: 24, fontWeight: "700", color: theme.textPrimary }}>{residence.name}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Ionicons name="location-outline" size={15} color={theme.textSecondary} />
+            <Text style={{ fontSize: 15, color: theme.textSecondary, flex: 1 }}>
+              {residence.comunas?.name ?? "Sin comuna"}
+              {residence.comunas?.region ? ` · ${residence.comunas.region}` : ""}
+            </Text>
+          </View>
         </View>
 
         {residence.description ? (
