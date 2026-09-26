@@ -12,6 +12,7 @@
 // singleton real que usa el proceso.
 // ============================================================
 import { z } from "zod";
+import type { OriginPolicy } from "./lib/allowedOrigin.js";
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -31,9 +32,33 @@ const envSchema = z.object({
   // default sirve para desarrollo/pruebas.
   EMAIL_FROM_ADDRESS: z.string().email().default("reservas@geras.cl"),
 
-  // Lista separada por comas de orígenes permitidos para CORS. Opcional:
-  // sin esta variable se usa un default seguro para desarrollo local.
+  // Lista separada por comas de orígenes permitidos para CORS, por
+  // coincidencia EXACTA. Opcional: sin esta variable se usa un default
+  // seguro para desarrollo local.
   CORS_ALLOWED_ORIGINS: z.string().optional(),
+
+  // Habilita el patrón de Preview Deployments de Vercel
+  // (geras-familia-*.vercel.app y sus dos hermanos). Está APAGADO por
+  // defecto y hay que encenderlo explícitamente: se enciende en el
+  // servicio de staging, donde el dominio cambia en cada push, y se deja
+  // apagado en producción, donde los dominios son fijos y van en
+  // CORS_ALLOWED_ORIGINS. Ver lib/allowedOrigin.ts.
+  CORS_ALLOW_VERCEL_PREVIEWS: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
+
+  // Proveedor de pago. Hoy solo existe "mock", que NO mueve dinero real
+  // ni retiene fondos en ningún banco: simula la autorización para poder
+  // desarrollar y probar el flujo completo. Cuando se integre un
+  // proveedor real se agrega su nombre acá y su implementación en
+  // services/paymentProvider.ts.
+  //
+  // El default es "mock" solo fuera de producción; en producción hay que
+  // declararlo explícitamente (ver resolvePaymentProviderName), para que
+  // nadie cobre de verdad creyendo que hay un proveedor conectado, ni al
+  // revés: que la app diga "pago recibido" con un mock en producción.
+  PAYMENT_PROVIDER: z.enum(["mock"]).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -74,3 +99,9 @@ export function resolveAllowedOrigins(raw: string | undefined): string[] {
 }
 
 export const allowedOrigins = resolveAllowedOrigins(env.CORS_ALLOWED_ORIGINS);
+
+/** Política de CORS ya resuelta, tal como la consume app.ts. */
+export const originPolicy: OriginPolicy = {
+  exactOrigins: allowedOrigins,
+  allowVercelPreviews: env.CORS_ALLOW_VERCEL_PREVIEWS,
+};

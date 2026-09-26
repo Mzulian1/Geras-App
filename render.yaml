@@ -1,0 +1,87 @@
+# ============================================================
+# GERAS API — Render Blueprint (staging)
+#
+# Despliegue NATIVO de Node, sin Docker: el monorepo se construye bien
+# con los comandos de npm workspaces, así que Docker solo agregaría una
+# capa más que mantener.
+#
+# Por qué rootDir es la RAÍZ y no server/:
+# `server` depende de `@geras/shared`, que es un workspace. Si Render
+# instalara solo dentro de server/, npm no podría resolver ese paquete.
+# Se instala en la raíz (que es donde vive el package-lock.json) y se
+# arranca con el workspace, que es exactamente como corre en local.
+#
+# Por qué el arranque es `tsx` y no `node dist/index.js`:
+# `@geras/shared` publica TypeScript directo (`main: "./src/index.ts"`)
+# — Node no puede importarlo (ERR_UNSUPPORTED_DIR_IMPORT), y `tsc` sobre
+# server/ no lo empaqueta, solo emite sus propios archivos. Hacer que
+# `@geras/shared` compile a JS con un mapa de `exports` es el camino
+# correcto a futuro, pero cambia cómo lo resuelven Metro y Expo, que hoy
+# consumen ese TypeScript tal cual. Se documenta como pendiente en
+# docs/DEPLOY.md en vez de arriesgar el bundle de las dos apps móviles
+# por una necesidad de despliegue.
+#
+# NINGÚN secreto vive en este archivo: las variables marcadas
+# `sync: false` se cargan a mano en el dashboard de Render.
+# ============================================================
+services:
+  - type: web
+    name: geras-api-staging
+    runtime: node
+    plan: starter # NO el plan free: se duerme por inactividad y el primer
+      # request después tarda ~50 s, que no sirve ni para una demo.
+    region: oregon # La más cercana a Chile de las que ofrece Render
+      # (no hay región en Sudamérica). Conviene que coincida
+      # con la región del proyecto de Supabase: verificarlo
+      # en el dashboard de Supabase antes de crear el servicio.
+    branch: feat/mobile-ui-navigation-refresh
+    buildCommand: npm ci && npm run build --workspace=server
+    startCommand: npm start --workspace=server
+    healthCheckPath: /health
+    autoDeployTrigger: off # El deploy se dispara a mano mientras esto sea staging.
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+
+      # PORT lo inyecta Render. env.ts ya lo lee (con 4000 como default
+      # solo para desarrollo local), así que no se declara acá.
+
+      # --- Orígenes permitidos -------------------------------
+      # Se completa con las URLs reales de Vercel cuando existan.
+      # Coincidencia EXACTA, separadas por coma. Nunca "*".
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      # Staging acepta además los Preview de Vercel, cuyo dominio cambia
+      # en cada push. El patrón está acotado a nuestros tres proyectos
+      # (ver server/src/lib/allowedOrigin.ts). En producción va "false".
+      - key: CORS_ALLOW_VERCEL_PREVIEWS
+        value: "true"
+
+      # --- Proveedor de pago ---------------------------------
+      # SIMULADOR. No mueve dinero, no retiene fondos, no emite
+      # comprobantes. No cambiar sin revisar antes los textos de la
+      # interfaz que hoy dicen "MODO SIMULACIÓN".
+      - key: PAYMENT_PROVIDER
+        value: mock
+
+      # --- Secretos (se cargan a mano en Render) -------------
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: CLERK_WEBHOOK_SIGNING_SECRET
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      # NUNCA en un frontend. Bypasea todas las políticas de RLS.
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM_ADDRESS
+        sync: false

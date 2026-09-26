@@ -351,6 +351,38 @@ export const createBookingSchema = z.object({
 });
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
 
+// Reserva directa desde el perfil de un profesional (sin pasar por
+// match). El precio NO viaja: lo deriva la RPC create_provisional_booking
+// desde professional_services, igual que el camino de match.
+//
+// `scheduled_date` + `scheduled_time` viajan como fecha civil y hora de
+// pared por separado, nunca como un instante ya armado por el cliente:
+// el cliente no puede resolver de forma confiable a qué instante UTC
+// corresponde "el 3 de agosto a las 09:00 en Chile", y ese es
+// exactamente el bug de desfase de un día que documenta
+// packages/shared/src/dates. El server los combina con
+// combineChileDateAndTime.
+export const createDirectBookingSchema = z.object({
+  professional_id: z.string().uuid(),
+  service_id: z.coerce.number().int().positive(),
+  comuna_id: z.coerce.number().int().positive(),
+  scheduled_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida"),
+  scheduled_time: z.string().regex(/^\d{2}:\d{2}$/, "Hora inválida"),
+  duration_minutes: z.coerce.number().int().positive().max(600).default(60),
+  // La genera el cliente UNA vez por intento y la reenvía en cada
+  // reintento: es lo que garantiza que reintentar no cree una segunda
+  // reserva ni un segundo cobro.
+  idempotency_key: z.string().trim().min(8, "Clave de idempotencia inválida").max(120),
+  request_id: z.string().uuid().optional(),
+  notes: z.string().trim().max(500, "Máximo 500 caracteres").optional().or(z.literal("")),
+});
+export type CreateDirectBookingInput = z.infer<typeof createDirectBookingSchema>;
+
+export const payBookingSchema = z.object({
+  idempotency_key: z.string().trim().min(8, "Clave de idempotencia inválida").max(120),
+});
+export type PayBookingInput = z.infer<typeof payBookingSchema>;
+
 export const rejectBookingSchema = z.object({
   reason: z.string().trim().max(500, "Máximo 500 caracteres").optional().or(z.literal("")),
 });

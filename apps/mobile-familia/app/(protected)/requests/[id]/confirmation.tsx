@@ -27,8 +27,16 @@ import {
 } from "@geras/ui";
 
 const STATUS_MESSAGE: Record<BookingStatus, string> = {
+  awaiting_payment: "Estamos verificando tu reserva. Puedes revisar el estado desde Actividad.",
+  paid_awaiting_confirmation: "Pago recibido. El profesional debe confirmar la atención.",
   pending: "Tu solicitud de reserva fue registrada correctamente. Te avisaremos cuando el profesional confirme la atención.",
-  confirmed: "El profesional confirmó tu reserva.",
+  // No se afirma ninguna retención de dinero: el proveedor de pago activo
+  // es el mock (server/src/services/paymentProvider.ts), que no mueve ni
+  // retiene fondos. Decir "tu pago queda protegido" con un simulador
+  // detrás sería falso, y la regla escrita en ese archivo lo prohíbe
+  // explícitamente mientras el proveedor sea el mock.
+  confirmed: "Reserva confirmada. El profesional ya está avisado y te esperará en la fecha acordada.",
+  disputed: "Estamos revisando un reclamo sobre esta atención. Te contactaremos con la respuesta.",
   en_route: "El profesional está en camino.",
   in_progress: "La atención está en curso.",
   professional_completed: "El profesional marcó el servicio como realizado. Confírmalo para completar la reserva.",
@@ -37,7 +45,10 @@ const STATUS_MESSAGE: Record<BookingStatus, string> = {
 };
 
 const NEXT_STEP: Record<BookingStatus, string | null> = {
+  awaiting_payment: "Estamos confirmando el pago. Esto puede tardar unos segundos.",
+  paid_awaiting_confirmation: "Esperando que el profesional acepte la atención.",
   pending: "Esperando confirmación del profesional.",
+  disputed: null,
   confirmed: "Recibirás un aviso cuando el profesional vaya en camino.",
   en_route: "El profesional llegará pronto.",
   in_progress: "Te avisaremos cuando el servicio termine.",

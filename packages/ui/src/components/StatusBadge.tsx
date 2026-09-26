@@ -28,6 +28,8 @@ interface StatusVisual {
 // badge); las descripciones largas (p. ej. BOOKING_STATUS_LABELS de
 // @geras/shared) siguen viviendo donde ya estaban para texto de ayuda.
 const BOOKING: Record<BookingStatus, StatusVisual> = {
+  awaiting_payment: { label: "Falta pagar", tone: "warning" },
+  paid_awaiting_confirmation: { label: "Pago recibido", tone: "info" },
   pending: { label: "Pendiente", tone: "warning" },
   confirmed: { label: "Confirmada", tone: "info" },
   en_route: { label: "En camino", tone: "info" },
@@ -35,6 +37,7 @@ const BOOKING: Record<BookingStatus, StatusVisual> = {
   professional_completed: { label: "Por confirmar", tone: "warning" },
   completed: { label: "Completada", tone: "success" },
   cancelled: { label: "Cancelada", tone: "error" },
+  disputed: { label: "En revisión", tone: "error" },
 };
 
 const VERIFICATION: Record<VerificationStatus, StatusVisual> = {
@@ -73,8 +76,13 @@ const MATCH: Record<MatchStatus, StatusVisual> = {
   rejected: { label: "Rechazado", tone: "error" },
 };
 
+// "Retenido" describe el estado del pago dentro de Geras, no una
+// retención bancaria: mientras el proveedor configurado sea el mock de
+// desarrollo, no se mueve dinero real. Ver PaymentProvider en el server.
 const PAYMENT: Record<PaymentStatus, StatusVisual> = {
   pending: { label: "Pendiente", tone: "warning" },
+  held: { label: "Retenido", tone: "info" },
+  released: { label: "Liberado", tone: "success" },
   paid: { label: "Pagado", tone: "success" },
   refunded: { label: "Reembolsado", tone: "info" },
   failed: { label: "Fallido", tone: "error" },

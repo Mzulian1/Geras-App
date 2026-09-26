@@ -7,6 +7,7 @@
 // (UTC-4), retrocedía al día calendario anterior.
 import { describe, expect, it } from "vitest";
 import {
+  addDaysToDateKey,
   combineChileDateAndTime,
   formatDateCL,
   formatDateLongCL,
@@ -75,5 +76,31 @@ describe("getChileCalendarDate", () => {
     // el día calendario en Chile todavía es el 2, aunque en UTC ya sea el 3.
     const now = new Date("2026-08-03T00:02:00Z");
     expect(getChileCalendarDate(now)).toBe("2026-08-02");
+  });
+});
+
+describe("addDaysToDateKey — aritmética de calendario", () => {
+  it("suma días dentro del mismo mes", () => {
+    expect(addDaysToDateKey("2026-08-03", 10)).toBe("2026-08-13");
+  });
+
+  it("cruza el fin de mes", () => {
+    expect(addDaysToDateKey("2026-08-20", 45)).toBe("2026-10-04");
+  });
+
+  it("cruza el fin de año", () => {
+    expect(addDaysToDateKey("2026-12-28", 7)).toBe("2027-01-04");
+  });
+
+  it("resta días con un valor negativo", () => {
+    expect(addDaysToDateKey("2026-03-01", -1)).toBe("2026-02-28");
+  });
+
+  it("respeta el año bisiesto", () => {
+    expect(addDaysToDateKey("2028-02-28", 1)).toBe("2028-02-29");
+  });
+
+  it("sumar 0 días devuelve la misma fecha", () => {
+    expect(addDaysToDateKey("2026-08-03", 0)).toBe("2026-08-03");
   });
 });

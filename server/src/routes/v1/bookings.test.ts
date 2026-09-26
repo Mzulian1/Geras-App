@@ -17,6 +17,10 @@ function makeQueryBuilder(result: { data: unknown; error: unknown }) {
   const builder = {
     select: vi.fn(() => builder),
     eq: vi.fn(() => builder),
+    // `limit` lo usa checkProfessionalCoverage al buscar si el
+    // profesional cubre otra comuna de la misma región. Devuelve el
+    // propio builder, que es thenable, así el `await` resuelve igual.
+    limit: vi.fn(() => builder),
     maybeSingle: vi.fn(() => Promise.resolve(result)),
     single: vi.fn(() => Promise.resolve(result)),
     then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) =>
@@ -132,10 +136,16 @@ describe("POST /api/v1/bookings", () => {
       data: { id: "req-1", preferred_date: null, requested_time: null, duration_minutes: null, comuna_id: 9 },
       error: null,
     });
-    const coverageBuilder = makeQueryBuilder({ data: null, error: null }); // sin fila = no cubre esa comuna
+    // Sin fila en professional_coverage = no cubre esa comuna. Como
+    // tampoco cubre ninguna otra comuna de la región (segunda consulta
+    // sobre la misma tabla, que devuelve `data: null`), el resultado es
+    // "outside_coverage" y no "cobertura excepcional".
+    const coverageBuilder = makeQueryBuilder({ data: null, error: null });
+    const comunasBuilder = makeQueryBuilder({ data: { region: "Metropolitana" }, error: null });
     fromMock.mockImplementation((table: string) => {
       if (table === "service_requests") return requestBuilder;
       if (table === "professional_coverage") return coverageBuilder;
+      if (table === "comunas") return comunasBuilder;
       throw new Error(`Tabla no mockeada: ${table}`);
     });
 

@@ -1,0 +1,5 @@
+# Artefactos de la build web: EAS empaqueta el proyecto para compilar
+# nativo, y subir el dist de Expo Web solo hace el tarball más pesado.
+dist/
+.expo/
+web-build/

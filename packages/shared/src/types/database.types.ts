@@ -411,6 +411,7 @@ export type Database = {
           booking_id: string
           created_at: string
           id: string
+          idempotency_key: string | null
           platform_fee: number
           provider: string | null
           provider_payment_id: string | null
@@ -422,6 +423,7 @@ export type Database = {
           booking_id: string
           created_at?: string
           id?: string
+          idempotency_key?: string | null
           platform_fee?: number
           provider?: string | null
           provider_payment_id?: string | null
@@ -433,6 +435,7 @@ export type Database = {
           booking_id?: string
           created_at?: string
           id?: string
+          idempotency_key?: string | null
           platform_fee?: number
           provider?: string | null
           provider_payment_id?: string | null
@@ -1068,10 +1071,10 @@ export type Database = {
         Row: {
           assigned_to: string | null
           care_recipient_id: string | null
+          consent_given: boolean
           contact_email: string | null
           contact_name: string
           contact_phone: string
-          consent_given: boolean
           created_at: string
           family_user_id: string
           id: string
@@ -1087,10 +1090,10 @@ export type Database = {
         Insert: {
           assigned_to?: string | null
           care_recipient_id?: string | null
+          consent_given: boolean
           contact_email?: string | null
           contact_name: string
           contact_phone: string
-          consent_given: boolean
           created_at?: string
           family_user_id: string
           id?: string
@@ -1106,10 +1109,10 @@ export type Database = {
         Update: {
           assigned_to?: string | null
           care_recipient_id?: string | null
+          consent_given?: boolean
           contact_email?: string | null
           contact_name?: string
           contact_phone?: string
-          consent_given?: boolean
           created_at?: string
           family_user_id?: string
           id?: string
@@ -1161,7 +1164,9 @@ export type Database = {
           inquiry_id: string
           new_status: Database["public"]["Enums"]["residence_inquiry_status"]
           note: string | null
-          old_status: Database["public"]["Enums"]["residence_inquiry_status"] | null
+          old_status:
+            | Database["public"]["Enums"]["residence_inquiry_status"]
+            | null
         }
         Insert: {
           changed_at?: string | null
@@ -1170,7 +1175,9 @@ export type Database = {
           inquiry_id: string
           new_status: Database["public"]["Enums"]["residence_inquiry_status"]
           note?: string | null
-          old_status?: Database["public"]["Enums"]["residence_inquiry_status"] | null
+          old_status?:
+            | Database["public"]["Enums"]["residence_inquiry_status"]
+            | null
         }
         Update: {
           changed_at?: string | null
@@ -1179,7 +1186,9 @@ export type Database = {
           inquiry_id?: string
           new_status?: Database["public"]["Enums"]["residence_inquiry_status"]
           note?: string | null
-          old_status?: Database["public"]["Enums"]["residence_inquiry_status"] | null
+          old_status?:
+            | Database["public"]["Enums"]["residence_inquiry_status"]
+            | null
         }
         Relationships: [
           {
@@ -1320,7 +1329,9 @@ export type Database = {
         Row: {
           active: boolean
           address: string
-          admission_mobility_levels: Database["public"]["Enums"]["mobility_level"][] | null
+          admission_mobility_levels:
+            | Database["public"]["Enums"]["mobility_level"][]
+            | null
           available_slots: number | null
           capacity: number | null
           comuna_id: number
@@ -1346,7 +1357,9 @@ export type Database = {
         Insert: {
           active?: boolean
           address: string
-          admission_mobility_levels?: Database["public"]["Enums"]["mobility_level"][] | null
+          admission_mobility_levels?:
+            | Database["public"]["Enums"]["mobility_level"][]
+            | null
           available_slots?: number | null
           capacity?: number | null
           comuna_id: number
@@ -1372,7 +1385,9 @@ export type Database = {
         Update: {
           active?: boolean
           address?: string
-          admission_mobility_levels?: Database["public"]["Enums"]["mobility_level"][] | null
+          admission_mobility_levels?:
+            | Database["public"]["Enums"]["mobility_level"][]
+            | null
           available_slots?: number | null
           capacity?: number | null
           comuna_id?: number
@@ -1725,15 +1740,24 @@ export type Database = {
     }
     Functions: {
       accept_booking: {
-        Args: { p_actor_user_id?: string; p_booking_id: string; p_note?: string }
+        Args: {
+          p_actor_user_id?: string
+          p_booking_id: string
+          p_note?: string
+        }
         Returns: undefined
       }
-      admin_set_professional_accepting_requests: {
-        Args: { p_accepting_requests: boolean; p_note?: string; p_professional_id: string }
+      admin_add_residence_inquiry_note: {
+        Args: { p_actor_user_id?: string; p_inquiry_id: string; p_note: string }
         Returns: undefined
       }
-      admin_set_professional_active: {
-        Args: { p_active: boolean; p_note?: string; p_professional_id: string }
+      admin_assign_residence_inquiry: {
+        Args: {
+          p_actor_user_id?: string
+          p_assigned_to: string
+          p_inquiry_id: string
+          p_note?: string
+        }
         Returns: undefined
       }
       admin_change_residence_inquiry_status: {
@@ -1745,32 +1769,41 @@ export type Database = {
         }
         Returns: undefined
       }
-      admin_assign_residence_inquiry: {
-        Args: { p_actor_user_id?: string; p_assigned_to: string; p_inquiry_id: string; p_note?: string }
-        Returns: undefined
-      }
-      admin_add_residence_inquiry_note: {
-        Args: { p_actor_user_id?: string; p_inquiry_id: string; p_note: string }
-        Returns: undefined
-      }
       admin_publish_residence: {
-        Args: { p_actor_user_id?: string; p_note?: string; p_residence_id: string }
-        Returns: undefined
-      }
-      admin_unpublish_residence: {
-        Args: { p_actor_user_id?: string; p_note?: string; p_residence_id: string }
-        Returns: undefined
-      }
-      admin_suspend_residence: {
-        Args: { p_actor_user_id?: string; p_note?: string; p_residence_id: string }
+        Args: {
+          p_actor_user_id?: string
+          p_note?: string
+          p_residence_id: string
+        }
         Returns: undefined
       }
       admin_reactivate_residence: {
-        Args: { p_actor_user_id?: string; p_note?: string; p_residence_id: string }
+        Args: {
+          p_actor_user_id?: string
+          p_note?: string
+          p_residence_id: string
+        }
+        Returns: undefined
+      }
+      admin_set_professional_accepting_requests: {
+        Args: {
+          p_accepting_requests: boolean
+          p_note?: string
+          p_professional_id: string
+        }
+        Returns: undefined
+      }
+      admin_set_professional_active: {
+        Args: { p_active: boolean; p_note?: string; p_professional_id: string }
         Returns: undefined
       }
       admin_set_residence_verified: {
-        Args: { p_actor_user_id?: string; p_note?: string; p_residence_id: string; p_verified: boolean }
+        Args: {
+          p_actor_user_id?: string
+          p_note?: string
+          p_residence_id: string
+          p_verified: boolean
+        }
         Returns: undefined
       }
       admin_set_verification_status: {
@@ -1781,29 +1814,86 @@ export type Database = {
         }
         Returns: undefined
       }
+      admin_suspend_residence: {
+        Args: {
+          p_actor_user_id?: string
+          p_note?: string
+          p_residence_id: string
+        }
+        Returns: undefined
+      }
+      admin_unpublish_residence: {
+        Args: {
+          p_actor_user_id?: string
+          p_note?: string
+          p_residence_id: string
+        }
+        Returns: undefined
+      }
       auth_user_id: { Args: never; Returns: string }
       auth_user_role: {
         Args: never
         Returns: Database["public"]["Enums"]["user_role"]
+      }
+      booking_time_range: {
+        Args: { p_duration_minutes: number; p_scheduled_at: string }
+        Returns: unknown
       }
       calculate_platform_fee: {
         Args: { fee_pct?: number; price: number }
         Returns: number
       }
       cancel_booking: {
-        Args: { p_actor_user_id?: string; p_booking_id: string; p_note?: string }
+        Args: {
+          p_actor_user_id?: string
+          p_booking_id: string
+          p_note?: string
+        }
         Returns: undefined
       }
       complete_booking_service: {
-        Args: { p_actor_user_id?: string; p_booking_id: string; p_note?: string }
+        Args: {
+          p_actor_user_id?: string
+          p_booking_id: string
+          p_note?: string
+        }
         Returns: undefined
       }
       confirm_booking_completion: {
-        Args: { p_actor_user_id?: string; p_booking_id: string; p_note?: string }
+        Args: {
+          p_actor_user_id?: string
+          p_booking_id: string
+          p_note?: string
+        }
+        Returns: undefined
+      }
+      confirm_booking_payment: {
+        Args: {
+          p_actor_user_id?: string
+          p_booking_id: string
+          p_note?: string
+          p_provider: string
+          p_provider_payment_id: string
+        }
         Returns: undefined
       }
       create_booking_from_match: {
         Args: { p_professional_id: string; p_request_id: string }
+        Returns: string
+      }
+      create_provisional_booking: {
+        Args: {
+          p_actor_user_id?: string
+          p_comuna_id: number
+          p_duration_minutes: number
+          p_family_user_id: string
+          p_idempotency_key: string
+          p_notes?: string
+          p_professional_id: string
+          p_request_id?: string
+          p_scheduled_at: string
+          p_service_id: number
+        }
         Returns: string
       }
       create_residence_inquiry: {
@@ -1822,6 +1912,26 @@ export type Database = {
         }
         Returns: string
       }
+      dispute_booking: {
+        Args: {
+          p_actor_user_id?: string
+          p_booking_id: string
+          p_note?: string
+        }
+        Returns: undefined
+      }
+      expire_stale_provisional_bookings: {
+        Args: { p_older_than_minutes?: number }
+        Returns: number
+      }
+      fail_booking_payment: {
+        Args: {
+          p_actor_user_id?: string
+          p_booking_id: string
+          p_note?: string
+        }
+        Returns: undefined
+      }
       generate_matches: {
         Args: { request_id: string }
         Returns: {
@@ -1830,7 +1940,11 @@ export type Database = {
         }[]
       }
       mark_booking_en_route: {
-        Args: { p_actor_user_id?: string; p_booking_id: string; p_note?: string }
+        Args: {
+          p_actor_user_id?: string
+          p_booking_id: string
+          p_note?: string
+        }
         Returns: undefined
       }
       process_request_matches: {
@@ -1838,11 +1952,19 @@ export type Database = {
         Returns: number
       }
       reject_booking: {
-        Args: { p_actor_user_id?: string; p_booking_id: string; p_note?: string }
+        Args: {
+          p_actor_user_id?: string
+          p_booking_id: string
+          p_note?: string
+        }
         Returns: undefined
       }
       start_booking_service: {
-        Args: { p_actor_user_id?: string; p_booking_id: string; p_note?: string }
+        Args: {
+          p_actor_user_id?: string
+          p_booking_id: string
+          p_note?: string
+        }
         Returns: undefined
       }
       submit_booking_review: {
@@ -1854,11 +1976,14 @@ export type Database = {
       booking_status:
         | "pending"
         | "confirmed"
+        | "completed"
+        | "cancelled"
         | "en_route"
         | "in_progress"
         | "professional_completed"
-        | "completed"
-        | "cancelled"
+        | "awaiting_payment"
+        | "paid_awaiting_confirmation"
+        | "disputed"
       day_of_week:
         | "monday"
         | "tuesday"
@@ -1881,16 +2006,18 @@ export type Database = {
         | "contacted"
         | "accepted"
         | "rejected"
-      mobility_level: "independent" | "needs_assistance" | "wheelchair" | "bedridden"
-      payment_status: "pending" | "paid" | "refunded" | "failed"
-      residence_inquiry_status:
-        | "new"
-        | "contacted"
-        | "visit_scheduled"
-        | "in_follow_up"
-        | "closed"
-        | "discarded"
-      residence_inquiry_type: "information" | "visit"
+      mobility_level:
+        | "independent"
+        | "needs_assistance"
+        | "wheelchair"
+        | "bedridden"
+      payment_status:
+        | "pending"
+        | "paid"
+        | "refunded"
+        | "failed"
+        | "held"
+        | "released"
       request_status:
         | "created"
         | "reviewing"
@@ -1901,6 +2028,14 @@ export type Database = {
         | "completed"
         | "cancelled"
         | "evaluated"
+      residence_inquiry_status:
+        | "new"
+        | "contacted"
+        | "visit_scheduled"
+        | "in_follow_up"
+        | "closed"
+        | "discarded"
+      residence_inquiry_type: "information" | "visit"
       risk_level: "low" | "medium" | "high"
       service_modality: "home_visit" | "online" | "center" | "one_time"
       urgency_level: "low" | "medium" | "high"
@@ -2036,11 +2171,14 @@ export const Constants = {
       booking_status: [
         "pending",
         "confirmed",
+        "completed",
+        "cancelled",
         "en_route",
         "in_progress",
         "professional_completed",
-        "completed",
-        "cancelled",
+        "awaiting_payment",
+        "paid_awaiting_confirmation",
+        "disputed",
       ],
       day_of_week: [
         "monday",
@@ -2067,17 +2205,20 @@ export const Constants = {
         "accepted",
         "rejected",
       ],
-      mobility_level: ["independent", "needs_assistance", "wheelchair", "bedridden"],
-      payment_status: ["pending", "paid", "refunded", "failed"],
-      residence_inquiry_status: [
-        "new",
-        "contacted",
-        "visit_scheduled",
-        "in_follow_up",
-        "closed",
-        "discarded",
+      mobility_level: [
+        "independent",
+        "needs_assistance",
+        "wheelchair",
+        "bedridden",
       ],
-      residence_inquiry_type: ["information", "visit"],
+      payment_status: [
+        "pending",
+        "paid",
+        "refunded",
+        "failed",
+        "held",
+        "released",
+      ],
       request_status: [
         "created",
         "reviewing",
@@ -2089,6 +2230,15 @@ export const Constants = {
         "cancelled",
         "evaluated",
       ],
+      residence_inquiry_status: [
+        "new",
+        "contacted",
+        "visit_scheduled",
+        "in_follow_up",
+        "closed",
+        "discarded",
+      ],
+      residence_inquiry_type: ["information", "visit"],
       risk_level: ["low", "medium", "high"],
       service_modality: ["home_visit", "online", "center", "one_time"],
       urgency_level: ["low", "medium", "high"],

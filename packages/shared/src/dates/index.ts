@@ -102,6 +102,26 @@ export function toDateKeyCL(value: string | Date): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: TIMEZONE }).format(date); // en-CA = YYYY-MM-DD
 }
 
+/**
+ * Suma (o resta, con `days` negativo) días a una fecha civil y devuelve
+ * otra fecha civil `YYYY-MM-DD`.
+ *
+ * Aritmética de CALENDARIO, no de instantes: opera sobre `Date.UTC`, que
+ * no tiene husos ni horarios de verano, así que "3 de agosto + 45 días"
+ * da el mismo resultado corra donde corra. Existe para que ninguna
+ * pantalla tenga que hacer `new Date(fecha)` ni
+ * `toISOString().slice(0, 10)` por su cuenta — las dos formas de que una
+ * fecha se corra un día.
+ */
+export function addDaysToDateKey(dateKey: string, days: number): string {
+  const { year, month, day } = parseDateOnly(dateKey);
+  const shifted = new Date(Date.UTC(year, month - 1, day + days));
+  const y = shifted.getUTCFullYear();
+  const m = String(shifted.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(shifted.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 /** La fecha civil de "hoy" en huso de Chile — no la fecha UTC del proceso que corre el código. */
 export function getChileCalendarDate(now: Date = new Date()): string {
   return toDateKeyCL(now);

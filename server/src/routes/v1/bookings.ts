@@ -1,14 +1,19 @@
 import { Router } from "express";
 import {
   createBookingSchema,
+  createDirectBookingSchema,
+  payBookingSchema,
   cancelBookingSchema,
   rejectBookingSchema,
+  combineChileDateAndTime,
   markBookingEnRouteSchema,
   startBookingServiceSchema,
   completeBookingServiceSchema,
   confirmBookingCompletionSchema,
   createReviewSchema,
   type CreateBookingInput,
+  type CreateDirectBookingInput,
+  type PayBookingInput,
   type CancelBookingInput,
   type RejectBookingInput,
   type MarkBookingEnRouteInput,
@@ -27,6 +32,8 @@ import { logger } from "../../lib/logger.js";
 import { sendBookingConfirmationEmail } from "../../lib/emails/bookingConfirmation.js";
 import { isWithinWeeklyBlock } from "../../services/availabilityService.js";
 import { checkProfessionalCoverage } from "../../services/coverageService.js";
+import { getPaymentProvider } from "../../services/paymentProvider.js";
+import { findProfessionalOwnerUserId, notifyUser } from "../../services/notificationService.js";
 
 export const bookingsRouter = Router();
 
@@ -50,6 +57,7 @@ const RPC_ERROR_MESSAGES: Record<string, string> = {
   RESERVA_YA_INICIADA: "Ya pasó la hora de esta reserva, no se puede cancelar",
   RESERVA_AUN_NO_COMIENZA: "Todavía no llega la hora agendada, no se puede iniciar el servicio",
   RESERVA_NO_COMPLETADA: "Esta reserva todavía no está completada, no se puede reseñar",
+  IDEMPOTENCY_KEY_REQUERIDA: "No pudimos completar la reserva. Vuelve a intentarlo.",
 };
 
 function mapRpcError(error: { message: string }): never {
@@ -170,6 +178,170 @@ bookingsRouter.post(
     });
 
     res.status(201).json({ booking });
+  })
+);
+
+// ============================================================
+// RESERVA DIRECTA CON PAGO (desde el perfil de un profesional)
+//
+// Dos endpoints y no uno, a propósito: el cliente obtiene el
+// `bookingId` REAL del server antes de que exista cualquier pago, así
+// nunca navega con un id inventado y, si el pago falla, puede
+// reintentarlo sobre la misma reserva en vez de crear otra. Es la
+// corrección del flujo que terminaba en "No encontramos esta reserva".
+//
+//   POST /bookings/direct  -> valida cobertura + horario, crea la
+//                             reserva provisional (awaiting_payment) y
+//                             su fila de pago (pending). Devuelve el id.
+//   POST /bookings/:id/pay -> autoriza con el PaymentProvider y aplica
+//                             confirm_booking_payment o
+//                             fail_booking_payment.
+// ============================================================
+bookingsRouter.post(
+  "/direct",
+  requireRole("family"),
+  validateBody(createDirectBookingSchema),
+  asyncHandler(async (req, res) => {
+    const input = req.body as CreateDirectBookingInput;
+    const familyUserId = req.businessUser!.id;
+
+    // Cobertura: se resuelve acá para poder devolver el estado exacto
+    // (incluida la "cobertura excepcional") en vez del error genérico
+    // de la RPC. La RPC igual la revalida — esto no la reemplaza.
+    const coverage = await checkProfessionalCoverage(supabaseAdmin, {
+      professionalId: input.professional_id,
+      communeId: input.comuna_id,
+    });
+    if (!coverage.bookable) {
+      throw AppErrors.validation(undefined, `${coverage.label} Elige otra comuna o busca profesionales que atiendan ahí.`);
+    }
+
+    // La fecha civil + hora de pared se convierten acá al instante UTC
+    // real. Nunca `new Date(fecha)`: ver packages/shared/src/dates.
+    const scheduledAt = combineChileDateAndTime(input.scheduled_date, input.scheduled_time);
+
+    const { data: weeklyBlocks, error: weeklyBlocksError } = await supabaseAdmin
+      .from("professional_availability")
+      .select("day_of_week, start_time, end_time")
+      .eq("professional_id", input.professional_id)
+      .eq("active", true);
+    if (weeklyBlocksError) throw new Error(weeklyBlocksError.message);
+
+    const bookable = isWithinWeeklyBlock({
+      dateKey: input.scheduled_date,
+      timeHHmm: input.scheduled_time,
+      durationMinutes: input.duration_minutes,
+      weeklyBlocks: weeklyBlocks ?? [],
+    });
+    if (!bookable) {
+      throw AppErrors.validation(undefined, "Ese profesional no tiene disponibilidad para ese horario");
+    }
+
+    const { data: bookingId, error } = await supabaseAdmin.rpc("create_provisional_booking", {
+      p_professional_id: input.professional_id,
+      p_family_user_id: familyUserId,
+      p_service_id: input.service_id,
+      p_comuna_id: input.comuna_id,
+      p_scheduled_at: scheduledAt,
+      p_duration_minutes: input.duration_minutes,
+      p_idempotency_key: input.idempotency_key,
+      p_request_id: input.request_id ?? undefined,
+      p_notes: input.notes || undefined,
+      p_actor_user_id: familyUserId,
+    });
+    if (error) mapRpcError(error);
+
+    const { data: booking, error: fetchError } = await supabaseAdmin
+      .from("bookings")
+      .select("*, services(name), professional_profiles(full_name)")
+      .eq("id", bookingId)
+      .single();
+    if (fetchError) throw new Error(fetchError.message);
+
+    logger.info("provisional_booking_created", {
+      bookingId,
+      professionalId: input.professional_id,
+      coverage: coverage.status,
+    });
+
+    res.status(201).json({ booking, coverage });
+  })
+);
+
+bookingsRouter.post(
+  "/:id/pay",
+  requireRole("family"),
+  validateBody(payBookingSchema),
+  asyncHandler(async (req, res) => {
+    const bookingId = req.params.id as string;
+    const { idempotency_key } = req.body as PayBookingInput;
+    const familyUserId = req.businessUser!.id;
+
+    // La reserva tiene que ser de quien paga. Sin esto, cualquier
+    // familia autenticada podría disparar el pago de una reserva ajena.
+    const { data: booking, error: bookingError } = await supabaseAdmin
+      .from("bookings")
+      .select("id, status, price, professional_id, family_user_id")
+      .eq("id", bookingId)
+      .eq("family_user_id", familyUserId)
+      .maybeSingle();
+    if (bookingError) throw new Error(bookingError.message);
+    if (!booking) throw AppErrors.notFound("No existe esa reserva");
+
+    // Reintento sobre una reserva ya pagada: no se vuelve a cobrar. La
+    // RPC también es idempotente, pero cortar acá evita una llamada de
+    // más al proveedor.
+    if (booking.status !== "awaiting_payment") {
+      res.json({ status: booking.status, alreadyProcessed: true });
+      return;
+    }
+
+    const provider = getPaymentProvider();
+    const authorization = await provider.authorize({
+      bookingId,
+      amount: booking.price,
+      idempotencyKey: idempotency_key,
+    });
+
+    if (authorization.outcome === "declined") {
+      const { error } = await supabaseAdmin.rpc("fail_booking_payment", {
+        p_booking_id: bookingId,
+        p_note: authorization.reason,
+        p_actor_user_id: familyUserId,
+      });
+      if (error) mapRpcError(error);
+
+      logger.info("booking_payment_declined", { bookingId, reason: authorization.reason });
+      throw AppErrors.validation(
+        undefined,
+        "No pudimos completar la reserva. No se realizará un cobro duplicado."
+      );
+    }
+
+    const { error: confirmError } = await supabaseAdmin.rpc("confirm_booking_payment", {
+      p_booking_id: bookingId,
+      p_provider: authorization.provider,
+      p_provider_payment_id: authorization.providerPaymentId,
+      p_actor_user_id: familyUserId,
+    });
+    if (confirmError) mapRpcError(confirmError);
+
+    logger.info("booking_payment_confirmed", { bookingId, provider: authorization.provider });
+
+    // Aviso al profesional. No bloquea la respuesta ni puede tumbarla:
+    // notifyUser atrapa sus propios errores.
+    const professionalUserId = await findProfessionalOwnerUserId(booking.professional_id);
+    if (professionalUserId) {
+      void notifyUser({
+        userId: professionalUserId,
+        title: "Tienes una nueva reserva pagada",
+        body: "Una familia reservó y ya pagó una atención. Confírmala para agendarla.",
+        type: "booking_paid_awaiting_confirmation",
+        metadata: { bookingId },
+      });
+    }
+
+    res.json({ status: "paid_awaiting_confirmation", bookingId });
   })
 );
 

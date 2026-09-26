@@ -1,7 +1,8 @@
 import express from "express";
 import cors from "cors";
 import { clerkMiddleware } from "@clerk/express";
-import { allowedOrigins } from "./env.js";
+import { originPolicy } from "./env.js";
+import { isOriginAllowed } from "./lib/allowedOrigin.js";
 import { requestId } from "./middleware/requestId.js";
 import { requestLogging } from "./middleware/requestLogging.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
@@ -17,12 +18,13 @@ app.use(requestLogging);
 app.use(
   cors({
     origin(origin, callback) {
-      // Sin header Origin (curl, apps móviles nativas, servidor a
-      // servidor) no hay nada que el navegador vaya a bloquear — se deja
-      // pasar. Un origen de browser no listado simplemente no recibe el
-      // header Access-Control-Allow-Origin (el browser lo bloquea del
-      // lado del cliente); no hace falta cortar la request acá.
-      callback(null, !origin || allowedOrigins.includes(origin));
+      // La política vive en lib/allowedOrigin.ts: lista exacta, más el
+      // patrón acotado de Preview de Vercel cuando está encendido.
+      //
+      // Un origen de browser no permitido simplemente no recibe el header
+      // Access-Control-Allow-Origin (el browser lo bloquea del lado del
+      // cliente); no hace falta cortar la request acá.
+      callback(null, isOriginAllowed(origin, originPolicy));
     },
     credentials: true,
   })
