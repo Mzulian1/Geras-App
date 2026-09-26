@@ -11,6 +11,7 @@ import { resend } from "../resend.js";
 import { env } from "../../env.js";
 import { logger } from "../logger.js";
 import { formatDateTimeCL } from "@geras/shared";
+import { resolveEmailRecipient, stagingSubjectPrefix } from "./recipientPolicy.js";
 
 export interface BookingConfirmationEmailInput {
   to: string;
@@ -58,11 +59,24 @@ function renderHtml(input: BookingConfirmationEmailInput): string {
 }
 
 export async function sendBookingConfirmationEmail(input: BookingConfirmationEmailInput): Promise<void> {
+  // Fuera de producción el correo no sale hacia cualquier dirección: se
+  // redirige a la casilla de QA o se descarta. Ver recipientPolicy.ts.
+  const decision = resolveEmailRecipient(input.to, {
+    gerasEnv: env.GERAS_ENV,
+    redirectTo: env.STAGING_EMAIL_REDIRECT_TO,
+  });
+
+  if (decision.action === "skip") {
+    // Se loguea el motivo, no el contenido del correo.
+    logger.info("booking_confirmation_email_skipped", { reason: decision.reason });
+    return;
+  }
+
   try {
     await resend.emails.send({
       from: `Geras <${env.EMAIL_FROM_ADDRESS}>`,
-      to: input.to,
-      subject: `Reserva confirmada · ${input.serviceName} con ${input.professionalName}`,
+      to: decision.to,
+      subject: `${stagingSubjectPrefix(decision)}Reserva confirmada · ${input.serviceName} con ${input.professionalName}`,
       html: renderHtml(input),
     });
   } catch (err) {

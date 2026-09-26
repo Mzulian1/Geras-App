@@ -45,6 +45,17 @@ services:
         value: production
       - key: NODE_VERSION
         value: "22"
+      # Identifica el AMBIENTE, distinto de NODE_ENV: staging corre con
+      # NODE_ENV=production porque es un despliegue real, pero no es
+      # producción. De esto dependen la política de correo de QA y el
+      # permiso para crear datos sintéticos.
+      - key: GERAS_ENV
+        value: staging
+      # Render pone exactamente un proxy delante. Sin esto, el rate
+      # limiting vería la IP del proxy en todos los requests y un solo
+      # visitante bloquearía a los demás.
+      - key: TRUST_PROXY_HOPS
+        value: "1"
 
       # PORT lo inyecta Render. env.ts ya lo lee (con 4000 como default
       # solo para desarrollo local), así que no se declara acá.
@@ -84,4 +95,9 @@ services:
       - key: RESEND_API_KEY
         sync: false
       - key: EMAIL_FROM_ADDRESS
+        sync: false
+      # Casilla de QA a la que se redirige TODO el correo de staging.
+      # Sin ella, fuera de producción solo se envía a @qa-geras.cl y el
+      # resto se descarta. Ver server/src/lib/emails/recipientPolicy.ts.
+      - key: STAGING_EMAIL_REDIRECT_TO
         sync: false

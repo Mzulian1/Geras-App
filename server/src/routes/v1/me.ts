@@ -6,6 +6,7 @@ import { asyncHandler } from "../../lib/asyncHandler.js";
 import { AppErrors } from "../../errors/AppError.js";
 import { syncClerkUserOnDemand } from "../../services/userSync.js";
 import { getBusinessUser } from "../../services/businessUser.js";
+import { authLimiter } from "../../middleware/rateLimit.js";
 
 // Rutas de identidad, no de negocio: sirven para exponer al cliente su
 // propio usuario sincronizado y para tener un endpoint real donde
@@ -32,6 +33,9 @@ meRouter.get("/admin-check", requireAuth, requireRole("admin"), (req, res) => {
 // verificado y nunca del body.
 meRouter.post(
   "/sync",
+  // Es la puerta por la que un cliente puede forzar escrituras en
+  // `users`: límite estricto (ver middleware/rateLimit.ts).
+  authLimiter,
   asyncHandler(async (req, res) => {
     const auth = getAuth(req);
     if (!auth.userId) {

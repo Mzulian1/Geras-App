@@ -27,11 +27,15 @@
 import "dotenv/config";
 import { supabaseAdmin } from "../src/lib/supabase.js";
 import { env } from "../src/env.js";
+import { canRunSyntheticSeeds } from "../src/lib/seedGuard.js";
 import { AVAILABILITY_BLOCKS, PROFESSIONAL_SEEDS, QA_EMAIL_DOMAIN, RESIDENCE_SEEDS } from "./showcaseData.js";
 
 function assertDevelopmentEnvironment(): void {
-  if (env.NODE_ENV === "production") {
-    console.error("seed:showcase no puede ejecutarse con NODE_ENV=production. Abortando.");
+  // La decisión vive en src/lib/seedGuard.ts (con tests): mira GERAS_ENV,
+  // no NODE_ENV, porque staging corre con NODE_ENV=production.
+  const decision = canRunSyntheticSeeds({ nodeEnv: env.NODE_ENV, gerasEnv: env.GERAS_ENV });
+  if (!decision.allowed) {
+    console.error(`seed:showcase no puede ejecutarse acá. ${decision.reason}`);
     process.exit(1);
   }
   if (!env.SUPABASE_URL.includes("aupynxrokrpozthbzxle") && !env.SUPABASE_URL.includes("localhost")) {

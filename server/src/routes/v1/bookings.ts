@@ -34,8 +34,25 @@ import { isWithinWeeklyBlock } from "../../services/availabilityService.js";
 import { checkProfessionalCoverage } from "../../services/coverageService.js";
 import { getPaymentProvider } from "../../services/paymentProvider.js";
 import { findProfessionalOwnerUserId, notifyUser } from "../../services/notificationService.js";
+import { bookingLimiter, emailLimiter } from "../../middleware/rateLimit.js";
 
 export const bookingsRouter = Router();
+
+// ============================================================
+// LÍMITES DE TASA — registrados ANTES de `requireAuth` a propósito.
+//
+// `requireAuth` responde 401 y corta; si los límites fueran después,
+// una ráfaga sin autenticar nunca los tocaría y quedaría cubierta solo
+// por el límite global de 150/min. Acá se corta en 20 (o 10 si además
+// dispara correo), autenticada o no.
+//
+// Son rutas que SOLO montan el limitador: al llamar `next()` la request
+// sigue su curso por las capas siguientes (requireAuth y el handler
+// real). No responden nada por su cuenta.
+// ============================================================
+bookingsRouter.post("/", bookingLimiter, emailLimiter); // crea reserva + correo de confirmación
+bookingsRouter.post("/direct", bookingLimiter); // crea reserva provisional
+bookingsRouter.post("/:id/pay", bookingLimiter, emailLimiter); // cobra (simulado) + notifica
 
 bookingsRouter.use(requireAuth);
 

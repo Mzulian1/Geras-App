@@ -48,6 +48,27 @@ const envSchema = z.object({
     .default("false")
     .transform((value) => value === "true"),
 
+  // Cuántos proxies hay delante del server. Render pone exactamente uno.
+  //
+  // Importa para el rate limiting: sin esto, Express reporta la IP del
+  // proxy en TODOS los requests, el contador se vuelve global y el primer
+  // puñado de visitantes bloquea a los demás. Es un número y no un
+  // booleano a propósito: `trust proxy: true` confía en toda la cadena de
+  // X-Forwarded-For, que el cliente puede falsificar para saltarse el
+  // límite. El default 0 (no confiar en nadie) es el correcto en local.
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(10).default(0),
+
+  // Identifica el ambiente para las protecciones que solo aplican fuera
+  // de producción (seeds de datos QA, modo de correo de staging).
+  // Distinto de NODE_ENV: staging corre CON NODE_ENV=production, porque
+  // es un despliegue real, pero no es el ambiente productivo.
+  GERAS_ENV: z.enum(["development", "staging", "production"]).default("development"),
+
+  // Casilla de QA a la que se redirige TODO el correo cuando
+  // GERAS_ENV != production. Sin ella, fuera de producción solo se envía
+  // a destinatarios @qa-geras.cl. Ver lib/emails/recipientPolicy.ts.
+  STAGING_EMAIL_REDIRECT_TO: z.string().email().optional(),
+
   // Proveedor de pago. Hoy solo existe "mock", que NO mueve dinero real
   // ni retiene fondos en ningún banco: simula la autorización para poder
   // desarrollar y probar el flujo completo. Cuando se integre un
