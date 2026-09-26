@@ -34,7 +34,7 @@ services:
       # (no hay región en Sudamérica). Conviene que coincida
       # con la región del proyecto de Supabase: verificarlo
       # en el dashboard de Supabase antes de crear el servicio.
-    branch: feat/mobile-ui-navigation-refresh
+    branch: deploy/geras-staging
     buildCommand: npm ci --legacy-peer-deps && npm run build --workspace=server
     startCommand: npm start --workspace=server
     healthCheckPath: /health

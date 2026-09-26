@@ -41,32 +41,45 @@ describe("isOriginAllowed — coincidencia exacta", () => {
 });
 
 describe("matchesVercelPreview — acepta solo nuestros tres proyectos", () => {
+  // Hostnames REALES de nuestros previews, copiados de `vercel ls`.
   it.each([
-    "https://geras-familia-abc123-solucionesmayores.vercel.app",
-    "https://geras-profesional-9f2e1d-solucionesmayores.vercel.app",
-    "https://geras-admin-deadbeef-solucionesmayores.vercel.app",
-    "https://geras-familia-abc123.vercel.app",
+    "https://geras-familia-iwouqyejw-soluciones-mayores.vercel.app",
+    "https://geras-familia-git-deploy-geras-staging-soluciones-mayores.vercel.app",
+    "https://geras-profesional-mtz8x7lz7-soluciones-mayores.vercel.app",
+    "https://geras-profesional-git-deploy-geras-staging-soluciones-mayores.vercel.app",
+    "https://geras-app-admin-panel-1tq2jideg-soluciones-mayores.vercel.app",
+    "https://geras-app-admin-panel-git-deploy-gera-dcd5d1-soluciones-mayores.vercel.app",
+    // Alias a nivel de proyecto, sin segmento intermedio.
+    "https://geras-familia-soluciones-mayores.vercel.app",
   ])("acepta %s", (origin) => {
     expect(matchesVercelPreview(origin)).toBe(true);
   });
 
   it.each([
     // Proyecto ajeno en vercel.app: cualquiera puede crear uno.
+    "https://otro-proyecto-abc123-soluciones-mayores.vercel.app",
     "https://otro-proyecto-abc123.vercel.app",
+    // NUESTRO nombre de proyecto, pero en la cuenta de otro. Sin exigir
+    // el slug de la organización, esto pasaba: alguien crea un proyecto
+    // llamado `geras-familia` en su propia cuenta y obtiene CORS con
+    // credenciales contra nuestra API.
+    "https://geras-familia-abc123-cuenta-ajena.vercel.app",
+    "https://geras-profesional-x1-atacante.vercel.app",
+    "https://geras-app-admin-panel-x1-otraorg.vercel.app",
+    // Sin organización.
+    "https://geras-familia-abc123.vercel.app",
     "https://vercel.app",
     "https://algo.vercel.app",
     // El nombre de nuestro proyecto, pero en OTRO dominio. Este es el
     // caso que rompe un `startsWith`/`includes` sobre la URL cruda.
-    "https://geras-familia-abc123.vercel.app.atacante.com",
-    "https://atacante.com/geras-familia-abc123.vercel.app",
+    "https://geras-familia-abc123-soluciones-mayores.vercel.app.atacante.com",
+    "https://atacante.com/geras-familia-abc123-soluciones-mayores.vercel.app",
     // Prefijo pegado a otro nombre de proyecto.
-    "https://malo-geras-familia-abc123.vercel.app",
-    // Sin sufijo: el dominio estable va por coincidencia exacta, no por patrón.
-    "https://geras-familia.vercel.app",
+    "https://malo-geras-familia-abc123-soluciones-mayores.vercel.app",
     // Sin TLS.
-    "http://geras-familia-abc123.vercel.app",
+    "http://geras-familia-abc123-soluciones-mayores.vercel.app",
     // Con puerto explícito.
-    "https://geras-familia-abc123.vercel.app:8443",
+    "https://geras-familia-abc123-soluciones-mayores.vercel.app:8443",
     // Basura que no parsea como URL.
     "no-es-una-url",
     "",
@@ -76,7 +89,7 @@ describe("matchesVercelPreview — acepta solo nuestros tres proyectos", () => {
 });
 
 describe("isOriginAllowed — el patrón de preview es opt-in", () => {
-  const preview = "https://geras-admin-abc123-solucionesmayores.vercel.app";
+  const preview = "https://geras-app-admin-panel-abc123-soluciones-mayores.vercel.app";
 
   it("permite el preview cuando allowVercelPreviews está encendido (staging)", () => {
     expect(isOriginAllowed(preview, staging)).toBe(true);

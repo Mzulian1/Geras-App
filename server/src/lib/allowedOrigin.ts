@@ -24,14 +24,34 @@
 //     compara contra una expresión regular anclada de punta a punta.
 // ============================================================
 
-/** Los tres proyectos de Vercel de Geras. Cualquier otro prefijo no es nuestro. */
-const VERCEL_PROJECTS = ["geras-familia", "geras-profesional", "geras-admin"] as const;
+/** Los tres proyectos de Vercel de Geras, con su nombre REAL. */
+const VERCEL_PROJECTS = ["geras-familia", "geras-profesional", "geras-app-admin-panel"] as const;
+
+/**
+ * Slug de nuestra organización en Vercel. Es la parte que cierra el
+ * agujero: sin exigirlo, el patrón acepta el preview de CUALQUIER cuenta
+ * que cree un proyecto llamado `geras-familia`, porque el host quedaría
+ * igual salvo por el sufijo de la organización. Los slugs de equipo en
+ * Vercel son únicos a nivel global, así que nadie más puede usar éste.
+ */
+const VERCEL_ORG = "soluciones-mayores";
 
 // Anclada con ^...$ sobre el HOSTNAME ya parseado (nunca sobre la URL
-// completa). El sufijo que agrega Vercel son segmentos alfanuméricos
-// separados por guiones: <proyecto>-<hash>-<organización>.vercel.app
+// completa). Vercel arma el host como:
+//
+//   <proyecto>-<hash>-<organizacion>.vercel.app
+//   <proyecto>-git-<rama-con-guiones>-<organizacion>.vercel.app
+//   <proyecto>-<organizacion>.vercel.app
+//
+// De ahí que entre el proyecto y la organización pueda haber cero o más
+// segmentos alfanuméricos.
+//
+// Los puntos van como `[.]` y no como `\.`: dentro de un template
+// literal, `\.` es un escape de JavaScript que produce un punto pelado,
+// y el punto pelado en una expresión regular significa "cualquier
+// carácter". La clase de caracteres no tiene esa ambigüedad.
 const VERCEL_PREVIEW_HOST = new RegExp(
-  `^(${VERCEL_PROJECTS.join("|")})-[a-z0-9]+(-[a-z0-9]+)*\\.vercel\\.app$`
+  `^(${VERCEL_PROJECTS.join("|")})-([a-z0-9]+-)*${VERCEL_ORG}[.]vercel[.]app$`
 );
 
 export interface OriginPolicy {
