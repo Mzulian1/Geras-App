@@ -262,7 +262,7 @@ despliegue no se justifica. Queda anotado como deuda en §11.
 | Start | `npm start --workspace=server` | |
 | Node | 22 (`.node-version` + `NODE_VERSION`) | La que ya usa el proyecto. `engines` de la raíz pide `>=20`. |
 | Health check | `GET /health` | Ya existía, sin auth y sin secretos. Se reutiliza. |
-| Plan | `starter` | **No `free`**: se duerme por inactividad y el primer request después tarda ~50 s. |
+| Plan | **`free`** | Staging/QA de un Proyecto de Título, solo con datos sintéticos. Se aceptan sus límites: suspensión tras ~15 min sin tráfico, ~50 s de cold start en el primer request, y tope mensual de horas. Para usuarios reales haría falta un plan pago. |
 | Región | `oregon` | La más cercana a Chile de las disponibles. **Verificar la región del proyecto de Supabase y hacerlas coincidir** antes de crear el servicio. |
 | Rama | `feat/mobile-ui-navigation-refresh` | |
 | Auto-deploy | apagado | Mientras sea staging, el deploy se dispara a mano. |

@@ -28,8 +28,12 @@ services:
   - type: web
     name: geras-api-staging
     runtime: node
-    plan: starter # NO el plan free: se duerme por inactividad y el primer
-      # request después tarda ~50 s, que no sirve ni para una demo.
+    plan: free # Staging/QA de un Proyecto de Título, solo con datos
+      # sintéticos. Se aceptan sus límites a conciencia: el
+      # servicio se suspende tras ~15 min sin tráfico y el
+      # primer request después tarda ~50 s en responder
+      # (cold start), más el tope mensual de horas. Para una
+      # demo alcanza; para usuarios reales, no.
     region: oregon # La más cercana a Chile de las que ofrece Render
       # (no hay región en Sudamérica). Conviene que coincida
       # con la región del proyecto de Supabase: verificarlo
