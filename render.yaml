@@ -35,7 +35,7 @@ services:
       # con la región del proyecto de Supabase: verificarlo
       # en el dashboard de Supabase antes de crear el servicio.
     branch: feat/mobile-ui-navigation-refresh
-    buildCommand: npm ci && npm run build --workspace=server
+    buildCommand: npm ci --legacy-peer-deps && npm run build --workspace=server
     startCommand: npm start --workspace=server
     healthCheckPath: /health
     autoDeployTrigger: off # El deploy se dispara a mano mientras esto sea staging.
