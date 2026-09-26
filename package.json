@@ -60,5 +60,9 @@
     "expo-router": "6.0.24",
     "metro-runtime": "0.83.3",
     "react-dom": "19.1.0"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "4.62.3",
+    "lightningcss-linux-x64-gnu": "1.33.0"
   }
 }
