@@ -358,7 +358,7 @@ Origin: https://geras-familia-abc.vercel.app.atacante.com   -> sin header (recha
 
 | Severidad | Hallazgo | Propuesta |
 |---|---|---|
-| **ALTO** | **No hay rate limiting.** Una API pública sin límite deja que un solo cliente martille `POST /bookings/direct`, el webhook o los endpoints que disparan correos por Resend. En el plan `starter` es además un riesgo de disponibilidad y de costo. | Limitador en memoria (sin dependencias nuevas) o `express-rate-limit`. ~40 líneas. **No se agregó sin autorización**: es middleware en el camino de todos los requests. |
+| ~~ALTO~~ **RESUELTO** | No había rate limiting. | Implementado — ver §12. |
 | MEDIO | **Sin headers de seguridad** (`helmet`). Para una API que solo devuelve JSON el impacto es acotado, y Render agrega HSTS en su borde para `.onrender.com`, pero `X-Content-Type-Options: nosniff` y `X-Frame-Options` son baratos. | `helmet()` con configuración mínima. |
 | BAJO | `requestLogging` registra `req.originalUrl`, que incluye la query string. Hoy no viaja nada sensible ahí (la autenticación va por header `Bearer`), pero conviene no empezar a hacerlo. | Ninguna acción ahora; tenerlo presente. |
 
@@ -415,3 +415,100 @@ bundle de las apps móviles, que es la clase de fallo que este monorepo ya tuvo 
 
 Es media hora de trabajo y una hora de verificación. Conviene hacerlo **antes de producción
 pública**, no ahora.
+
+---
+
+## 12. Rate limiting y protecciones de staging
+
+Implementado en [`server/src/middleware/rateLimit.ts`](../server/src/middleware/rateLimit.ts).
+
+### Límites
+
+| Alcance | Límite | Por qué ese número |
+|---|---|---|
+| `/api/v1` (global) | **150/min por IP** | Una pantalla de la app dispara 5–10 requests; 150 deja margen navegando rápido y aun así frena un barrido. |
+| `POST /api/v1/me/sync` | **10/min** | Es la puerta por la que un cliente fuerza escrituras en `users`. Un usuario legítimo la llama una vez al entrar. |
+| `POST /bookings`, `/bookings/direct`, `/bookings/:id/pay` | **20/min** | Escriben dinero (simulado) y bloquean agenda de un profesional. |
+| Endpoints que disparan correo o notificación | **10/min** | El abuso acá no solo carga nuestra base: le llega a una persona y nos quema la reputación de envío. |
+| `POST /api/v1/webhooks/*` | **300/min**, política aparte | Los manda Clerk en ráfaga. Un límite agresivo tiraría eventos legítimos. |
+| `GET /health` | **sin límite** | Lo consulta Render cada pocos segundos; limitarlo haría que diera el servicio por caído. |
+
+Un request a `/bookings/direct` consume de las capas que le aplican (global + reservas). Es a
+propósito: el límite estricto protege el endpoint y el global protege el conjunto.
+
+### Decisiones que no son obvias
+
+**`express-rate-limit` en vez de middleware propio.** No arrastra ninguna dependencia transitiva, y
+resuelve dos cosas que es fácil hacer mal a mano: la normalización de IPv6 (sin ella, un atacante
+rota entre direcciones del mismo `/64` y esquiva el contador) y la detección de un `trust proxy` mal
+configurado, que dejaría el límite inservible o falsificable.
+
+**Los límites de reserva van registrados ANTES de `requireAuth`.** Ese middleware responde 401 y
+corta; si los límites fueran después, una ráfaga sin autenticar nunca los tocaría y quedaría
+cubierta solo por el límite global de 150/min.
+
+**`TRUST_PROXY_HOPS` es un número, no un booleano.** `trust proxy: true` confía en toda la cadena de
+`X-Forwarded-For`, que el cliente puede falsificar para saltarse el límite. Render pone exactamente
+un proxy: `1`. El default `0` es el correcto en local.
+
+**El 429 usa el sobre de error de la API**, no `error` como string suelto:
+
+```json
+{ "error": { "code": "RATE_LIMITED",
+             "message": "Demasiadas solicitudes. Intenta nuevamente en unos minutos.",
+             "requestId": "…" } }
+```
+
+Los clientes leen `error.message` (ver `apiClient.ts` de las apps móviles): un string suelto haría
+que la app mostrara su mensaje genérico en lugar de éste.
+
+**El rate limiting NO reemplaza la idempotencia.** `create_provisional_booking` y
+`confirm_booking_payment` siguen siendo idempotentes por `idempotency_key`. El límite frena el
+volumen; la idempotencia es lo que garantiza que un reintento no cobre dos veces.
+
+**Almacén en memoria, por instancia.** Alcanza para staging con una sola instancia. Si el servicio
+escala a varias, el contador deja de ser global y hay que mover el almacén a Redis.
+
+### Correo fuera de producción
+
+[`server/src/lib/emails/recipientPolicy.ts`](../server/src/lib/emails/recipientPolicy.ts). El
+problema concreto: staging usa una clave real de Resend contra el mismo Supabase. Una prueba con el
+correo de una persona real le manda un "reserva confirmada" por algo que no existe.
+
+| `GERAS_ENV` | Comportamiento |
+|---|---|
+| `production` | Se envía al destinatario real, sin tocar nada. |
+| `staging` / `development` | Con `STAGING_EMAIL_REDIRECT_TO`: **todo** va a esa casilla, con el destinatario original en el asunto. Sin ella: solo se envía a `@qa-geras.cl` y el resto se descarta con un log. |
+
+### Seeds sintéticos
+
+[`server/src/lib/seedGuard.ts`](../server/src/lib/seedGuard.ts). La guarda original miraba
+`NODE_ENV === "production"` — que en staging **vale** `production`, así que habría bloqueado los
+seeds justo en el único ambiente desplegado donde los queremos.
+
+Ahora decide por `GERAS_ENV`: permitido en `development` y `staging`, bloqueado siempre en
+`production`. Y si `NODE_ENV=production` con `GERAS_ENV` sin declarar, también bloquea: un
+despliegue mal configurado no debe habilitar escrituras sintéticas contra una base real.
+
+### Logs
+
+La query string se registra solo por **nombre** de parámetro, nunca por valor:
+
+```
+"path":"/api/v1/professionals/abc/availability","queryKeys":["serviceId","token","from"]
+```
+
+Hoy no viaja nada sensible por query string —la autenticación va en el header `Authorization`— pero
+un log es para siempre.
+
+### Verificación
+
+**47 pruebas nuevas** (262 en total, antes 228). Además, contra el proceso real en configuración de
+staging:
+
+```
+21.º POST a /bookings/direct   -> 429 con el mensaje correcto
+otra IP, misma ruta            -> no afectada
+GET /health tras saturar        -> 200
+?token=SECRETO en los logs      -> no aparece (solo el nombre "token")
+```
