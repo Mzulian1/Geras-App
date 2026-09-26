@@ -1,4 +1,5 @@
-import { Image, View } from "react-native";
+import { View } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { useGerasTheme } from "../theme/GerasThemeProvider";
 import { radii } from "../tokens/radii";
@@ -19,6 +20,8 @@ export function Avatar({ uri, size = 48 }: AvatarProps) {
     return (
       <Image
         source={{ uri }}
+        contentFit="cover"
+        transition={180}
         style={{ width: size, height: size, borderRadius: radii.full, backgroundColor: theme.surfaceSecondary }}
         accessibilityIgnoresInvertColors
       />

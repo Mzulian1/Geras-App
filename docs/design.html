@@ -1,0 +1,939 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Geras — Sistema visual Soluciones Mayores</title>
+<style>
+/* ============================================================
+   ESPEJO DE docs/design.md — que a su vez es espejo de
+   packages/ui/src/tokens/colors.ts.
+
+   NINGÚN hex de este archivo es nuevo: todos existen en colors.ts.
+   Si hay que cambiar un color, se cambia en colors.ts, después en
+   design.md y recién después acá. Nunca al revés.
+   ============================================================ */
+:root {
+  /* --- Marca (brandColors) --- */
+  --bg-deep: #1A1E17;
+  --bg-base: #273219;
+  --bg-mid: #32471B;
+  --olive-green: #405E1D;
+  --bg-lit: #537C24;
+  --accent-primary: #80B444;
+  --accent-light: #88C048;
+  --accent-on-light: #588818;
+  --brand-white: #FBFCFB;
+  --border-neutral: #BEC6BB;
+  --text-neutral: #54595A;
+
+  /* --- Superficies y texto (semanticColors) --- */
+  --background: #F5F8F2;
+  --background-secondary: #EAF0E4;
+  --surface: #FBFCFB;
+  --surface-secondary: #F0F4EC;
+  --border-soft: #DCE5D4;
+  --border-strong: #BEC6BB;
+  --text-primary: #16210F;
+  --text-secondary: #54595A;
+  --text-disabled: #9AA593;
+  --text-on-brand: #FBFCFB;
+
+  /* --- Semánticos --- */
+  --success: #2E9E5B;      --success-soft: #E3F5EA;
+  --warning: #B7791F;      --warning-soft: #FBF0DD;
+  --error: #D14343;        --error-soft: #FBE7E7;
+  --info: #2F6FED;         --info-soft: #E6EEFD;
+  --overlay: rgba(26, 30, 23, 0.5);
+
+  /* --- Identidad por app (brandPalettes) --- */
+  --familia-primary: #80B444;
+  --familia-primary-pressed: #588818;
+  --familia-primary-soft: #E3EEDA;
+  --familia-primary-dark: #273219;
+  --familia-accent: #88C048;
+  --familia-on-primary: #16210F;
+
+  --profesional-primary: #405E1D;
+  --profesional-primary-pressed: #32471B;
+  --profesional-primary-soft: #E4EFDC;
+  --profesional-primary-dark: #273219;
+  --profesional-accent: #80B444;
+  --profesional-on-primary: #FFFFFF;
+
+  --admin-primary: #273219;
+  --admin-primary-pressed: #1A1E17;
+  --admin-primary-soft: #E4EFDC;
+  --admin-primary-dark: #1A1E17;
+  --admin-accent: #80B444;
+  --admin-on-primary: #FFFFFF;
+
+  /* --- Gradientes institucionales --- */
+  --gradient-primary: linear-gradient(160deg, var(--bg-deep), var(--bg-base), var(--olive-green), var(--bg-lit));
+  --gradient-soft: linear-gradient(160deg, var(--olive-green), var(--bg-lit));
+
+  /* --- Tipografía --- */
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --display-large-size: 32px;   --display-large-lh: 38px;   --display-large-weight: 700;
+  --display-medium-size: 28px;  --display-medium-lh: 34px;  --display-medium-weight: 700;
+  --screen-title-size: 26px;    --screen-title-lh: 32px;    --screen-title-weight: 700;
+  --section-title-size: 20px;   --section-title-lh: 26px;   --section-title-weight: 600;
+  --card-title-size: 17px;      --card-title-lh: 23px;      --card-title-weight: 600;
+  --body-large-size: 17px;      --body-large-lh: 25px;      --body-large-weight: 400;
+  --body-medium-size: 15px;     --body-medium-lh: 22px;     --body-medium-weight: 400;
+  --body-small-size: 14px;      --body-small-lh: 20px;      --body-small-weight: 400;
+  --label-size: 15px;           --label-lh: 20px;           --label-weight: 600;
+  --helper-size: 14px;          --helper-lh: 19px;          --helper-weight: 400;
+  --caption-size: 14px;         --caption-lh: 18px;         --caption-weight: 500;
+  --error-size: 14px;           --error-lh: 19px;           --error-weight: 500;
+
+  /* --- Espaciado --- */
+  --space-xs: 4px;   --space-sm: 8px;   --space-md: 12px;  --space-base: 16px;
+  --space-lg: 20px;  --space-xl: 24px;  --space-xxl: 32px; --space-xxxl: 40px;
+
+  /* --- Radios --- */
+  --rounded-sm: 8px;        --rounded-md: 12px;   --rounded-card: 16px;
+  --rounded-button: 16px;   --rounded-prominent: 20px;
+  --rounded-hero: 28px;     --rounded-full: 999px;
+
+  /* --- Elevación (equivalente web de elevation.ts) --- */
+  --elevation-soft: 0 3px 10px rgba(26, 30, 23, 0.05);
+  --elevation-lifted: 0 8px 20px rgba(26, 30, 23, 0.10);
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  padding: var(--space-xl) var(--space-base) var(--space-xxxl);
+  font-family: var(--font);
+  font-size: var(--body-medium-size);
+  line-height: var(--body-medium-lh);
+  color: var(--text-primary);
+  background: var(--background);
+}
+.wrap { max-width: 1040px; margin: 0 auto; }
+
+/* --- Chrome del documento: neutro a propósito --- */
+header.doc {
+  border-bottom: 1px solid var(--border-soft);
+  padding-bottom: var(--space-xl);
+  margin-bottom: var(--space-xxl);
+}
+header.doc h1 {
+  font-size: var(--display-medium-size);
+  line-height: var(--display-medium-lh);
+  font-weight: var(--display-medium-weight);
+  margin: 0 0 var(--space-sm);
+}
+header.doc p { margin: 0 0 var(--space-sm); color: var(--text-secondary); max-width: 68ch; }
+section.doc { margin-bottom: var(--space-xxxl); }
+section.doc > h2 {
+  font-size: var(--section-title-size);
+  line-height: var(--section-title-lh);
+  font-weight: var(--section-title-weight);
+  margin: 0 0 var(--space-xs);
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--border-soft);
+}
+section.doc > h3 {
+  font-size: var(--card-title-size);
+  font-weight: var(--card-title-weight);
+  margin: var(--space-xl) 0 var(--space-md);
+  color: var(--text-secondary);
+}
+.note {
+  font-size: var(--helper-size);
+  line-height: var(--helper-lh);
+  color: var(--text-secondary);
+  margin: var(--space-md) 0 var(--space-lg);
+  max-width: 72ch;
+}
+code, .mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+}
+.tag {
+  display: inline-block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.grid { display: grid; gap: var(--space-md); }
+.g-swatch { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+.g-two { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.row { display: flex; flex-wrap: wrap; gap: var(--space-md); align-items: center; }
+
+/* ============ Colores ============ */
+.swatch {
+  border: 1px solid var(--border-soft);
+  border-radius: var(--rounded-card);
+  overflow: hidden;
+  background: var(--surface);
+}
+.swatch .chip { height: 76px; display: flex; align-items: center; padding: 0 var(--space-md); }
+.swatch .chip span { font-size: 13px; font-weight: 600; }
+.swatch .meta { padding: var(--space-sm) var(--space-md) var(--space-md); }
+.swatch .meta b { display: block; font-size: 13px; font-weight: 600; }
+.swatch .meta .hex { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; color: var(--text-secondary); text-transform: uppercase; }
+.swatch .meta .src { font-size: 12px; color: var(--text-disabled); margin-top: 2px; }
+
+/* ============ Tipografía ============ */
+.type-row {
+  display: flex; flex-wrap: wrap; gap: var(--space-base);
+  align-items: baseline; justify-content: space-between;
+  padding: var(--space-md) 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+.type-row .spec { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+
+/* ============ Espaciado / radios ============ */
+.space-row { display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-sm); }
+.space-row .bar { height: 20px; background: var(--accent-primary); border-radius: var(--rounded-sm); }
+.space-row .lbl { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; color: var(--text-secondary); width: 96px; }
+.radius-box {
+  width: 104px; height: 104px;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  display: flex; align-items: flex-end; justify-content: center;
+  padding-bottom: var(--space-sm);
+  font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; color: var(--text-secondary);
+}
+
+/* ============ Elevación ============ */
+.elev-card {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--rounded-prominent);
+  padding: var(--space-base);
+  flex: 1 1 240px;
+}
+.elev-card b { display: block; font-size: var(--card-title-size); font-weight: var(--card-title-weight); }
+.elev-card span { font-size: var(--helper-size); color: var(--text-secondary); }
+
+/* ============ Componentes reales ============ */
+.stage {
+  background: var(--background);
+  border: 1px dashed var(--border-soft);
+  border-radius: var(--rounded-card);
+  padding: var(--space-lg);
+}
+.stage-label { font-size: 12px; color: var(--text-disabled); margin-bottom: var(--space-sm); font-family: ui-monospace, Menlo, Consolas, monospace; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-sm);
+  min-height: 48px; min-width: 44px;
+  padding: 0 var(--space-lg);
+  border: 0; border-radius: var(--rounded-button);
+  font-family: var(--font);
+  font-size: var(--card-title-size); font-weight: var(--card-title-weight);
+  cursor: pointer;
+}
+.btn--compact { min-height: 44px; padding: 0 var(--space-base); }
+.btn--primary-familia { background: var(--familia-primary); color: var(--familia-on-primary); }
+.btn--primary-familia:hover { background: var(--familia-primary-pressed); }
+.btn--primary-familia-pressed { background: var(--familia-primary-pressed); color: var(--familia-on-primary); }
+.btn--primary-profesional { background: var(--profesional-primary); color: var(--profesional-on-primary); }
+.btn--primary-profesional:hover { background: var(--profesional-primary-pressed); }
+.btn--disabled { background: var(--familia-primary); color: var(--familia-on-primary); opacity: .45; cursor: not-allowed; }
+.btn--secondary { background: var(--surface); color: var(--familia-primary); border: 1px solid var(--familia-primary); }
+.btn--tertiary { background: transparent; color: var(--text-secondary); }
+.btn--destructive { background: var(--error); color: var(--brand-white); }
+.btn--focus { outline: none; box-shadow: 0 0 0 2px var(--familia-primary-pressed); }
+.btn .spinner {
+  width: 18px; height: 18px; border-radius: var(--rounded-full);
+  border: 2px solid currentColor; border-top-color: transparent;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.circle-btn {
+  width: 48px; height: 48px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--rounded-full);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  color: var(--text-primary);
+  font-size: 20px; cursor: pointer;
+}
+.circle-btn:hover { background: var(--familia-primary-soft); }
+
+.pill {
+  display: inline-flex; align-items: center; gap: var(--space-sm);
+  min-height: 44px; padding: var(--space-sm) var(--space-base);
+  border-radius: var(--rounded-full);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--elevation-soft);
+  font-size: var(--body-small-size); font-weight: 500;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.pill .ico {
+  width: 24px; height: 24px; border-radius: var(--rounded-full);
+  background: var(--familia-primary-soft); color: var(--familia-primary);
+  display: inline-flex; align-items: center; justify-content: center; font-size: 12px;
+}
+.cat-pill {
+  display: inline-block; padding: 5px var(--space-md);
+  border-radius: var(--rounded-full);
+  font-size: 12px; font-weight: 600;
+}
+.cat-pill--soft { background: var(--familia-primary-soft); color: var(--familia-primary-dark); }
+.cat-pill--neutral { background: var(--surface-secondary); color: var(--text-secondary); }
+.chip-filter {
+  display: inline-flex; align-items: center; min-height: 44px;
+  padding: 0 var(--space-base); border-radius: var(--rounded-full);
+  background: var(--surface); border: 1px solid var(--border-soft);
+  font-size: var(--body-small-size); color: var(--text-primary); cursor: pointer;
+}
+.chip-filter--selected { background: var(--familia-primary); border-color: var(--familia-primary); color: var(--familia-on-primary); font-weight: 600; }
+
+.badge {
+  display: inline-block; padding: var(--space-xs) var(--space-md);
+  border-radius: var(--rounded-full);
+  font-size: var(--caption-size); font-weight: var(--caption-weight); line-height: var(--caption-lh);
+}
+.badge--success { background: var(--success-soft); color: var(--success); }
+.badge--warning { background: var(--warning-soft); color: var(--warning); }
+.badge--error   { background: var(--error-soft);   color: var(--error); }
+.badge--info    { background: var(--info-soft);    color: var(--info); }
+.badge--neutral { background: var(--surface-secondary); color: var(--text-secondary); }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--rounded-prominent);
+  box-shadow: var(--elevation-soft);
+  padding: var(--space-base);
+}
+.card--lifted { box-shadow: var(--elevation-lifted); }
+.card--flush { padding: 0; }
+.card h4 { margin: 0; font-size: var(--card-title-size); font-weight: 700; line-height: var(--card-title-lh); }
+.card .sub { font-size: 13px; color: var(--text-secondary); }
+
+.thumb {
+  width: 76px; height: 76px; flex: none;
+  border-radius: var(--rounded-card);
+  background: var(--familia-primary-soft); color: var(--familia-primary);
+  display: flex; align-items: center; justify-content: center; font-size: 28px;
+}
+.service-card { width: 156px; }
+.service-icon {
+  width: 44px; height: 44px; border-radius: var(--rounded-full);
+  background: var(--familia-primary-soft); color: var(--familia-primary);
+  display: flex; align-items: center; justify-content: center; font-size: 20px;
+}
+.avatar {
+  width: 56px; height: 56px; flex: none; border-radius: var(--rounded-full);
+  background: var(--familia-primary-soft); color: var(--familia-primary);
+  display: flex; align-items: center; justify-content: center; font-size: 24px;
+}
+
+/* Hero + tarjeta montada */
+.hero {
+  background: var(--gradient-primary);
+  border-bottom-left-radius: var(--rounded-hero);
+  border-bottom-right-radius: var(--rounded-hero);
+  padding: var(--space-xl) var(--space-lg) 60px;
+  color: var(--brand-white);
+}
+.hero--soft { background: var(--gradient-soft); padding-bottom: var(--space-xl); }
+.hero .kicker { font-size: var(--body-medium-size); color: var(--accent-light); }
+.hero .name { font-size: var(--screen-title-size); line-height: var(--screen-title-lh); font-weight: 700; margin: var(--space-xs) 0 var(--space-base); }
+.hero .search {
+  display: flex; align-items: center; gap: 10px;
+  min-height: 48px; padding: 0 18px;
+  border-radius: var(--rounded-full);
+  background: var(--surface); color: var(--text-secondary);
+  font-size: var(--body-medium-size);
+}
+.overlap { margin: -44px var(--space-lg) 0; }
+
+/* Formulario */
+.field { display: block; margin-bottom: var(--space-base); max-width: 380px; }
+.field .lbl { display: block; font-size: var(--label-size); font-weight: var(--label-weight); line-height: var(--label-lh); margin-bottom: 6px; }
+.field input {
+  width: 100%; min-height: 48px;
+  padding: 0 var(--space-base);
+  border: 1px solid var(--border-soft); border-radius: var(--rounded-md);
+  background: var(--surface); color: var(--text-primary);
+  font-family: var(--font); font-size: var(--body-large-size);
+}
+.field input::placeholder { color: var(--text-disabled); }
+.field input:focus { outline: none; border-color: var(--familia-primary); box-shadow: 0 0 0 2px var(--familia-primary-soft); }
+.field .help { display: block; font-size: var(--helper-size); line-height: var(--helper-lh); color: var(--text-secondary); margin-top: 6px; }
+.field .err  { display: block; font-size: var(--error-size); line-height: var(--error-lh); font-weight: var(--error-weight); color: var(--error); margin-top: 6px; }
+.field--error input { border-color: var(--error); }
+
+/* Calendario */
+.cal { max-width: 320px; }
+.cal .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-sm); }
+.cal .head b { font-size: var(--section-title-size); font-weight: var(--section-title-weight); text-transform: capitalize; }
+.cal .dows, .cal .days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.cal .dows span { text-align: center; font-size: var(--label-size); font-weight: var(--label-weight); color: var(--text-secondary); padding: var(--space-xs) 0; }
+.cal .day {
+  height: 40px; display: flex; align-items: center; justify-content: center;
+  border-radius: var(--rounded-full);
+  font-size: var(--body-medium-size); color: var(--text-primary);
+  border: 1px solid var(--border-soft); background: var(--surface); cursor: pointer;
+}
+.cal .day.is-selected { background: var(--familia-primary); color: var(--familia-on-primary); border-color: var(--familia-primary); font-weight: 700; }
+.cal .day.is-disabled { color: var(--text-disabled); border-color: transparent; background: transparent; cursor: not-allowed; }
+.cal .day.is-empty { border-color: transparent; background: transparent; }
+.slot {
+  min-width: 76px; min-height: 48px;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0 var(--space-md);
+  border-radius: var(--rounded-md);
+  border: 1px solid var(--border-soft); background: var(--surface);
+  font-size: var(--body-medium-size); font-weight: 600; color: var(--text-primary); cursor: pointer;
+}
+.slot.is-selected { background: var(--familia-primary); border-color: var(--familia-primary); color: var(--familia-on-primary); }
+
+/* Navegación */
+.tabbar {
+  display: flex; background: var(--surface);
+  border-top: 1px solid var(--border-soft);
+  border-radius: 0 0 var(--rounded-card) var(--rounded-card);
+}
+.tabbar .tab {
+  flex: 1; padding: var(--space-md) 0 var(--space-base);
+  text-align: center; color: var(--text-secondary);
+  font-size: var(--caption-size); font-weight: 600; line-height: var(--caption-lh);
+}
+.tabbar .tab .ico { display: block; font-size: 20px; margin-bottom: 2px; }
+.tabbar .tab.is-active { color: var(--familia-primary); }
+.tabbar--profesional .tab.is-active { color: var(--profesional-primary); }
+.action-bar {
+  background: var(--surface); border-top: 1px solid var(--border-soft);
+  padding: var(--space-base); display: flex; flex-direction: column; gap: var(--space-sm);
+}
+
+/* Estados */
+.state { text-align: center; padding: var(--space-xl) var(--space-lg); }
+.state .ico-wrap {
+  width: 64px; height: 64px; margin: 0 auto var(--space-md);
+  border-radius: var(--rounded-full);
+  display: flex; align-items: center; justify-content: center; font-size: 28px;
+}
+.state .ico-wrap--empty { background: var(--surface-secondary); color: var(--text-secondary); }
+.state .ico-wrap--error { background: var(--error-soft); color: var(--error); }
+.state h4 { margin: 0 0 var(--space-sm); font-size: var(--card-title-size); font-weight: var(--card-title-weight); }
+.state p { margin: 0 0 var(--space-base); font-size: var(--body-small-size); color: var(--text-secondary); }
+.skel {
+  background: var(--surface-secondary);
+  border-radius: var(--rounded-sm);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.skel--card { height: 96px; border-radius: var(--rounded-card); }
+@keyframes pulse { 0%,100% { opacity: .5 } 50% { opacity: 1 } }
+.banner {
+  display: flex; gap: var(--space-sm); align-items: flex-start;
+  padding: var(--space-md); border-radius: var(--rounded-card);
+  font-size: var(--body-medium-size);
+}
+.banner--success { background: var(--success-soft); }
+.banner--warning { background: var(--warning-soft); }
+.banner--info { background: var(--info-soft); }
+.banner b { font-weight: 600; }
+.banner .sub { display: block; font-size: var(--body-small-size); color: var(--text-secondary); font-weight: 400; }
+
+/* Sí / No */
+.dd { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--space-lg); }
+.dd ul { margin: 0; padding-left: var(--space-lg); }
+.dd li { margin-bottom: var(--space-sm); font-size: var(--body-small-size); line-height: var(--body-small-lh); }
+.dd h3 { margin: 0 0 var(--space-md); font-size: var(--card-title-size); }
+.dd .yes h3 { color: var(--success); }
+.dd .no h3 { color: var(--error); }
+.dd .box { background: var(--surface); border: 1px solid var(--border-soft); border-radius: var(--rounded-card); padding: var(--space-lg); }
+
+table.spec { width: 100%; border-collapse: collapse; font-size: var(--body-small-size); }
+table.spec th, table.spec td { text-align: left; padding: var(--space-sm) var(--space-md); border-bottom: 1px solid var(--border-soft); }
+table.spec th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-secondary); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc">
+  <h1>Geras — Sistema visual Soluciones Mayores</h1>
+  <p>Guía visual legible de las apps Geras. Es el <strong>espejo humano</strong> de
+     <code>docs/design.md</code>: los mismos tokens, renderizados en vivo.</p>
+  <p class="note" style="margin-bottom:0">
+    <strong>La fuente de verdad de color es <code>packages/ui/src/tokens/colors.ts</code>.</strong>
+    Ni un hex de esta página es nuevo. Para cambiar un color: primero <code>colors.ts</code>,
+    después <code>design.md</code>, y recién después este archivo.
+    Las reglas de experiencia, accesibilidad y selectores viven en <code>docs/UI_UX_GERAS.md</code>,
+    que este documento complementa y no reemplaza.
+  </p>
+</header>
+
+<!-- ==================== COLORES ==================== -->
+<section class="doc">
+  <h2>Colores</h2>
+  <p class="note">Tres capas: fondos de marca (materia prima del gradiente), acentos (acciones) y
+     neutros (texto y superficies). Los semánticos se mantienen convencionales a propósito — un
+     error tiene que leerse como error incluso dentro de una interfaz verde.</p>
+
+  <h3>Marca — <span class="tag">brandColors</span></h3>
+  <div class="grid g-swatch">
+    <div class="swatch"><div class="chip" style="background:var(--bg-deep)"><span style="color:var(--brand-white)">Texto sobre fondo</span></div><div class="meta"><b>bg-deep</b><span class="hex">#1A1E17</span><span class="src">brandColors.bgDeep · sombras, splash</span></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--bg-base)"><span style="color:var(--brand-white)">Texto sobre fondo</span></div><div class="meta"><b>bg-base</b><span class="hex">#273219</span><span class="src">brandColors.bgBase · sidebar Admin</span></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--bg-mid)"><span style="color:var(--brand-white)">Texto sobre fondo</span></div><div class="meta"><b>bg-mid</b><span class="hex">#32471B</span><span class="src">brandColors.bgMid</span></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--olive-green)"><span style="color:var(--brand-white)">Texto sobre fondo</span></div><div class="meta"><b>olive-green</b><span class="hex">#405E1D</span><span class="src">brandColors.oliveGreen · primario Profesional</span></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--bg-lit)"><span style="color:var(--brand-white)">Texto sobre fondo</span></div><div class="meta"><b>bg-lit</b><span class="hex">#537C24</span><span class="src">brandColors.bgLit</span></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--accent-primary)"><span style="color:var(--familia-on-primary)">Texto oscuro encima</span></div><div class="meta"><b>accent-primary</b><span class="hex">#80B444</span><span class="src">brandColors.accentPrimary · primario Familia</span></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--accent-light)"><span style="color:var(--familia-on-primary)">Texto oscuro encima</span></div><div class="meta"><b>accent-light</b><span class="hex">#88C048</span><span class="src">brandColors.accentLight</span></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--accent-on-light)"><span style="color:var(--brand-white)">Texto sobre fondo</span></div><div class="meta"><b>accent-on-light</b><span class="hex">#588818</span><span class="src">brandColors.accentOnLight</span></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--brand-white);border-bottom:1px solid var(--border-soft)"><span style="color:var(--text-primary)">Texto principal</span></div><div class="meta"><b>brand-white</b><span class="hex">#FBFCFB</span><span class="src">brandColors.white</span></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--border-neutral)"><span style="color:var(--text-primary)">Texto principal</span></div><div class="meta"><b>border-neutral</b><span class="hex">#BEC6BB</span><span class="src">brandColors.borderNeutral</span></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--text-neutral)"><span style="color:var(--brand-white)">Texto sobre fondo</span></div><div class="meta"><b>text-neutral</b><span class="hex">#54595A</span><span class="src">brandColors.textNeutral</span></div></div>
+  </div>
+
+  <h3>Superficies y texto — <span class="tag">semanticColors</span></h3>
+  <div class="grid g-swatch">
+    <div class="swatch"><div class="chip" style="background:var(--background)"><span style="color:var(--text-primary)">Texto principal</span></div><div class="meta"><b>background</b><span class="hex">#F5F8F2</span><span class="src">fondo de pantalla</span></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--background-secondary)"><span style="color:var(--text-primary)">Texto principal</span></div><div class="meta"><b>background-secondary</b><span class="hex">#EAF0E4</span></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--surface);border-bottom:1px solid var(--border-soft)"><span style="color:var(--text-primary)">Texto principal</span></div><div class="meta"><b>surface</b><span class="hex">#FBFCFB</span><span class="src">tarjetas, campos, barra inferior</span></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--surface-secondary)"><span style="color:var(--text-secondary)">Texto secundario</span></div><div class="meta"><b>surface-secondary</b><span class="hex">#F0F4EC</span><span class="src">skeleton, badge neutro</span></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--border-soft)"><span style="color:var(--text-primary)">Texto principal</span></div><div class="meta"><b>border-soft</b><span class="hex">#DCE5D4</span><span class="src">borde por defecto</span></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--border-strong)"><span style="color:var(--text-primary)">Texto principal</span></div><div class="meta"><b>border-strong</b><span class="hex">#BEC6BB</span></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--text-primary)"><span style="color:var(--brand-white)">Texto sobre fondo</span></div><div class="meta"><b>text-primary</b><span class="hex">#16210F</span></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--text-secondary)"><span style="color:var(--brand-white)">Texto sobre fondo</span></div><div class="meta"><b>text-secondary</b><span class="hex">#54595A</span></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--text-disabled)"><span style="color:var(--brand-white)">Texto sobre fondo</span></div><div class="meta"><b>text-disabled</b><span class="hex">#9AA593</span><span class="src">solo placeholder / día no disponible</span></div></div>
+  </div>
+
+  <h3>Semánticos — iguales en las tres apps</h3>
+  <div class="grid g-swatch">
+    <div class="swatch"><div class="chip" style="background:var(--success-soft)"><span style="color:var(--success)">Completada</span></div><div class="meta"><b>success / success-soft</b><span class="hex">#2E9E5B · #E3F5EA</span></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--warning-soft)"><span style="color:var(--warning)">Pendiente</span></div><div class="meta"><b>warning / warning-soft</b><span class="hex">#B7791F · #FBF0DD</span></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--error-soft)"><span style="color:var(--error)">Cancelada</span></div><div class="meta"><b>error / error-soft</b><span class="hex">#D14343 · #FBE7E7</span></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--info-soft)"><span style="color:var(--info)">Confirmada</span></div><div class="meta"><b>info / info-soft</b><span class="hex">#2F6FED · #E6EEFD</span></div></div>
+  </div>
+
+  <h3>Identidad por app — <span class="tag">brandPalettes</span></h3>
+  <div class="grid g-swatch">
+    <div class="swatch"><div class="chip" style="background:var(--familia-primary)"><span style="color:var(--familia-on-primary)">onPrimary oscuro</span></div><div class="meta"><b>familia-primary</b><span class="hex">#80B444</span><span class="src">primario luminoso → texto oscuro #16210F</span></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--profesional-primary)"><span style="color:var(--profesional-on-primary)">onPrimary blanco</span></div><div class="meta"><b>profesional-primary</b><span class="hex">#405E1D</span><span class="src">operacional → texto blanco</span></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--admin-primary)"><span style="color:var(--admin-on-primary)">onPrimary blanco</span></div><div class="meta"><b>admin-primary</b><span class="hex">#273219</span><span class="src">sidebar del panel</span></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--familia-primary-soft)"><span style="color:var(--familia-primary-dark)">Categoría</span></div><div class="meta"><b>familia-primary-soft</b><span class="hex">#E3EEDA</span></div></div>
+    <div class="swatch"><div class="chip" style="background:var(--profesional-primary-soft)"><span style="color:var(--profesional-primary-dark)">Categoría</span></div><div class="meta"><b>profesional-primary-soft</b><span class="hex">#E4EFDC</span></div></div>
+  </div>
+
+  <h3>Gradientes institucionales — usar con moderación</h3>
+  <div class="grid g-two">
+    <div>
+      <div style="background:var(--gradient-primary);height:110px;border-radius:var(--rounded-hero);display:flex;align-items:center;padding:0 var(--space-lg);color:var(--brand-white);font-weight:600">gradient primary (4 tonos)</div>
+      <p class="note">Solo el hero de Inicio y el login.</p>
+    </div>
+    <div>
+      <div style="background:var(--gradient-soft);height:110px;border-radius:var(--rounded-hero);display:flex;align-items:center;padding:0 var(--space-lg);color:var(--brand-white);font-weight:600">gradient soft (2 tonos)</div>
+      <p class="note">Cabeceras de detalle (perfil profesional, residencia).</p>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== TIPOGRAFÍA ==================== -->
+<section class="doc">
+  <h2>Tipografía</h2>
+  <p class="note">Fuente del sistema (San Francisco / Roboto) — no hay fuente institucional
+     definida todavía. Dos reglas duras: ningún texto relevante bajo 14px, ninguna acción
+     principal bajo 16px.</p>
+
+  <div class="type-row"><span style="font-size:var(--display-large-size);line-height:var(--display-large-lh);font-weight:var(--display-large-weight)">Cuidado que acompaña</span><span class="spec">display-large · 32/38 · 700</span></div>
+  <div class="type-row"><span style="font-size:var(--display-medium-size);line-height:var(--display-medium-lh);font-weight:var(--display-medium-weight)">Cuidado que acompaña</span><span class="spec">display-medium · 28/34 · 700</span></div>
+  <div class="type-row"><span style="font-size:var(--screen-title-size);line-height:var(--screen-title-lh);font-weight:var(--screen-title-weight)">Título de pantalla</span><span class="spec">screen-title · 26/32 · 700</span></div>
+  <div class="type-row"><span style="font-size:var(--section-title-size);line-height:var(--section-title-lh);font-weight:var(--section-title-weight)">Servicios principales</span><span class="spec">section-title · 20/26 · 600</span></div>
+  <div class="type-row"><span style="font-size:var(--card-title-size);line-height:var(--card-title-lh);font-weight:var(--card-title-weight)">Kinesiología a domicilio</span><span class="spec">card-title · 17/23 · 600 — también botones</span></div>
+  <div class="type-row"><span style="font-size:var(--body-large-size);line-height:var(--body-large-lh)">Texto corrido grande, para lectura cómoda.</span><span class="spec">body-large · 17/25 · 400</span></div>
+  <div class="type-row"><span style="font-size:var(--body-medium-size);line-height:var(--body-medium-lh)">Texto corrido por defecto de la interfaz.</span><span class="spec">body-medium · 15/22 · 400</span></div>
+  <div class="type-row"><span style="font-size:var(--body-small-size);line-height:var(--body-small-lh)">Dato secundario dentro de una tarjeta.</span><span class="spec">body-small · 14/20 · 400</span></div>
+  <div class="type-row"><span style="font-size:var(--label-size);line-height:var(--label-lh);font-weight:var(--label-weight)">Etiqueta de campo</span><span class="spec">label · 15/20 · 600</span></div>
+  <div class="type-row"><span style="font-size:var(--helper-size);line-height:var(--helper-lh);color:var(--text-secondary)">Texto de ayuda bajo un campo.</span><span class="spec">helper · 14/19 · 400</span></div>
+  <div class="type-row"><span style="font-size:var(--caption-size);line-height:var(--caption-lh);font-weight:var(--caption-weight)">Etiqueta de badge</span><span class="spec">caption · 14/18 · 500</span></div>
+  <div class="type-row"><span style="font-size:var(--error-size);line-height:var(--error-lh);font-weight:var(--error-weight);color:var(--error)">Revisa los campos marcados.</span><span class="spec">error · 14/19 · 500</span></div>
+</section>
+
+<!-- ==================== ESPACIADO ==================== -->
+<section class="doc">
+  <h2>Espaciado</h2>
+  <p class="note">Escala única. Padding lateral móvil 16 o 20 · entre secciones 24 · entre campos
+     16 · entre tarjetas 12 o 16. Nada de números sueltos.</p>
+  <div class="space-row"><span class="lbl">xs · 4px</span><span class="bar" style="width:var(--space-xs)"></span></div>
+  <div class="space-row"><span class="lbl">sm · 8px</span><span class="bar" style="width:var(--space-sm)"></span></div>
+  <div class="space-row"><span class="lbl">md · 12px</span><span class="bar" style="width:var(--space-md)"></span></div>
+  <div class="space-row"><span class="lbl">base · 16px</span><span class="bar" style="width:var(--space-base)"></span></div>
+  <div class="space-row"><span class="lbl">lg · 20px</span><span class="bar" style="width:var(--space-lg)"></span></div>
+  <div class="space-row"><span class="lbl">xl · 24px</span><span class="bar" style="width:var(--space-xl)"></span></div>
+  <div class="space-row"><span class="lbl">xxl · 32px</span><span class="bar" style="width:var(--space-xxl)"></span></div>
+  <div class="space-row"><span class="lbl">xxxl · 40px</span><span class="bar" style="width:var(--space-xxxl)"></span></div>
+</section>
+
+<!-- ==================== RADIOS ==================== -->
+<section class="doc">
+  <h2>Formas</h2>
+  <p class="note">Cuanto más grande la superficie, más grande el radio. Toda etiqueta corta o
+     control circular va a <code>full</code>: es lo que distingue una píldora de una tarjeta sin
+     necesidad de otro color.</p>
+  <div class="row">
+    <div class="radius-box" style="border-radius:var(--rounded-sm)">sm · 8</div>
+    <div class="radius-box" style="border-radius:var(--rounded-md)">md · 12</div>
+    <div class="radius-box" style="border-radius:var(--rounded-card)">card · 16</div>
+    <div class="radius-box" style="border-radius:var(--rounded-button)">button · 16</div>
+    <div class="radius-box" style="border-radius:var(--rounded-prominent)">prominent · 20</div>
+    <div class="radius-box" style="border-radius:var(--rounded-hero)">hero · 28</div>
+    <div class="radius-box" style="border-radius:var(--rounded-full)">full · 999</div>
+  </div>
+</section>
+
+<!-- ==================== ELEVACIÓN ==================== -->
+<section class="doc">
+  <h2>Elevación y profundidad</h2>
+  <p class="note">Dos niveles, nada más. La profundidad viene del desenfoque, no de un borde
+     oscuro. El color de sombra es el token de marca <code>bg-deep</code>, nunca negro puro. En
+     Android manda <code>elevation</code>, así que cada nivel declara ambos.</p>
+  <div class="row" style="align-items:stretch">
+    <div class="elev-card" style="box-shadow:var(--elevation-soft)">
+      <b>soft</b>
+      <span>opacidad 0.05 · radio 10 · offset (0,3) · elevation 2<br>Tarjetas en lista, chips, superficies que apenas se despegan.</span>
+    </div>
+    <div class="elev-card" style="box-shadow:var(--elevation-lifted)">
+      <b>lifted</b>
+      <span>opacidad 0.1 · radio 20 · offset (0,8) · elevation 6<br>Tarjeta destacada, tarjeta montada sobre el hero, hoja inferior.</span>
+    </div>
+  </div>
+  <p class="note"><strong>Trampa:</strong> nunca <code>overflow: hidden</code> en una superficie con
+     sombra — en iOS activa <code>masksToBounds</code> y recorta la propia sombra.</p>
+</section>
+
+<!-- ==================== COMPONENTES ==================== -->
+<section class="doc">
+  <h2>Componentes</h2>
+  <p class="note">Todo vive en <code>packages/ui/src/components/</code>. No se instala ninguna
+     librería de UI adicional (decisión vigente, <code>UI_UX_GERAS.md</code> §24).</p>
+
+  <h3>Botones — alto mínimo 48px, área táctil 44×44</h3>
+  <div class="stage">
+    <div class="stage-label">PrimaryButton · SecondaryButton · TertiaryButton · DestructiveButton</div>
+    <div class="row">
+      <button class="btn btn--primary-familia">Solicitar atención</button>
+      <button class="btn btn--primary-profesional">Aceptar reserva</button>
+      <button class="btn btn--secondary">Ver detalles</button>
+      <button class="btn btn--tertiary">Guardar para después</button>
+      <button class="btn btn--destructive">Cancelar reserva</button>
+    </div>
+    <div class="stage-label" style="margin-top:var(--space-lg)">Estados — pressed · focus · disabled · loading · compact (44px)</div>
+    <div class="row">
+      <button class="btn btn--primary-familia-pressed">Pressed</button>
+      <button class="btn btn--primary-familia btn--focus">Focus (web)</button>
+      <button class="btn btn--disabled" disabled>Disabled</button>
+      <button class="btn btn--primary-familia" style="width:180px"><span class="spinner"></span></button>
+      <button class="btn btn--primary-familia btn--compact">Responder</button>
+      <button class="circle-btn" aria-label="Llamar">✆</button>
+      <button class="circle-btn" aria-label="Más opciones">⋯</button>
+    </div>
+    <p class="note" style="margin-bottom:0">El spinner reemplaza al texto <strong>sin cambiar el ancho</strong>
+       del botón. Si <code>onPress</code> devuelve una Promise, el botón se autobloquea hasta que
+       resuelve. El botón circular nunca es la única acción de una pantalla.</p>
+  </div>
+
+  <h3>Píldoras y chips — cuatro cosas distintas que se parecen</h3>
+  <div class="stage">
+    <div class="stage-label">ActionPill — atajo de navegación</div>
+    <div class="row">
+      <span class="pill"><span class="ico">👥</span> Profesionales</span>
+      <span class="pill"><span class="ico">🏠</span> Residencias</span>
+      <span class="pill"><span class="ico">▦</span> Servicios</span>
+      <span class="pill"><span class="ico">＋</span> Nueva solicitud</span>
+    </div>
+    <div class="stage-label" style="margin-top:var(--space-lg)">CategoryPill — rótulo, no accionable</div>
+    <div class="row">
+      <span class="cat-pill cat-pill--soft">Kinesiología</span>
+      <span class="cat-pill cat-pill--soft">Cuidado domiciliario</span>
+      <span class="cat-pill cat-pill--neutral">Residencia con cupos</span>
+    </div>
+    <div class="stage-label" style="margin-top:var(--space-lg)">FilterChip — accionable, alterna (default / seleccionado)</div>
+    <div class="row">
+      <span class="chip-filter">Todas las comunas</span>
+      <span class="chip-filter chip-filter--selected">Ñuñoa</span>
+      <span class="chip-filter">Providencia</span>
+    </div>
+    <div class="stage-label" style="margin-top:var(--space-lg)">StatusBadge — estado real del negocio, color semántico</div>
+    <div class="row">
+      <span class="badge badge--warning">Pendiente</span>
+      <span class="badge badge--info">Confirmada</span>
+      <span class="badge badge--warning">En curso</span>
+      <span class="badge badge--success">Completada</span>
+      <span class="badge badge--error">Cancelada</span>
+      <span class="badge badge--success">Verificado</span>
+      <span class="badge badge--neutral">Vencido</span>
+    </div>
+  </div>
+
+  <h3>Hero + tarjeta montada — el patrón de apertura</h3>
+  <div class="stage" style="padding:0;overflow:visible">
+    <div class="hero">
+      <div style="font-weight:700;letter-spacing:.02em;margin-bottom:var(--space-base)">GERAS</div>
+      <div class="kicker">Bienvenido de vuelta</div>
+      <div class="name">María</div>
+      <div class="search">🔍 Buscar servicios, profesionales o residencias</div>
+    </div>
+    <div class="overlap">
+      <div class="card card--lifted card--flush">
+        <div style="display:flex;align-items:center;gap:10px;padding:14px;border-bottom:1px solid var(--border-soft)">
+          <span style="width:30px;height:30px;border-radius:var(--rounded-full);background:var(--familia-primary);color:var(--familia-on-primary);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700">2</span>
+          <span style="flex:1;font-size:var(--body-small-size)">Tienes 2 solicitudes en curso</span>
+          <span style="color:var(--text-secondary)">›</span>
+        </div>
+        <div style="padding:var(--space-base);display:flex;flex-direction:column;gap:var(--space-md)">
+          <div style="display:flex;gap:var(--space-md);align-items:flex-start">
+            <span class="service-icon" style="width:40px;height:40px">🩺</span>
+            <div style="flex:1">
+              <h4>Kinesiología a domicilio</h4>
+              <div class="sub">📅 lunes 10 de agosto, 10:30</div>
+            </div>
+            <span class="badge badge--info">Confirmada</span>
+          </div>
+          <button class="btn btn--primary-familia btn--compact" style="width:100%">Ver reserva</button>
+        </div>
+      </div>
+    </div>
+    <div style="height:var(--space-lg)"></div>
+  </div>
+
+  <h3>Tarjetas</h3>
+  <div class="stage">
+    <div class="stage-label">Card en carrusel (156px) — servicio</div>
+    <div class="row">
+      <div class="card service-card">
+        <span class="service-icon">🩺</span>
+        <h4 style="margin:10px 0 6px">Kinesiología a domicilio</h4>
+        <span class="cat-pill cat-pill--soft">Salud</span>
+      </div>
+      <div class="card service-card">
+        <span class="service-icon">🤝</span>
+        <h4 style="margin:10px 0 6px">Acompañamiento</h4>
+        <span class="cat-pill cat-pill--soft">Cuidado</span>
+      </div>
+    </div>
+
+    <div class="stage-label" style="margin-top:var(--space-lg)">MediaListCard — miniatura 76×76 a la izquierda</div>
+    <div class="card card--flush" style="max-width:460px">
+      <div style="display:flex;gap:var(--space-md);padding:var(--space-md)">
+        <span class="thumb">🏠</span>
+        <div style="flex:1;display:flex;flex-direction:column;gap:var(--space-xs);justify-content:center">
+          <span class="cat-pill cat-pill--soft" style="align-self:flex-start">Residencia con cupos</span>
+          <h4 style="font-size:15px">Residencia Los Aromos</h4>
+          <div class="sub">📍 Ñuñoa · Desde $850.000</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stage-label" style="margin-top:var(--space-lg)">Tarjeta de profesional</div>
+    <div class="card" style="max-width:460px">
+      <div style="display:flex;gap:var(--space-md)">
+        <span class="avatar">👤</span>
+        <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+          <h4>Diego Fuentes Araya</h4>
+          <div class="row" style="gap:var(--space-sm)">
+            <span class="cat-pill cat-pill--soft">Kinesiología</span>
+            <span class="sub">★ 4.8 (12)</span>
+          </div>
+          <div class="sub">📍 Atiende en Ñuñoa, Providencia y 3 comunas más</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:var(--space-sm)">
+            <b style="font-size:15px">Desde $25.000</b>
+            <span class="badge badge--success" style="font-size:12px">📅 Mañana</span>
+          </div>
+          <button class="btn btn--secondary btn--compact" style="align-self:flex-start;margin-top:2px">Ver perfil</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Formulario — etiqueta permanente sobre el campo</h3>
+  <div class="stage">
+    <label class="field">
+      <span class="lbl">Email</span>
+      <input type="email" placeholder="tucorreo@ejemplo.com">
+      <span class="help">Te enviaremos la confirmación de la reserva a este correo.</span>
+    </label>
+    <label class="field field--error">
+      <span class="lbl">Contraseña</span>
+      <input type="password" placeholder="Tu contraseña">
+      <span class="err">Revisa los campos marcados.</span>
+    </label>
+    <p class="note" style="margin-bottom:0">El <code>placeholder</code> es solo un ejemplo, nunca la
+       etiqueta: desaparece al escribir y deja al usuario sin contexto.</p>
+  </div>
+
+  <h3>Calendario y reserva</h3>
+  <div class="stage">
+    <div class="cal">
+      <div class="head"><span>‹</span><b>agosto 2026</b><span>›</span></div>
+      <div class="dows"><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span></div>
+      <div class="days">
+        <span class="day is-empty"></span><span class="day is-empty"></span><span class="day is-empty"></span>
+        <span class="day is-disabled">1</span><span class="day is-disabled">2</span><span class="day">3</span><span class="day">4</span>
+        <span class="day">5</span><span class="day is-disabled">6</span><span class="day">7</span><span class="day is-selected">8</span>
+        <span class="day">9</span><span class="day is-disabled">10</span><span class="day">11</span>
+        <span class="day">12</span><span class="day">13</span><span class="day is-disabled">14</span><span class="day">15</span>
+        <span class="day">16</span><span class="day is-disabled">17</span><span class="day">18</span>
+      </div>
+    </div>
+    <div class="stage-label" style="margin-top:var(--space-lg)">TimeSlotPicker — nunca un dropdown</div>
+    <div class="row">
+      <span class="slot">09:00</span>
+      <span class="slot is-selected">10:30</span>
+      <span class="slot">12:00</span>
+      <span class="slot">15:00</span>
+    </div>
+  </div>
+
+  <h3>Navegación — 4 destinos máximo, ícono <em>y</em> texto</h3>
+  <div class="grid g-two">
+    <div>
+      <div class="stage-label">Familia · activo = accent-primary</div>
+      <div class="card card--flush" style="overflow:hidden">
+        <div class="action-bar"><button class="btn btn--primary-familia" style="width:100%">Solicitar atención</button></div>
+        <div class="tabbar">
+          <div class="tab is-active"><span class="ico">⌂</span>Inicio</div>
+          <div class="tab"><span class="ico">🔍</span>Explorar</div>
+          <div class="tab"><span class="ico">◠</span>Actividad</div>
+          <div class="tab"><span class="ico">👤</span>Perfil</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="stage-label">Profesional · activo = olive-green</div>
+      <div class="card card--flush" style="overflow:hidden">
+        <div class="action-bar"><button class="btn btn--primary-profesional" style="width:100%">Aceptar reserva</button></div>
+        <div class="tabbar tabbar--profesional">
+          <div class="tab is-active"><span class="ico">⌂</span>Inicio</div>
+          <div class="tab"><span class="ico">📅</span>Reservas</div>
+          <div class="tab"><span class="ico">🕐</span>Disponibilidad</div>
+          <div class="tab"><span class="ico">👤</span>Perfil</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <p class="note"><strong>Divergencia deliberada de la referencia de layout:</strong> la barra va
+     anclada al borde y a ancho completo, no flotante. Una barra flotante reduce el área táctil de
+     cada destino y crea una zona muerta bajo ella — inaceptable cuando el usuario central es una
+     persona mayor.</p>
+</section>
+
+<!-- ==================== ESTADOS ==================== -->
+<section class="doc">
+  <h2>Estados</h2>
+  <p class="note">Toda pantalla contempla los cuatro. El estado siempre es visible, nunca ambiguo.</p>
+
+  <div class="grid g-two">
+    <div>
+      <div class="stage-label">Carga — LoadingState + Skeleton, no un spinner</div>
+      <div class="stage">
+        <div class="skel" style="width:70%;height:20px;margin-bottom:var(--space-sm)"></div>
+        <div class="skel" style="width:100%;height:14px;margin-bottom:var(--space-sm)"></div>
+        <div class="skel" style="width:90%;height:14px;margin-bottom:var(--space-base)"></div>
+        <div class="skel skel--card" style="margin-bottom:var(--space-md)"></div>
+        <div class="skel skel--card"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="stage-label">Vacío — explica qué falta y qué hacer</div>
+      <div class="stage">
+        <div class="state">
+          <div class="ico-wrap ico-wrap--empty">🗂</div>
+          <h4>No tienes reservas próximas</h4>
+          <p>Cuando un profesional acepte tu solicitud, aparecerá aquí.</p>
+          <button class="btn btn--primary-familia">Buscar profesionales</button>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="stage-label">Error — mensaje ya traducido, nunca un código</div>
+      <div class="stage">
+        <div class="state">
+          <div class="ico-wrap ico-wrap--error">⚠</div>
+          <h4>Algo no salió bien</h4>
+          <p>No pudimos cargar tu información. Revisa tu conexión e intenta de nuevo.</p>
+          <button class="btn btn--secondary">Reintentar</button>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="stage-label">Éxito y avisos — banner inline, no un toast</div>
+      <div class="stage">
+        <div class="banner banner--success" style="margin-bottom:var(--space-md)">
+          <span>✓</span>
+          <span><b>Tu reserva quedó confirmada</b><span class="sub">Te enviamos los detalles por correo.</span></span>
+        </div>
+        <div class="banner banner--warning" style="margin-bottom:var(--space-md)">
+          <span>⚠</span>
+          <span><b>Configura tu disponibilidad</b><span class="sub">Sin horarios definidos, las familias no van a poder encontrarte.</span></span>
+        </div>
+        <div class="banner banner--info">
+          <span>ⓘ</span>
+          <span>Encuentra profesionales, servicios y residencias para personas mayores.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Traducción obligatoria de errores</h3>
+  <table class="spec">
+    <thead><tr><th>Nunca</th><th>Siempre</th></tr></thead>
+    <tbody>
+      <tr><td><code>PGRST301</code></td><td>No pudimos cargar tu información.</td></tr>
+      <tr><td><code>Invalid JWT</code></td><td>Tu sesión venció. Ingresa nuevamente.</td></tr>
+      <tr><td><code>Row level security</code></td><td>No tienes permiso para ver esto.</td></tr>
+      <tr><td><code>Validation failed</code></td><td>Revisa los campos marcados.</td></tr>
+      <tr><td><code>500 Internal Server Error</code></td><td>No pudimos completar la operación. Intenta de nuevo.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ==================== SÍ / NO ==================== -->
+<section class="doc">
+  <h2>Sí y no</h2>
+  <div class="dd">
+    <div class="box yes">
+      <h3>✓ Sí</h3>
+      <ul>
+        <li>Todo color desde <code>packages/ui/src/tokens/colors.ts</code>, vía <code>useGerasTheme()</code>.</li>
+        <li>Toda pantalla envuelta en <code>Screen</code>; la acción principal de un flujo en <code>BottomActionBar</code>.</li>
+        <li>Reutilizar <code>packages/ui</code> antes de escribir un componente nuevo: hay ~40 y cubren casi todo.</li>
+        <li>Un componente sube a <code>packages/ui</code> cuando lo usan dos apps o encarna una regla de la guía.</li>
+        <li>Fechas y horas por <code>@geras/shared</code>: <code>formatDateCL</code>, <code>formatDateTimeCL</code>, <code>formatTimeCL</code>.</li>
+        <li>Los cuatro estados contemplados antes de dar una pantalla por terminada.</li>
+        <li>Ícono <strong>más</strong> texto en toda acción no obvia; <code>accessibilityLabel</code> en todo control sin texto visible.</li>
+      </ul>
+    </div>
+    <div class="box no">
+      <h3>✗ No</h3>
+      <ul>
+        <li><strong>Ningún hex fuera de <code>colors.ts</code>.</strong> Ni "solo esta vez", ni en un <code>StyleSheet</code>, ni como <code>rgba()</code> improvisado.</li>
+        <li>Ningún tamaño relevante bajo 14px, ninguna acción bajo 16px de texto o 48px de alto.</li>
+        <li>Ningún espaciado fuera de la escala 4/8/12/16/20/24/32/40.</li>
+        <li>No instalar una librería de UI adicional (Paper, Elements, Tamagui).</li>
+        <li>No usar el gradiente <code>primary</code> de 4 tonos fuera del hero de Inicio y del login.</li>
+        <li>No mezclar sets de íconos: solo Ionicons, vía <code>iconMap.ts</code>.</li>
+        <li>No mostrar todas las opciones a la vez ni jerga técnica al usuario.</li>
+        <li>No poner <code>overflow: hidden</code> en una superficie con sombra.</li>
+        <li>No tocar lógica de negocio, endpoints, migraciones, RLS ni autenticación desde un cambio visual.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<p class="note" style="border-top:1px solid var(--border-soft);padding-top:var(--space-lg)">
+  Espejo de <code>docs/design.md</code> · complementa <code>docs/UI_UX_GERAS.md</code> ·
+  estado del trabajo en <code>docs/NEXT_SESSION_UI_UX.md</code>.
+</p>
+
+</div>
+</body>
+</html>

@@ -1,4 +1,5 @@
 import { ActivityIndicator, Pressable, Text, View } from "react-native";
+import { semanticColors } from "@geras/ui";
 
 interface StatusScreenProps {
   title: string;
@@ -24,7 +25,7 @@ export function StatusScreen({ title, description, actionLabel, onAction, action
           disabled={actionPending}
         >
           {actionPending ? (
-            <ActivityIndicator color="#ffffff" />
+            <ActivityIndicator color={semanticColors.white} />
           ) : (
             <Text className="font-semibold text-white">{actionLabel}</Text>
           )}

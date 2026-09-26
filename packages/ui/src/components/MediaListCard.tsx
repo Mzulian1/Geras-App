@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { Image, Text, View } from "react-native";
+import { Text, View } from "react-native";
+import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import { Card } from "./Card";
 import { CategoryPill } from "./CategoryPill";
@@ -48,8 +49,10 @@ export function MediaListCard({
         {imageUri ? (
           <Image
             source={{ uri: imageUri }}
+            contentFit="cover"
+            transition={200}
             style={{ width: THUMB_SIZE, height: THUMB_SIZE, borderRadius: radii.card }}
-            resizeMode="cover"
+            accessibilityIgnoresInvertColors
           />
         ) : (
           <View

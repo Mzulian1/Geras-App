@@ -15,6 +15,7 @@ import { ServiceRequestsListPage } from "@/pages/ServiceRequestsListPage";
 import { ServiceRequestDetailPage } from "@/pages/ServiceRequestDetailPage";
 import { BookingsListPage } from "@/pages/BookingsListPage";
 import { UsersListPage } from "@/pages/UsersListPage";
+import { ReportsPage } from "@/pages/ReportsPage";
 import { SettingsPage } from "@/pages/SettingsPage";
 
 /**
@@ -44,6 +45,7 @@ export function App() {
           <Route path="/solicitudes/:id" element={<ServiceRequestDetailPage />} />
           <Route path="/reservas" element={<BookingsListPage />} />
           <Route path="/usuarios" element={<UsersListPage />} />
+          <Route path="/reportes" element={<ReportsPage />} />
           <Route path="/configuracion" element={<SettingsPage />} />
         </Route>
       </Route>

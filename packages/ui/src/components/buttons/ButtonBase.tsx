@@ -71,7 +71,11 @@ export function ButtonBase({
     [onPress, isDisabled]
   );
 
-  const height = size === "compact" ? 44 : 48;
+  // 54 en la acción principal y 44 en la compacta. El mínimo duro de la
+  // guía es 48 y el área táctil mínima 44×44; el sistema visual pide la
+  // acción principal en el rango 52–58, así que se toma el centro de ese
+  // rango, que cumple las dos reglas a la vez.
+  const height = size === "compact" ? 44 : 54;
   const iconSize = size === "compact" ? 18 : 20;
 
   return (

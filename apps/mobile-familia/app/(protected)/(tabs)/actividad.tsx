@@ -1,16 +1,28 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { router } from "expo-router";
 import { SectionList, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { BookingStatus, RequestStatus, ResidenceInquiryStatus } from "@geras/shared";
-import { formatDateCL, formatDateTimeCL } from "@geras/shared";
-import { Card, EmptyState, getServiceIcon, HelpBanner, LoadingState, Screen, StatusBadge, useGerasTheme } from "@geras/ui";
+import { canReviewBooking, formatDateCL, formatDateTimeCL } from "@geras/shared";
+import {
+  BookingCard,
+  EmptyState,
+  HelpBanner,
+  SecondaryButton,
+  SegmentedControl,
+  SkeletonList,
+  Screen,
+  StatusBadge,
+  useGerasTheme,
+} from "@geras/ui";
 import { useDismissibleHelp } from "@/hooks/useDismissibleHelp";
 import { useFamilyBootstrap } from "@/hooks/useFamilyBootstrap";
-import { useMyServiceRequests } from "@/hooks/useMyRequests";
+import { useMyBookings, useMyServiceRequests } from "@/hooks/useMyRequests";
 import { useMyResidenceInquiries } from "@/hooks/useResidenceInquiries";
 
-type ActivityGroup = "pending" | "ongoing" | "done";
+type ActivityGroup = "upcoming" | "ongoing" | "done";
+type ActivityKind = "servicio" | "solicitud";
+type Segment = "todas" | ActivityKind;
 
 type ActivityBadge =
   | { kind: "booking"; value: BookingStatus }
@@ -19,56 +31,90 @@ type ActivityBadge =
 
 interface ActivityItem {
   id: string;
+  /** Servicio contratado o residencia consultada — el título de la tarjeta. */
   title: string;
-  subtitle: string;
-  /** Fecha agendada/preferida ya formateada, cuando la hay. */
-  meta: string | null;
-  icon: ReturnType<typeof getServiceIcon>;
+  /** Con quién: el profesional, o el tipo de consulta si todavía no hay profesional. */
+  counterpart: string | null;
+  avatarUri: string | null;
+  when: string | null;
+  where: string | null;
   badge: ActivityBadge;
   group: ActivityGroup;
+  kind: ActivityKind;
   createdAt: string;
+  /** LA siguiente acción, cuando hay una que valga un botón propio. */
+  actionLabel: string | null;
   onPress: () => void;
 }
 
-const ONGOING_BOOKING: BookingStatus[] = ["confirmed", "en_route", "in_progress", "professional_completed"];
-const DONE_BOOKING: BookingStatus[] = ["completed", "cancelled"];
+const ONGOING_BOOKING: BookingStatus[] = ["en_route", "in_progress", "professional_completed"];
+const UPCOMING_BOOKING: BookingStatus[] = ["awaiting_payment", "paid_awaiting_confirmation", "pending", "confirmed"];
 const PENDING_REQUEST: RequestStatus[] = ["created", "reviewing", "sent_to_professionals", "professional_interested"];
 const DONE_REQUEST: RequestStatus[] = ["completed", "cancelled", "evaluated"];
 const PENDING_INQUIRY: ResidenceInquiryStatus[] = ["new", "contacted", "in_follow_up"];
 const DONE_INQUIRY: ResidenceInquiryStatus[] = ["closed", "discarded"];
 
 const GROUP_LABELS: Record<ActivityGroup, string> = {
-  pending: "Pendientes",
+  upcoming: "Próximas",
   ongoing: "En curso",
-  done: "Finalizadas",
+  done: "Completadas",
 };
 
-const GROUP_ORDER: ActivityGroup[] = ["pending", "ongoing", "done"];
+const GROUP_ICONS: Record<ActivityGroup, "time-outline" | "sync-outline" | "checkmark-done-outline"> = {
+  upcoming: "time-outline",
+  ongoing: "sync-outline",
+  done: "checkmark-done-outline",
+};
 
-// Tab "Actividad": historial unificado de solicitudes de servicio +
-// sus reservas + solicitudes de residencia, agrupado en secciones
-// visibles (Pendientes / En curso / Finalizadas) en vez de un filtro
-// que oculta el resto — reemplaza a la antigua tab "Solicitudes",
-// misma data, misma navegación de detalle.
+const GROUP_ORDER: ActivityGroup[] = ["upcoming", "ongoing", "done"];
+
+const SEGMENTS: { value: Segment; label: string }[] = [
+  { value: "todas", label: "Todas" },
+  { value: "servicio", label: "Servicios" },
+  { value: "solicitud", label: "Solicitudes" },
+];
+
+function bookingGroup(status: BookingStatus): ActivityGroup {
+  if (ONGOING_BOOKING.includes(status)) return "ongoing";
+  if (UPCOMING_BOOKING.includes(status)) return "upcoming";
+  return "done";
+}
+
+// Tab "Actividad": historial unificado de reservas + solicitudes de
+// servicio + consultas a residencias.
+//
+// Dos ejes que no compiten: el segmento de arriba filtra por TIPO (todas
+// / servicios / solicitudes) y las secciones agrupan por ESTADO
+// (próximas / en curso / completadas). Las secciones no se reemplazan por
+// un filtro de estado a propósito (docs/design.md §8): un filtro que
+// oculta el resto obliga a recordar dónde quedó cada cosa.
+//
+// Las reservas se leen por dos caminos porque hay dos formas de llegar a
+// ellas: a través de su solicitud, y directamente desde el perfil de un
+// profesional (esas tienen `request_id` NULL). Se deduplican por id de
+// reserva.
 export default function ActividadScreen() {
   const theme = useGerasTheme();
   const actividadHelp = useDismissibleHelp("actividad");
   const bootstrap = useFamilyBootstrap();
   const businessUserId = bootstrap.status === "ready" ? bootstrap.businessUser.id : undefined;
   const requestsQuery = useMyServiceRequests(businessUserId);
+  const bookingsQuery = useMyBookings(businessUserId);
   const inquiriesQuery = useMyResidenceInquiries(businessUserId);
+  const [segment, setSegment] = useState<Segment>("todas");
 
   const items = useMemo<ActivityItem[]>(() => {
+    const bookingIdsFromRequests = new Set<string>();
+
     const serviceItems: ActivityItem[] = (requestsQuery.data ?? []).map((item) => {
       const booking = item.bookings?.[0];
+      if (booking) bookingIdsFromRequests.add(booking.id);
+
+      const professional = booking?.professional_profiles;
       const group: ActivityGroup = booking
-        ? booking.status === "pending"
-          ? "pending"
-          : ONGOING_BOOKING.includes(booking.status)
-            ? "ongoing"
-            : "done"
+        ? bookingGroup(booking.status)
         : PENDING_REQUEST.includes(item.status)
-          ? "pending"
+          ? "upcoming"
           : DONE_REQUEST.includes(item.status)
             ? "done"
             : "ongoing";
@@ -76,17 +122,23 @@ export default function ActividadScreen() {
       return {
         id: `request-${item.id}`,
         title: item.services?.name ?? "Servicio",
-        subtitle: "Solicitud de servicio",
+        counterpart: professional?.full_name
+          ? `${professional.full_name}${professional.professions?.name ? ` · ${professional.professions.name}` : ""}`
+          : "Buscando profesionales",
+        avatarUri: professional?.profile_photo_url ?? null,
         // scheduled_at es un instante real; preferred_date es fecha civil.
-        meta: booking?.scheduled_at
+        when: booking?.scheduled_at
           ? formatDateTimeCL(booking.scheduled_at)
           : item.preferred_date
             ? formatDateCL(item.preferred_date)
             : null,
-        icon: getServiceIcon({ name: item.services?.name }),
+        where: item.comunas?.name ? `A domicilio · ${item.comunas.name}` : null,
         badge: booking ? { kind: "booking", value: booking.status } : { kind: "request", value: item.status },
         group,
+        kind: booking ? "servicio" : "solicitud",
         createdAt: item.created_at,
+        actionLabel:
+          booking && canReviewBooking(booking.status) ? "Dejar reseña" : booking ? "Ver reserva" : "Ver solicitud",
         onPress: () =>
           booking
             ? router.push(`/requests/${item.id}/confirmation?bookingId=${booking.id}`)
@@ -94,39 +146,77 @@ export default function ActividadScreen() {
       };
     });
 
+    // Reservas directas: las que no vinieron de una solicitud.
+    const directBookingItems: ActivityItem[] = (bookingsQuery.data ?? [])
+      .filter((booking) => !bookingIdsFromRequests.has(booking.id))
+      .map((booking) => {
+        const professional = booking.professional_profiles;
+        return {
+          id: `booking-${booking.id}`,
+          title: booking.services?.name ?? "Servicio",
+          counterpart: professional?.full_name
+            ? `${professional.full_name}${professional.professions?.name ? ` · ${professional.professions.name}` : ""}`
+            : null,
+          avatarUri: professional?.profile_photo_url ?? null,
+          when: formatDateTimeCL(booking.scheduled_at),
+          where: "A domicilio",
+          badge: { kind: "booking", value: booking.status },
+          group: bookingGroup(booking.status),
+          kind: "servicio",
+          createdAt: booking.created_at,
+          actionLabel: canReviewBooking(booking.status) ? "Dejar reseña" : "Ver reserva",
+          onPress: () => router.push(`/requests/${booking.request_id ?? booking.id}/confirmation?bookingId=${booking.id}`),
+        };
+      });
+
     const residenceItems: ActivityItem[] = (inquiriesQuery.data ?? []).map((item) => ({
       id: `inquiry-${item.id}`,
       title: item.residences?.name ?? "Residencia",
-      subtitle: item.inquiry_type === "visit" ? "Solicitud de visita" : "Solicitud de información",
-      meta: item.preferred_date
+      counterpart: item.inquiry_type === "visit" ? "Solicitud de visita" : "Solicitud de información",
+      avatarUri: null,
+      when: item.preferred_date
         ? `${formatDateCL(item.preferred_date)}${item.preferred_time ? ` · ${item.preferred_time.slice(0, 5)}` : ""}`
         : null,
-      icon: getServiceIcon({ name: "residencia" }),
+      where: null,
       badge: { kind: "residenceInquiry", value: item.status },
-      group: PENDING_INQUIRY.includes(item.status) ? "pending" : DONE_INQUIRY.includes(item.status) ? "done" : "ongoing",
+      group: PENDING_INQUIRY.includes(item.status) ? "upcoming" : DONE_INQUIRY.includes(item.status) ? "done" : "ongoing",
+      kind: "solicitud",
       createdAt: item.created_at,
+      actionLabel: "Ver residencia",
       onPress: () => router.push(`/residencias/${item.residence_id}`),
     }));
 
-    return [...serviceItems, ...residenceItems].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }, [requestsQuery.data, inquiriesQuery.data]);
+    return [...serviceItems, ...directBookingItems, ...residenceItems].sort((a, b) =>
+      b.createdAt.localeCompare(a.createdAt)
+    );
+  }, [requestsQuery.data, bookingsQuery.data, inquiriesQuery.data]);
+
+  const visible = segment === "todas" ? items : items.filter((item) => item.kind === segment);
 
   const sections = GROUP_ORDER.map((group) => ({
     title: GROUP_LABELS[group],
     group,
-    data: items.filter((item) => item.group === group),
+    data: visible.filter((item) => item.group === group),
   })).filter((section) => section.data.length > 0);
 
-  const isLoading = bootstrap.status !== "ready" || requestsQuery.isPending || inquiriesQuery.isPending;
+  const isLoading =
+    bootstrap.status !== "ready" || requestsQuery.isPending || bookingsQuery.isPending || inquiriesQuery.isPending;
 
   return (
     <Screen scroll={false} contentContainerStyle={{ gap: 16 }}>
       <View style={{ gap: 4 }}>
-        <Text style={{ fontSize: 24, fontWeight: "700", color: theme.textPrimary }}>Actividad</Text>
-        <Text style={{ fontSize: 14, color: theme.textSecondary }}>
-          Tus solicitudes, reservas y contactos con residencias, en un solo lugar.
+        <Text style={{ fontSize: 26, fontWeight: "700", color: theme.textPrimary }}>Actividad</Text>
+        <Text style={{ fontSize: 15, color: theme.textSecondary }}>
+          Tus servicios y solicitudes, en un solo lugar.
         </Text>
       </View>
+
+      <SegmentedControl
+        options={SEGMENTS}
+        value={segment}
+        onChange={setSegment}
+        accessibilityLabel="Filtrar la actividad por tipo"
+      />
 
       {actividadHelp.visible ? (
         <HelpBanner
@@ -136,14 +226,18 @@ export default function ActividadScreen() {
       ) : null}
 
       {isLoading ? (
-        <LoadingState variant="card" rows={3} />
+        <SkeletonList count={3} />
       ) : sections.length === 0 ? (
         <EmptyState
           icon="pulse-outline"
-          title="Todavía no tienes actividad"
-          description="Cuando envíes una solicitud de servicio o de residencia, aparecerá aquí."
-          actionLabel="Explorar servicios"
-          onAction={() => router.push("/explorar")}
+          title={segment === "todas" ? "Todavía no tienes actividad" : "Nada en esta categoría"}
+          description={
+            segment === "todas"
+              ? "Cuando reserves un servicio o consultes una residencia, aparecerá aquí."
+              : "Prueba con la pestaña Todas para ver el resto de tu actividad."
+          }
+          actionLabel={segment === "todas" ? "Explorar servicios" : "Ver todas"}
+          onAction={() => (segment === "todas" ? router.push("/explorar") : setSegment("todas"))}
         />
       ) : (
         <SectionList
@@ -152,48 +246,53 @@ export default function ActividadScreen() {
           contentContainerStyle={{ gap: 12, paddingBottom: 24 }}
           stickySectionHeadersEnabled={false}
           renderSectionHeader={({ section }) => (
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 8, backgroundColor: theme.background }}>
-              <Ionicons
-                name={section.group === "pending" ? "time-outline" : section.group === "ongoing" ? "sync-outline" : "checkmark-done-outline"}
-                size={15}
-                color={theme.textSecondary}
-              />
-              <Text style={{ fontSize: 13, fontWeight: "700", color: theme.textSecondary, textTransform: "uppercase" }}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                paddingVertical: 8,
+                backgroundColor: theme.background,
+              }}
+            >
+              <Ionicons name={GROUP_ICONS[section.group]} size={16} color={theme.textSecondary} />
+              <Text
+                style={{
+                  fontSize: 14,
+                  fontWeight: "700",
+                  color: theme.textSecondary,
+                  textTransform: "uppercase",
+                  letterSpacing: 0.6,
+                }}
+              >
                 {section.title}
               </Text>
             </View>
           )}
           renderItem={({ item }) => (
             <View style={{ paddingBottom: 10 }}>
-              <Card onPress={item.onPress} accessibilityLabel={item.title}>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                  <View
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 20,
-                      backgroundColor: theme.primarySoft,
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Ionicons name={item.icon} size={20} color={theme.primary} />
-                  </View>
-                  <View style={{ flex: 1, gap: 3 }}>
-                    <Text style={{ fontSize: 16, fontWeight: "700", color: theme.textPrimary }} numberOfLines={1}>
-                      {item.title}
-                    </Text>
-                    <Text style={{ fontSize: 13, color: theme.textSecondary }}>{item.subtitle}</Text>
-                    {item.meta ? (
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                        <Ionicons name="calendar-outline" size={12} color={theme.textSecondary} />
-                        <Text style={{ fontSize: 12, color: theme.textSecondary }}>{item.meta}</Text>
-                      </View>
-                    ) : null}
-                  </View>
-                  <StatusBadge kind={item.badge.kind as "booking"} value={item.badge.value as BookingStatus} />
-                </View>
-              </Card>
+              <BookingCard
+                service={item.title}
+                counterpart={item.counterpart}
+                avatarUri={item.avatarUri}
+                when={item.when}
+                where={item.where}
+                onPress={item.onPress}
+                badge={
+                  item.badge.kind === "booking" ? (
+                    <StatusBadge kind="booking" value={item.badge.value} />
+                  ) : item.badge.kind === "request" ? (
+                    <StatusBadge kind="request" value={item.badge.value} />
+                  ) : (
+                    <StatusBadge kind="residenceInquiry" value={item.badge.value} />
+                  )
+                }
+                action={
+                  item.actionLabel ? (
+                    <SecondaryButton label={item.actionLabel} size="compact" onPress={item.onPress} fullWidth />
+                  ) : null
+                }
+              />
             </View>
           )}
         />

@@ -5,6 +5,10 @@ node_modules/
 
 # build
 dist/
+
+# Vercel: `vercel link` escribe acá projectId/orgId y el cache de build.
+# Son identificadores de infraestructura, no van al repositorio.
+.vercel/
 .turbo/
 .expo/
 .next/

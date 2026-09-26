@@ -1,0 +1,324 @@
+================================================================================
+GERAS - INFORME DE ESTADO DE LAS TRES APLICACIONES
+================================================================================
+Fecha           : 2026-09-24
+Rama            : feat/mobile-ui-navigation-refresh
+Ultimo commit   : 0063034 feat: adopt reference card and hero layout in Geras
+                  family app
+Estado de rama  : 47 commits por delante de main - sin mergear, sin push
+Preparado por   : sesion de Claude Code, sobre el estado real del repositorio,
+                  de la base de datos de desarrollo y de las tres apps
+                  levantadas en web
+
+
+--------------------------------------------------------------------------------
+1. RESUMEN
+--------------------------------------------------------------------------------
+
+Las tres aplicaciones levantan, renderizan y compilan. Los seis paquetes del
+monorepo pasan typecheck y los 189 tests del servidor estan en verde.
+
+Durante esta revision se encontro y se corrigio un bloqueo de despliegue en el
+Panel Admin: su build de produccion fallaba. Tambien se tradujo al espanol la
+pantalla de ingreso del Panel Admin, que estaba en ingles.
+
+Lo que separa hoy a Geras de produccion no es funcionalidad faltante, sino tres
+cierres: cobrar de verdad, probar la app en un telefono real y empaquetarla para
+las tiendas.
+
+
+--------------------------------------------------------------------------------
+2. SERVICIOS EN EJECUCION (verificados en navegador)
+--------------------------------------------------------------------------------
+
+  Servicio            URL                        Estado
+  ------------------  -------------------------  ------------------------------
+  API (server)        http://localhost:4000      ok - env ok - Supabase ok
+  Mobile Familia      http://localhost:8091      renderiza
+  Mobile Profesional  http://localhost:8094      renderiza
+  Panel Admin         http://localhost:3000      renderiza
+
+  Notas de operacion:
+  - El Panel Admin (Vite) escucha solo en IPv6. Usar localhost:3000, no
+    127.0.0.1:3000.
+  - El primer bundle web de Expo puede tardar ~140 s; Metro compila recien en
+    la primera peticion. Las recargas posteriores son inmediatas.
+  - Correr "npm run build" del Panel Admin mientras su dev server esta activo
+    lo tumba (conflicto de turbo). Hay que relanzarlo despues.
+
+
+--------------------------------------------------------------------------------
+3. ESTADO POR APLICACION
+--------------------------------------------------------------------------------
+
+3.1 MOBILE FAMILIA  (Expo / React Native - 24 pantallas)
+--------------------------------------------------------------------------------
+  Typecheck ........ OK
+  Bundle web ....... OK
+  expo-doctor ...... 18/18
+
+  Funciona:
+    - Ingreso por correo y por Google (Clerk), en espanol, con gradiente
+      institucional y pie de marca.
+    - Catalogo de servicios, profesionales y residencias.
+    - Solicitud de servicio por pasos, con matching automatico.
+    - Agenda real: cruza disponibilidad semanal del profesional con sus
+      reservas activas.
+    - Reserva de punta a punta: calendario, hora, confirmacion.
+    - Cobertura territorial validada ANTES de abrir el calendario.
+    - Consultas de informacion y solicitudes de visita a residencias.
+    - Actividad con estados y fechas.
+
+  Es la unica app con el rediseno de tarjetas aplicado: encabezado con
+  gradiente, tarjeta de resumen montada sobre el, accesos en pildoras,
+  carrusel de servicios y filas con miniatura.
+
+
+3.2 MOBILE PROFESIONAL  (Expo / React Native - 21 pantallas)
+--------------------------------------------------------------------------------
+  Typecheck ........ OK
+  Bundle web ....... OK
+  expo-doctor ...... 18/18
+
+  Funciona:
+    - Mismo ingreso que Familia, con la misma identidad visual.
+    - Onboarding profesional de 9 pasos.
+    - Gestion de agenda y disponibilidad semanal.
+    - Reservas separadas por estado, cada una mostrando la siguiente accion.
+    - Oportunidades: solicitudes abiertas compatibles con el profesional.
+
+  Pendiente: no tiene aplicado el rediseno de tarjetas de Familia; conserva el
+  estilo anterior. No es un error, es alcance no ejecutado.
+
+
+3.3 PANEL ADMIN  (React 18.3.1 / Vite - 15 paginas)
+--------------------------------------------------------------------------------
+  Typecheck ........ OK   (estaba FALLANDO al inicio de esta revision)
+  Build ............ OK   (estaba FALLANDO al inicio de esta revision)
+
+  Funciona:
+    - Aprobacion y publicacion de profesionales y residencias.
+    - Gestion de reservas, solicitudes y consultas de residencias.
+    - Metricas de panel.
+
+  Corregido en esta revision (detalle en seccion 4).
+
+  Pendiente: mantiene una identidad visual propia en tono slate
+  (--primary: 210 28% 28%, definido en src/index.css, de Fase 1), distinta del
+  verde institucional que la guia de UI/UX indica para Admin. No se modifico:
+  excede el alcance de esta correccion.
+
+
+--------------------------------------------------------------------------------
+4. CORRECCIONES APLICADAS EN ESTA REVISION
+--------------------------------------------------------------------------------
+
+4.1 BLOQUEO DE DESPLIEGUE - Panel Admin no compilaba
+--------------------------------------------------------------------------------
+  Severidad: alta (impedia desplegar)
+  Archivo  : apps/admin-panel/src/lib/statusLabels.ts
+
+  Sintoma:
+    npm run build fallaba con:
+      error TS2739: faltan awaiting_payment, paid_awaiting_confirmation,
+      disputed
+
+  Causa:
+    El trabajo de pagos (aun sin commitear) agrego tres estados de reserva al
+    enum compartido de packages/shared y actualizo StatusBadge (packages/ui) y
+    la confirmacion de Familia, pero no el mapa de etiquetas del Panel Admin.
+    Ese mapa es un Record exhaustivo sobre el enum: al crecer el enum, dejo de
+    compilar.
+
+  Por que no se detecto antes:
+    Vite no hace typecheck en modo desarrollo, asi que la app cargaba igual en
+    localhost:3000. El fallo solo aparecia al construir para produccion. Los
+    189 tests del servidor no cubren el Panel Admin.
+
+  Correccion:
+    Se agregaron los tres estados, con etiquetas tomadas de packages/shared
+    para que un mismo estado no se llame distinto en cada app:
+
+      awaiting_payment              "Falta pagar"                   warning
+      paid_awaiting_confirmation    "Pago recibido"                 secondary
+      disputed                      "En revision por un reclamo"    destructive
+
+    Dos desvios deliberados respecto de StatusBadge:
+      - paid_awaiting_confirmation usa tono "info" en StatusBadge, variante que
+        el Panel Admin no tiene; se mapeo a "secondary", su equivalente
+        neutro-informativo.
+      - disputed se llama "En revision" en StatusBadge, pero el Panel Admin ya
+        usa "En revision" para el estado reviewing de las solicitudes. Se uso
+        la etiqueta larga de booking-lifecycle para evitar que un operador
+        confunda una solicitud en revision con una reserva en disputa.
+
+    Ademas se reordeno el mapa segun el ciclo real de vida de una reserva y no
+    de forma arbitraria, porque el filtro de BookingsListPage se genera con
+    Object.entries sobre ese mismo mapa: ese orden es el que ve el operador.
+    Como efecto secundario, los tres estados nuevos ya son filtrables sin
+    tocar ningun otro archivo.
+
+  Verificacion:
+    tsc del Panel Admin: 0 errores
+    npm run build: exito en 12,4 s
+    189 tests del servidor: sin regresion
+
+
+4.2 Pantalla de ingreso del Panel Admin en ingles
+--------------------------------------------------------------------------------
+  Severidad: media (producto en espanol mostrando una pantalla en ingles)
+  Archivo  : apps/admin-panel/src/main.tsx
+
+  Sintoma:
+    La pantalla de ingreso mostraba el widget de Clerk sin configurar:
+      "Sign in to My Application"
+      "Welcome back! Please sign in to continue"
+      "Email address" / "Password" / "Continue" / "Sign up"
+
+    "My Application" es el nombre por defecto de la instancia de Clerk.
+
+  Correccion:
+    Se agrego la dependencia oficial @clerk/localizations (4.20.0) y se conecto
+    el paquete esES al ClerkProvider. Sobre esa base se pisaron solo los textos
+    donde debe decirse "Geras" en vez del nombre generico.
+
+    Se corrigio ademas una inconsistencia del propio paquete esES: mezclaba
+    tuteo y usted ("No tienes cuenta?" seguido de "Registrese"). Geras tutea en
+    todas sus pantallas, asi que el enlace quedo como "Crea una".
+
+    Se paso tambien la identidad slate del panel a la apariencia de Clerk, para
+    que su boton principal no quedara negro contra el resto de la interfaz.
+
+  Resultado verificado en navegador:
+      "Ingresa al Panel Admin"
+      "Usa tu cuenta de Geras para continuar"
+      "Continuar con Google" / "Correo electronico" / "Contrasena" /
+      "Continuar" / "No tienes cuenta? Crea una"
+
+  Riesgo de la dependencia:
+    @clerk/localizations solo depende de @clerk/shared, que @clerk/clerk-react
+    ya arrastra. No trae React ni modulos nativos. Se verifico que la
+    instalacion no movio ninguna de las versiones criticas del monorepo
+    (react-native-screens 4.16.0, metro-runtime 0.83.3, expo-router 6.0.24,
+    react-dom 19.1.0).
+
+  Pendiente relacionado:
+    El nombre que Clerk usa en sus correos y en su propia marca se configura en
+    el dashboard de Clerk, no en el codigo. Esta correccion cubre la interfaz
+    embebida en el panel, no esos correos.
+
+
+--------------------------------------------------------------------------------
+5. SALUD TECNICA
+--------------------------------------------------------------------------------
+
+  Typecheck por paquete:
+    packages/shared .............. OK
+    packages/ui .................. OK
+    server ....................... OK
+    apps/mobile-familia .......... OK
+    apps/mobile-profesional ...... OK
+    apps/admin-panel ............. OK   (corregido en esta revision)
+
+  Tests del servidor ............. 189 en verde, 40 omitidos
+  Migraciones .................... 33, todas aplicadas en la base
+  Tablas (schema public) ......... 30
+  Componentes UI compartidos ..... 45
+  Pantallas totales .............. 60  (24 Familia + 21 Profesional + 15 Admin)
+
+  Los 40 tests omitidos son las suites de integracion remota, que solo corren
+  con RUN_REMOTE_INTEGRATION=true por diseno.
+
+
+--------------------------------------------------------------------------------
+6. DATOS EN LA BASE DE DESARROLLO
+--------------------------------------------------------------------------------
+
+  Servicios activos ................ 14
+  Profesionales aprobados .......... 11  (12 perfiles en total)
+  Residencias publicadas ........... 10
+  Solicitudes de servicio .......... 13
+  Reservas ......................... 4
+  Consultas a residencias .......... 1
+  Usuarios ......................... 18
+
+  ADVERTENCIA: todos son datos de prueba. Ninguna familia ni profesional real
+  ha usado el producto todavia.
+
+
+--------------------------------------------------------------------------------
+7. RIESGOS ABIERTOS
+--------------------------------------------------------------------------------
+
+7.1 ALTO - La aplicacion afirma algo falso sobre el dinero
+  La pantalla de confirmacion de reserva dice "tu pago permanecera protegido
+  hasta que el servicio sea completado". El unico proveedor de pago conectado
+  es un simulador que no cobra ni retiene nada. El propio archivo
+  server/src/services/paymentProvider.ts lo prohibe por escrito:
+
+    "Ningun texto de la interfaz debe afirmar que existe una retencion
+     bancaria real mientras el proveedor activo sea el mock."
+
+  Es un problema de confianza y potencialmente legal. Se corrige cambiando un
+  texto. No se toco en esta revision porque excede lo solicitado.
+
+7.2 MEDIO - Trabajo sin commitear que crece solo
+  25 rutas sin registrar, incluidas ~1.600 lineas del flujo de pagos, la
+  evolucion del servicio de cobertura, docs/design.md y las correcciones de
+  esta revision. Todo esta verde, pero cuanto mas crece, mas caro es integrarlo.
+
+7.3 MEDIO - 47 commits sin integrar a main
+  Toda la rama de rediseno sigue sin fusionar.
+
+7.4 MEDIO - Flujo de pago a medias
+  El backend esta completo (autorizacion, retencion, confirmacion, disputa,
+  migraciones 032 y 033 aplicadas), pero la app movil no llama a esos
+  endpoints: sigue usando el camino anterior. Lo unico que cambio en la app son
+  los textos de estado.
+
+7.5 MEDIO - Sin validacion tactil en dispositivo real
+  Todo se verifico por API, base de datos, pruebas automaticas y navegador. No
+  hay una pasada a mano en un telefono.
+
+
+--------------------------------------------------------------------------------
+8. CAMINO A PRODUCCION
+--------------------------------------------------------------------------------
+
+  1. Corregir el texto de pago que afirma una retencion inexistente.
+     Minutos. Elimina una afirmacion falsa sobre dinero del usuario.
+
+  2. Commitear el trabajo pendiente, que ya esta verificado y en verde.
+
+  3. Conectar la app movil al flujo de pago provisional.
+     El backend ya existe; falta que la app lo use.
+
+  4. Recorrer las apps a mano en un telefono real.
+     Unico hueco de verificacion que queda.
+
+  5. Contratar un proveedor de pago real (Transbank, Mercado Pago u otro).
+     Decision de negocio. La arquitectura ya lo contempla: es una interfaz
+     PaymentProvider, no una llamada suelta.
+
+  6. Revision juridica de los textos legales, hoy en borrador.
+
+  7. Configurar compilacion (EAS) y publicar.
+     Requiere cuentas de desarrollador de Apple y Google.
+
+
+--------------------------------------------------------------------------------
+9. PENDIENTES MENORES
+--------------------------------------------------------------------------------
+
+  - Panel Admin: identidad slate en vez del verde institucional (guia UI/UX).
+  - Mobile Profesional: sin el rediseno de tarjetas aplicado.
+  - Clerk: nombre de la instancia sin configurar en su dashboard (afecta
+    correos, no la interfaz embebida).
+  - Tarjetas de servicio: siguen con icono y gradiente, sin imagen real.
+  - Logo: falta la version blanca dedicada y el logo de Soluciones Mayores.
+  - .claude/settings.local.json no deberia commitearse; conviene un .gitignore
+    que deje .agents/ y skills-lock.json pero excluya ese archivo.
+
+================================================================================
+FIN DEL INFORME
+================================================================================

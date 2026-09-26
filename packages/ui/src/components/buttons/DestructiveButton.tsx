@@ -15,7 +15,7 @@ export function DestructiveButton(props: DestructiveButtonProps) {
     <ButtonBase
       {...props}
       backgroundColor={theme.error}
-      pressedBackgroundColor="#B33333"
+      pressedBackgroundColor={theme.errorPressed}
       textColor={theme.white}
     />
   );

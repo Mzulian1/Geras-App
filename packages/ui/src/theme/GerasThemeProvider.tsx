@@ -30,6 +30,7 @@ export interface GerasTheme {
   warning: string;
   warningSoft: string;
   error: string;
+  errorPressed: string;
   errorSoft: string;
   info: string;
   infoSoft: string;

@@ -3,7 +3,7 @@
 Síntesis breve para que otro agente continúe **sin releer todo el historial**.
 Complementa [`UI_UX_GERAS.md`](./UI_UX_GERAS.md) (las reglas) — este documento es el estado.
 
-Última actualización: **2026-08-02**
+Última actualización: **2026-09-25**
 
 ---
 
@@ -16,23 +16,28 @@ Complementa [`UI_UX_GERAS.md`](./UI_UX_GERAS.md) (las reglas) — este documento
 | F3 · Evaluación del sistema visual | ✅ decisión tomada (ver §4) |
 | F4 · Paleta | ✅ paleta final aplicada en `packages/ui/src/tokens/colors.ts` |
 | F5 · Logo | ✅ `packages/ui/assets/brand/logo.png` conectado en `GerasBrand`, ambos login |
-| F6–F7 · Tipografía, espaciado | ⬜ sin cambios |
-| F8 · Botones | ✅ auditado — ya cumplían 48px/16px/loading/disabled desde antes |
+| F6–F7 · Tipografía, espaciado | 🟡 escala en uso; las pantallas nuevas van 100% por tokens, las viejas todavía con números sueltos |
+| F8 · Botones | ✅ auditado; alto de la acción principal subido a 54px (rango 52–58 del sistema visual, sobre el mínimo duro de 48) |
 | F9 · Selectores | ✅ hecho en sesiones previas |
 | F10 · Bottom sheets | ⬜ (los modales actuales cubren el caso) |
-| F11–F13 · Iconografía y navegación | ⬜ |
+| F11–F13 · Iconografía y navegación | ✅ Ionicons en todo; barra anclada de 4 destinos por app |
 | F14 · Guía interactiva y ayuda | ✅ se dispara sola al primer ingreso (persistida con `expo-secure-store`) y reabrible desde Perfil, en ambas apps |
 | F15 · Formularios largos | ✅ + agenda real: `GET /professionals/:id/availability`, calendario+horas reales en `requests/new.tsx` |
 | F16–F18 · Tarjetas, encabezados, estados | 🟡 profesionales ya con foto real/fallback y "próxima disponibilidad"; residencias/servicios sin cambio; falta imagen real de servicios |
 | F19 · Calendario de reservas | ✅ + agenda real conectada al backend (antes solo el widget visual) |
 | F20 · Login | ✅ marca + logo + tagline + footer |
-| F21 · Panel Admin | 🟡 solo se agregó columna "Creada" a Reservas — resto fuera de alcance |
+| F21 · Panel Admin | ✅ dashboard con saludo, 4 KPI, gráfico de reservas por semana, panel de solicitudes pendientes y tabla de actividad reciente; header con búsqueda y campana; nueva página `/reportes` |
 | F22–F24 · Accesibilidad y pruebas | 🟡 `expo-doctor` 18/18, lint y tests de server (144 en verde) en ambas sesiones; sin prueba táctil en dispositivo físico |
 | F25 · Configuración de release (EAS) | ⬜ |
 | F26 · Legal | ✅ (sesión anterior) |
 | F27 · Datos de demostración | ✅ 10+10 (sesión anterior) + agenda variada/reserva/oportunidad real en 2 profesionales, 1 solicitud de información (esta sesión, sin re-ejecutar el seed) |
 | F28 · Oportunidades para profesionales | ✅ reutiliza `matches.status = 'contacted'` (ya existía, sin usar) — `/oportunidades` en Mobile Profesional |
 | F29 · Fotos de profesional | ✅ bucket público nuevo `professional-avatars` (migración 030) + subida desde Perfil |
+| F30 · Sistema visual ampliado | ✅ `HeroHeader` declarativo + `FloatingSummaryCard`, `ProfessionalCard`, `ServiceCard`, `BookingCard`, `ActivityCard`, `MetricCard`, `PaymentSummaryCard`, `CoverageBadge`, `SegmentedControl`, `SkeletonList` |
+| F31 · Login rediseñado | ✅ hero 42% + tarjeta montada + formulario de correo con revelado progresivo, en ambas apps |
+| F32 · Buscar profesionales | ✅ buscador por texto + 4 chips con modal; se dejó de mostrar los seis filtros a la vez |
+| F33 · Reserva directa con pago | ✅ `/booking/schedule` → `/booking/summary` → `/booking/payment`, contra `POST /bookings/direct` y `/:id/pay`. Banner "MODO SIMULACIÓN"; se eliminó la afirmación falsa de retención de dinero |
+| F34 · Colores sin hex sueltos | ✅ cero hex fuera de `colors.ts` en las tres apps (se agregaron `errorPressed` y `externalBrandColors.google`) |
 
 ## 2. Qué funciona
 
@@ -53,9 +58,16 @@ Verificado en dispositivo antes de empezar el rediseño:
 
 Todo lo marcado ⬜ arriba. El orden de las fases es el orden de trabajo.
 
-**Pendiente real de mayor impacto:** probar el flujo completo tocando la UI en un dispositivo o
-emulador real — esta sesión y la anterior verificaron todo por API/base de datos y lint/tests,
-pero no hay una pasada táctil confirmada en Expo Go.
+**Pendiente real de mayor impacto: la pasada visual con sesión iniciada.** Las pantallas públicas
+(ambos login) están verificadas en navegador a 360/390/393/430 px, sin desborde horizontal ni
+errores de consola. Las pantallas protegidas —Inicio, Buscar, Perfil, Agenda, Resumen, Pago,
+Actividad, Inicio Profesional, Disponibilidad, y todo el Panel Admin— están verificadas por
+typecheck, `expo export` y build, pero **no** comparadas pixel a pixel: entrar exige credenciales de
+Clerk. Es el primer paso de la próxima sesión.
+
+**Segundo pendiente:** las fotografías reales. `assets/images/` ya tiene la estructura y el README
+con los nombres que las pantallas esperan; mientras no existan, los hero van con formas orgánicas y
+medallón de ícono (un fallback diseñado, no un hueco).
 
 ## 4. Qué NO debe modificarse
 

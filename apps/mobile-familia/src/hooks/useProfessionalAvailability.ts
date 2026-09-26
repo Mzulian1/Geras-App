@@ -47,10 +47,17 @@ export function useProfessionalAvailability(
   });
 }
 
+/** Espejo exacto de `CoverageCheckResult` en server/src/services/coverageService.ts. */
 export interface CoverageCheckResult {
+  /** Tres estados, no dos: `exceptional` = atiende la región pero no esta comuna. */
+  status: "covered" | "exceptional" | "outside_coverage";
   covered: boolean;
-  coverageType: "commune";
-  reason: "outside_coverage" | null;
+  /** Si se puede crear una reserva. `exceptional` se muestra pero NO se reserva. */
+  bookable: boolean;
+  coverageType: "commune" | "region" | "none";
+  reason: "outside_coverage" | "region_only" | null;
+  /** Texto listo para mostrar. Viene del server para que las tres apps digan lo mismo. */
+  label: string;
 }
 
 // Se consulta ANTES de mostrar el calendario (GET

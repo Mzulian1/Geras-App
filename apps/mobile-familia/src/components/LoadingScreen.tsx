@@ -1,4 +1,5 @@
 import { ActivityIndicator, Text, View } from "react-native";
+import { semanticColors } from "@geras/ui";
 
 interface LoadingScreenProps {
   message?: string;
@@ -10,7 +11,7 @@ interface LoadingScreenProps {
 export function LoadingScreen({ message }: LoadingScreenProps) {
   return (
     <View className="flex-1 items-center justify-center gap-3 bg-white px-6">
-      <ActivityIndicator size="large" color="#000000" />
+      <ActivityIndicator size="large" color={semanticColors.textPrimary} />
       {message ? <Text className="text-center text-base text-gray-600">{message}</Text> : null}
     </View>
   );

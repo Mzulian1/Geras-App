@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Platform, Pressable, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { externalBrandColors, semanticColors } from "@geras/ui";
 import * as WebBrowser from "expo-web-browser";
 import * as AuthSession from "expo-auth-session";
 import { useSSO } from "@clerk/clerk-expo";
@@ -16,7 +17,7 @@ WebBrowser.maybeCompleteAuthSession();
 // porque react-native-svg no es dependencia de la app y no vale la pena
 // sumarla solo por este ícono. El azul de marca da el reconocimiento visual.
 function GoogleLogo() {
-  return <Ionicons name="logo-google" size={22} color="#4285F4" />;
+  return <Ionicons name="logo-google" size={22} color={externalBrandColors.google} />;
 }
 
 interface GoogleSignInButtonProps {
@@ -110,7 +111,7 @@ export function GoogleSignInButton({ onError, disabled }: GoogleSignInButtonProp
       accessibilityLabel="Continuar con Google"
     >
       {submitting ? (
-        <ActivityIndicator color="#000000" />
+        <ActivityIndicator color={semanticColors.textPrimary} />
       ) : (
         <>
           <GoogleLogo />

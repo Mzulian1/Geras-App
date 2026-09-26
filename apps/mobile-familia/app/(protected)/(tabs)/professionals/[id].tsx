@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { router, useLocalSearchParams } from "expo-router";
-import { Text, View } from "react-native";
+import { Pressable, Share, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { DayOfWeek } from "@geras/shared";
 import {
@@ -8,20 +8,37 @@ import {
   Avatar,
   BottomActionBar,
   Card,
-  FilterChip,
-  GradientBackground,
+  CategoryPill,
+  CircleIconButton,
+  FloatingSummaryCard,
+  HeroHeader,
   InfoRow,
   LoadingState,
   PrimaryButton,
   Screen,
+  SectionHeader,
   ServiceIcon,
   StatusBadge,
+  TimeSlotPicker,
   useGerasTheme,
 } from "@geras/ui";
 import { usePublicProfessional } from "@/hooks/usePublicProfessionals";
 import { useSelectedServiceStore } from "@/state/selectedServiceStore";
 import { useSelectedProfessionalStore } from "@/state/selectedProfessionalStore";
+import { useSelectedRecipientStore } from "@/state/selectedRecipientStore";
+import { useCareRecipient } from "@/hooks/useCareRecipients";
+import { useComunasCatalog } from "@/hooks/useCatalogs";
+import { useFavoriteProfessionalsStore } from "@/state/favoriteProfessionalsStore";
+import { useDirectBookingStore } from "@/state/directBookingStore";
 import { nextAvailabilityLabel } from "@/lib/availability";
+import {
+  availabilityEntriesOf,
+  coverageSummary,
+  serviceEntriesOf,
+  type ProfessionalServiceEntry,
+} from "@/lib/professionalSummary";
+
+const EDGE = 20;
 
 const DAY_LABELS: Record<DayOfWeek, string> = {
   monday: "Lunes",
@@ -33,30 +50,25 @@ const DAY_LABELS: Record<DayOfWeek, string> = {
   sunday: "Domingo",
 };
 
-interface ServiceEntry {
-  service_id: number;
-  service_name: string;
-  price: number;
-  modality: string;
-}
-
-interface AvailabilityEntry {
-  day: DayOfWeek;
-  start: string;
-  end: string;
-}
-
-// Perfil público (Fase 2 / Fase 5 "Detalle del profesional"): servicios,
-// experiencia, cobertura, disponibilidad, precio, calificaciones y
-// estado verificado — nunca RUT/documentos/dirección/teléfono ni
-// correo privados (ninguno de esos campos existe en
-// public_professionals_view, así que no hay riesgo de exponerlos).
+// Perfil público del profesional. Hero con la fotografía y la marca de
+// verificación, tarjeta montada con precio y cobertura, y abajo las tres
+// secciones que pesan al decidir: quién es, qué hace y cuándo puede.
+//
+// Nunca muestra RUT, documentos, dirección, teléfono ni correo privado —
+// ninguno de esos campos existe en `public_professionals_view`, así que no
+// hay riesgo de filtrarlos ni siquiera por error.
 export default function ProfessionalPublicProfileScreen() {
   const theme = useGerasTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const professionalQuery = usePublicProfessional(id);
   const setSelectedServiceId = useSelectedServiceStore((s) => s.setSelectedServiceId);
   const setSelectedProfessionalId = useSelectedProfessionalStore((s) => s.setSelectedProfessionalId);
+  const selectedRecipientId = useSelectedRecipientStore((s) => s.selectedRecipientId);
+  const recipientQuery = useCareRecipient(selectedRecipientId ?? undefined);
+  const comunasQuery = useComunasCatalog();
+  const favorites = useFavoriteProfessionalsStore((s) => s.favorites);
+  const toggleFavorite = useFavoriteProfessionalsStore((s) => s.toggle);
+  const startDirectBooking = useDirectBookingStore((s) => s.start);
   const [pickedServiceId, setPickedServiceId] = useState<number | null>(null);
 
   if (professionalQuery.isPending) {
@@ -79,21 +91,55 @@ export default function ProfessionalPublicProfileScreen() {
     );
   }
 
-  const services = (professional.services as unknown as ServiceEntry[] | null) ?? [];
-  const availability = (professional.availability as unknown as AvailabilityEntry[] | null) ?? [];
+  const services = serviceEntriesOf(professional);
+  const availability = availabilityEntriesOf(professional);
   const coverage = professional.coverage_comunas ?? [];
   const effectiveServiceId = services.length === 1 ? services[0]?.service_id ?? null : pickedServiceId;
+  const selectedService = services.find((service) => service.service_id === effectiveServiceId) ?? null;
   const nextProfessionalAvailability = nextAvailabilityLabel(availability.map((a) => a.day));
+  const isFavorite = id ? favorites.includes(id) : false;
+  const minPrice = services.length > 0 ? Math.min(...services.map((s) => s.price)) : null;
 
-  // Conserva professionalId + serviceId al entrar a requests/new, para
-  // que ese wizard salte el paso "Servicio" y reserve directo con este
-  // profesional en vez de pasar por el browse de matches (Bloque 2:
-  // "Flujo desde perfil profesional").
-  function startRequest() {
-    if (!effectiveServiceId) return;
-    setSelectedServiceId(effectiveServiceId);
+  // La comuna de la atención sale de la persona mayor seleccionada; si no
+  // hay ninguna, la elige la pantalla de agenda. No se adivina.
+  const recipientComunaId = recipientQuery.data?.comuna_id ?? null;
+  const recipientComunaName =
+    (comunasQuery.data ?? []).find((comuna) => comuna.id === recipientComunaId)?.name ?? null;
+
+  // Reserva directa desde el perfil: agenda -> resumen -> pago, contra
+  // `POST /bookings/direct` y `POST /bookings/:id/pay`.
+  //
+  // El precio va como referencia y la duración como provisional: la
+  // pantalla de agenda las reemplaza por las que devuelve el endpoint de
+  // disponibilidad, que son las que el server valida.
+  function startBooking() {
+    // El guard repite la comprobación de arriba porque el estrechamiento
+    // de tipos de TypeScript no cruza el límite de una función.
+    if (!selectedService || !id || !professional) return;
+    setSelectedServiceId(selectedService.service_id);
     setSelectedProfessionalId(id);
-    router.push("/requests/new");
+    startDirectBooking({
+      professionalId: id,
+      professionalName: professional.full_name ?? "Profesional",
+      professionalAvatarUrl: professional.profile_photo_url,
+      professionalRating: professional.average_rating,
+      serviceId: selectedService.service_id,
+      serviceName: selectedService.service_name,
+      price: selectedService.price,
+      durationMinutes: 60,
+      comunaId: recipientComunaId,
+      comunaName: recipientComunaName,
+      careRecipientId: recipientQuery.data?.id ?? null,
+      careRecipientName: recipientQuery.data?.full_name ?? null,
+    });
+    router.push("/booking/schedule");
+  }
+
+  async function shareProfile() {
+    if (!professional) return;
+    await Share.share({
+      message: `Mira el perfil de ${professional.full_name} en Geras: ${professional.profession_name ?? ""}`.trim(),
+    });
   }
 
   return (
@@ -103,162 +149,209 @@ export default function ProfessionalPublicProfileScreen() {
       footer={
         <BottomActionBar
           primary={
-            <PrimaryButton label="Solicitar atención" onPress={startRequest} disabled={!effectiveServiceId} fullWidth />
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+              {/* Un botón ancho con texto + circulares al lado. El
+                  circular nunca es la única acción de la pantalla: un
+                  botón sin etiqueta visible no se entiende solo (guía §16). */}
+              <View style={{ flex: 1 }}>
+                <PrimaryButton
+                  label="Reservar atención"
+                  onPress={startBooking}
+                  disabled={!effectiveServiceId}
+                  fullWidth
+                />
+              </View>
+              <CircleIconButton
+                icon={isFavorite ? "heart" : "heart-outline"}
+                onPress={() => id && toggleFavorite(id)}
+                accessibilityLabel={
+                  isFavorite ? "Quitar de favoritos" : "Guardar en favoritos"
+                }
+              />
+              <CircleIconButton icon="help-circle-outline" onPress={() => router.push("/guia")} accessibilityLabel="Cómo funciona una reserva" />
+            </View>
           }
         />
       }
     >
-      <AppHeader title="Detalle del profesional" onBack={() => router.back()} />
+      <AppHeader
+        title="Detalle del profesional"
+        onBack={() => router.back()}
+        action={
+          <Pressable
+            onPress={shareProfile}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={`Compartir el perfil de ${professional.full_name}`}
+          >
+            <Ionicons name="share-outline" size={22} color={theme.textPrimary} />
+          </Pressable>
+        }
+      />
 
-      {/* Cabecera visual: gradiente suave (2 tonos) con esquinas
-          inferiores redondeadas — el gradiente completo de 4 tonos queda
-          reservado a Inicio y login (guía §4, "usar con moderación"). */}
-      <GradientBackground
+      {/* Gradiente suave (2 tonos): el de 4 tonos queda reservado a Inicio
+          y login (guía §4, "usar con moderación"). */}
+      <HeroHeader
         variant="soft"
-        style={{ padding: 20, paddingBottom: 24, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 }}
+        paddingTop={16}
+        overlapBy={52}
+        overlap={
+          <FloatingSummaryCard
+            eyebrow={minPrice ? "Precio desde" : "Servicios"}
+            title={minPrice ? `$${minPrice.toLocaleString("es-CL")}` : "Consulta sus servicios"}
+            lines={[
+              coverageSummary(coverage),
+              nextProfessionalAvailability ? `Próxima disponibilidad: ${nextProfessionalAvailability}` : null,
+            ]}
+            icon="pricetag"
+          />
+        }
       >
-        <View style={{ flexDirection: "row", gap: 14, alignItems: "center" }}>
-          <Avatar uri={professional.profile_photo_url} size={72} />
-          <View style={{ flex: 1, gap: 6 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <Text style={{ fontSize: 20, fontWeight: "700", color: theme.white, flexShrink: 1 }}>
-                {professional.full_name}
-              </Text>
-              {professional.verification_status === "approved" ? <StatusBadge kind="verification" value="approved" /> : null}
-            </View>
-            <Text style={{ fontSize: 14, color: theme.accent }}>
-              {professional.profession_name} · {professional.base_comuna ?? "Sin comuna"}
+        <View style={{ alignItems: "center", gap: 10 }}>
+          <Avatar uri={professional.profile_photo_url} size={104} />
+          <View style={{ alignItems: "center", gap: 6 }}>
+            <Text style={{ fontSize: 24, fontWeight: "700", color: theme.white, textAlign: "center" }}>
+              {professional.full_name}
             </Text>
-            {coverage.length > 0 ? (
-              <Text style={{ fontSize: 13, color: theme.accent }} numberOfLines={1}>
-                {coverage.length <= 2
-                  ? `Atiende en: ${coverage.join(" y ")}`
-                  : `Atiende en: ${coverage.slice(0, 2).join(", ")} y ${coverage.length - 2} comunas más`}
-              </Text>
-            ) : null}
-            {professional.average_rating ? (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Ionicons name="star" size={15} color="#FFD166" />
-                <Text style={{ fontSize: 14, color: theme.white }}>
-                  {professional.average_rating} · {professional.total_reviews} reseñas
-                </Text>
-              </View>
-            ) : (
-              <Text style={{ fontSize: 13, color: theme.accent }}>Todavía sin reseñas</Text>
-            )}
+            <Text style={{ fontSize: 15, color: theme.accent }}>
+              {professional.profession_name}
+              {professional.base_comuna ? ` · ${professional.base_comuna}` : ""}
+            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
+              {professional.verification_status === "approved" ? (
+                <StatusBadge kind="verification" value="approved" />
+              ) : null}
+              {professional.average_rating ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <Ionicons name="star" size={15} color={theme.warning} />
+                  <Text style={{ fontSize: 14, color: theme.white }}>
+                    {professional.average_rating} · {professional.total_reviews} reseñas
+                  </Text>
+                </View>
+              ) : (
+                <Text style={{ fontSize: 14, color: theme.accent }}>Todavía sin reseñas</Text>
+              )}
+            </View>
           </View>
         </View>
-      </GradientBackground>
+      </HeroHeader>
 
-      <View style={{ padding: 16, gap: 20 }}>
-        {nextProfessionalAvailability ? (
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 8,
-              padding: 12,
-              borderRadius: 12,
-              backgroundColor: theme.successSoft,
-            }}
-          >
-            <Ionicons name="calendar" size={18} color={theme.success} />
-            <Text style={{ fontSize: 14, fontWeight: "600", color: theme.success }}>
-              Próxima disponibilidad: {nextProfessionalAvailability}
-            </Text>
+      <View style={{ padding: EDGE, gap: 24 }}>
+        {professional.bio || professional.years_experience ? (
+          <View style={{ gap: 12 }}>
+            <SectionHeader title="Sobre mí" />
+            <Card>
+              {professional.bio ? (
+                <Text style={{ fontSize: 15, color: theme.textPrimary, lineHeight: 22 }}>{professional.bio}</Text>
+              ) : null}
+              {professional.years_experience ? (
+                <Text
+                  style={{
+                    fontSize: 14,
+                    color: theme.textSecondary,
+                    marginTop: professional.bio ? 8 : 0,
+                  }}
+                >
+                  {professional.years_experience} años de experiencia
+                </Text>
+              ) : null}
+            </Card>
           </View>
         ) : null}
 
-        {professional.bio || professional.years_experience ? (
-          <Card>
-            {professional.bio ? <Text style={{ fontSize: 15, color: theme.textPrimary, lineHeight: 22 }}>{professional.bio}</Text> : null}
-            {professional.years_experience ? (
-              <Text style={{ fontSize: 14, color: theme.textSecondary, marginTop: professional.bio ? 8 : 0 }}>
-                {professional.years_experience} años de experiencia
-              </Text>
-            ) : null}
-          </Card>
-        ) : null}
-
-        <View style={{ gap: 10 }}>
-          <Text style={{ fontSize: 18, fontWeight: "600", color: theme.textPrimary }}>Servicios y precios</Text>
-          {services.length > 1 ? (
-            <Text style={{ fontSize: 13, color: theme.textSecondary }}>Elige qué servicio quieres solicitar:</Text>
-          ) : null}
-          {services.length > 0 ? (
-            services.length > 1 ? (
-              <View style={{ gap: 8 }}>
-                {services.map((s) => {
-                  const isSelected = s.service_id === pickedServiceId;
-                  return (
-                    <Card
-                      key={s.service_id}
-                      onPress={() => setPickedServiceId(s.service_id)}
-                      accessibilityLabel={`${s.service_name}, $${s.price.toLocaleString("es-CL")}`}
-                      style={isSelected ? { borderWidth: 2, borderColor: theme.primary } : undefined}
-                    >
-                      <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                        <ServiceIcon service={{ name: s.service_name }} size={32} />
-                        <View style={{ flex: 1 }}>
-                          <InfoRow label={s.service_name} value={`$${s.price.toLocaleString("es-CL")}`} />
-                        </View>
-                        <Ionicons
-                          name={isSelected ? "checkmark-circle" : "ellipse-outline"}
-                          size={20}
-                          color={isSelected ? theme.primary : theme.borderSoft}
-                        />
-                      </View>
-                    </Card>
-                  );
-                })}
-              </View>
-            ) : (
-              <Card>
-                {services.map((s, index) => (
-                  <View key={s.service_id}>
-                    {index > 0 ? <View style={{ height: 1, backgroundColor: theme.borderSoft, marginVertical: 8 }} /> : null}
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                      <ServiceIcon service={{ name: s.service_name }} size={32} />
-                      <View style={{ flex: 1 }}>
-                        <InfoRow label={s.service_name} value={`$${s.price.toLocaleString("es-CL")}`} />
-                      </View>
-                    </View>
-                  </View>
-                ))}
-              </Card>
-            )
+        <View style={{ gap: 12 }}>
+          <SectionHeader title="Especialidades" />
+          {services.length === 0 ? (
+            <Text style={{ fontSize: 15, color: theme.textSecondary }}>Sin servicios publicados.</Text>
+          ) : services.length === 1 ? (
+            <Card>
+              <ServiceRow service={services[0]!} />
+            </Card>
           ) : (
-            <Text style={{ fontSize: 14, color: theme.textSecondary }}>Sin servicios publicados.</Text>
+            <View style={{ gap: 8 }}>
+              <Text style={{ fontSize: 14, color: theme.textSecondary }}>
+                Elige qué servicio quieres reservar:
+              </Text>
+              {services.map((service) => {
+                const isSelected = service.service_id === pickedServiceId;
+                return (
+                  <Card
+                    key={service.service_id}
+                    onPress={() => setPickedServiceId(service.service_id)}
+                    accessibilityLabel={`${service.service_name}, $${service.price.toLocaleString("es-CL")}`}
+                    style={isSelected ? { borderWidth: 2, borderColor: theme.primary } : undefined}
+                  >
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                      <View style={{ flex: 1 }}>
+                        <ServiceRow service={service} />
+                      </View>
+                      <Ionicons
+                        name={isSelected ? "checkmark-circle" : "ellipse-outline"}
+                        size={22}
+                        color={isSelected ? theme.primary : theme.borderSoft}
+                      />
+                    </View>
+                  </Card>
+                );
+              })}
+            </View>
           )}
         </View>
 
-        <View style={{ gap: 10 }}>
-          <Text style={{ fontSize: 18, fontWeight: "600", color: theme.textPrimary }}>Cobertura</Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            {coverage.length > 0 ? (
-              coverage.map((c) => <FilterChip key={c} label={c} selected={false} onPress={() => {}} />)
-            ) : (
-              <Text style={{ fontSize: 14, color: theme.textSecondary }}>Sin comunas configuradas.</Text>
-            )}
-          </View>
-        </View>
-
-        <View style={{ gap: 10 }}>
-          <Text style={{ fontSize: 18, fontWeight: "600", color: theme.textPrimary }}>Disponibilidad</Text>
+        <View style={{ gap: 12 }}>
+          <SectionHeader title="Próximos horarios disponibles" />
           {availability.length > 0 ? (
             <Card>
-              {availability.map((a, i) => (
-                <View key={`${a.day}-${i}`}>
-                  {i > 0 ? <View style={{ height: 1, backgroundColor: theme.borderSoft, marginVertical: 8 }} /> : null}
-                  <InfoRow label={DAY_LABELS[a.day]} value={`${a.start} – ${a.end}`} />
-                </View>
-              ))}
+              <View style={{ gap: 14 }}>
+                {availability.map((block, index) => (
+                  <View key={`${block.day}-${index}`} style={{ gap: 8 }}>
+                    {index > 0 ? <View style={{ height: 1, backgroundColor: theme.borderSoft }} /> : null}
+                    <Text style={{ fontSize: 15, fontWeight: "600", color: theme.textPrimary }}>
+                      {DAY_LABELS[block.day]}
+                    </Text>
+                    {/* Solo lectura: son los bloques semanales declarados,
+                        no horas libres. Las horas reales —cruzadas con sus
+                        reservas— las resuelve el endpoint de
+                        disponibilidad en la pantalla de agenda. */}
+                    <TimeSlotPicker times={[`${block.start} – ${block.end}`]} value={null} onChange={() => {}} />
+                  </View>
+                ))}
+                <Text style={{ fontSize: 14, color: theme.textSecondary }}>
+                  Estos son sus días de atención. Al reservar verás las horas que tiene realmente libres.
+                </Text>
+              </View>
             </Card>
           ) : (
-            <Text style={{ fontSize: 14, color: theme.textSecondary }}>Sin horarios configurados.</Text>
+            <Text style={{ fontSize: 15, color: theme.textSecondary }}>
+              Todavía no publicó sus días de atención.
+            </Text>
+          )}
+        </View>
+
+        <View style={{ gap: 12 }}>
+          <SectionHeader title="Cobertura" />
+          {coverage.length > 0 ? (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {coverage.map((comuna) => (
+                <CategoryPill key={comuna} label={comuna} />
+              ))}
+            </View>
+          ) : (
+            <Text style={{ fontSize: 15, color: theme.textSecondary }}>Sin comunas configuradas.</Text>
           )}
         </View>
       </View>
     </Screen>
+  );
+}
+
+function ServiceRow({ service }: { service: ProfessionalServiceEntry }) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+      <ServiceIcon service={{ name: service.service_name }} size={36} />
+      <View style={{ flex: 1 }}>
+        <InfoRow label={service.service_name} value={`$${service.price.toLocaleString("es-CL")}`} />
+      </View>
+    </View>
   );
 }

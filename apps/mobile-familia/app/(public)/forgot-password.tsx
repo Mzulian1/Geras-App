@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, Text, TextInput, View } from "react-nativ
 import { Link, router } from "expo-router";
 import { useSignIn } from "@clerk/clerk-expo";
 import { getClerkErrorMessage } from "@/lib/clerkError";
+import { semanticColors } from "@geras/ui";
 
 // Flujo estándar de reset de contraseña de Clerk vía `useSignIn()`
 // (custom flow, no hay componente prebuilt en Expo). Si el proyecto de
@@ -85,7 +86,7 @@ export default function ForgotPasswordScreen() {
           disabled={submitting || !code || !password}
         >
           {submitting ? (
-            <ActivityIndicator color="#ffffff" />
+            <ActivityIndicator color={semanticColors.white} />
           ) : (
             <Text className="font-semibold text-white">Restablecer contraseña</Text>
           )}
@@ -116,7 +117,7 @@ export default function ForgotPasswordScreen() {
         onPress={onRequest}
         disabled={submitting || !email}
       >
-        {submitting ? <ActivityIndicator color="#ffffff" /> : <Text className="font-semibold text-white">Enviar código</Text>}
+        {submitting ? <ActivityIndicator color={semanticColors.white} /> : <Text className="font-semibold text-white">Enviar código</Text>}
       </Pressable>
 
       <Link href="/sign-in" className="text-center text-sm text-gray-600">

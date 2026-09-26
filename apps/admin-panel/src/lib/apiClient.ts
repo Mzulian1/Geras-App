@@ -8,7 +8,7 @@ declare global {
   }
 }
 
-const API_URL = import.meta.env.VITE_API_URL as string;
+const API_URL = import.meta.env.VITE_API_URL as string | undefined;
 
 export class ApiError extends Error {
   readonly code?: string;
@@ -22,6 +22,20 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Mensaje único para cuando el despliegue no tiene API configurada.
+ *
+ * Existe por el Preview de Vercel: el frontend se publica antes que la
+ * API pública, así que todo lo que necesita backend tiene que fallar de
+ * forma legible en vez de reventar con un `fetch` contra `undefined/...`
+ * o, peor, contra una dirección de red privada.
+ *
+ * NO es un modo degradado permanente: en cuanto `VITE_API_URL`
+ * apunta a la API real, esta rama deja de ejecutarse y no queda ningún
+ * comportamiento especial encendido.
+ */
+export const API_NOT_CONFIGURED = "API_NOT_CONFIGURED";
+
 interface ErrorResponseBody {
   error?: { code?: string; message?: string; details?: unknown };
 }
@@ -32,6 +46,15 @@ interface ErrorResponseBody {
 // (service_role), que revalida cada una antes de aplicarla. Mismo
 // mecanismo de token que src/lib/supabase.ts (window.Clerk.session.getToken()).
 export async function callServerApi<T>(path: string, options: RequestInit = {}): Promise<T> {
+  // Sin API configurada no se intenta la request: se corta acá con un
+  // mensaje que la pantalla puede mostrar tal cual.
+  if (!API_URL) {
+    throw new ApiError(
+      "Esta función necesita conexión con el servidor de Geras, que todavía no está disponible en esta versión de prueba.",
+      API_NOT_CONFIGURED
+    );
+  }
+
   const token = await window.Clerk?.session?.getToken();
 
   const response = await fetch(`${API_URL}${path}`, {

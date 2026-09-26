@@ -4,6 +4,7 @@ import { Link, router } from "expo-router";
 import { useSignUp } from "@clerk/clerk-expo";
 import { getClerkErrorMessage } from "@/lib/clerkError";
 import { GoogleSignInButton } from "@/components/GoogleSignInButton";
+import { semanticColors } from "@geras/ui";
 
 export default function SignUpScreen() {
   const { isLoaded, signUp, setActive } = useSignUp();
@@ -78,7 +79,7 @@ export default function SignUpScreen() {
           onPress={onVerify}
           disabled={submitting || !code}
         >
-          {submitting ? <ActivityIndicator color="#ffffff" /> : <Text className="font-semibold text-white">Verificar</Text>}
+          {submitting ? <ActivityIndicator color={semanticColors.white} /> : <Text className="font-semibold text-white">Verificar</Text>}
         </Pressable>
       </View>
     );
@@ -114,7 +115,7 @@ export default function SignUpScreen() {
         onPress={onCreate}
         disabled={submitting || !email || !password}
       >
-        {submitting ? <ActivityIndicator color="#ffffff" /> : <Text className="font-semibold text-white">Crear cuenta</Text>}
+        {submitting ? <ActivityIndicator color={semanticColors.white} /> : <Text className="font-semibold text-white">Crear cuenta</Text>}
       </Pressable>
 
       <View className="flex-row items-center gap-3 py-1">

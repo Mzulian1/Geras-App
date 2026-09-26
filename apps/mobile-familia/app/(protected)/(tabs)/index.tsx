@@ -4,22 +4,25 @@ import { Pressable, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import { useUser } from "@clerk/clerk-expo";
-import type { BookingStatus } from "@geras/shared";
+import type { BookingStatus, PublicProfessionalView } from "@geras/shared";
 import { formatDateTimeCL } from "@geras/shared";
 import {
   ActionPill,
+  Avatar,
   BrandFooter,
   Card,
   CarouselSection,
-  CategoryPill,
+  FloatingSummaryCard,
   GerasBrand,
   HelpBanner,
   HeroHeader,
   LoadingState,
   PrimaryButton,
+  ProfessionalCard,
   Screen,
   SectionHeader,
-  ServiceIcon,
+  ServiceCard,
+  SERVICE_CARD_WIDTH,
   StatusBadge,
   useGerasTheme,
 } from "@geras/ui";
@@ -28,21 +31,25 @@ import { useServicesShowcase, type ServiceShowcaseEntry } from "@/hooks/useCatal
 import { useFamilyBootstrap } from "@/hooks/useFamilyBootstrap";
 import { useMyServiceRequests } from "@/hooks/useMyRequests";
 import { useGuideGate } from "@/hooks/useGuideGate";
+import { usePublicProfessionals } from "@/hooks/usePublicProfessionals";
+import { minPriceOf, nextAvailabilityFromView } from "@/lib/professionalSummary";
 
 const ONGOING_BOOKING: BookingStatus[] = ["pending", "confirmed", "en_route", "in_progress", "professional_completed"];
 const OPEN_REQUEST = ["created", "reviewing", "sent_to_professionals", "professional_interested"];
 
 const EDGE = 20;
-const SERVICE_CARD_WIDTH = 156;
+const RECOMMENDED_CARD_WIDTH = 280;
 
-// Tab "Inicio": encabezado con gradiente + saludo + buscador, tarjeta de
-// resumen montada sobre ese encabezado (solicitudes en curso y próxima
-// atención), accesos rápidos en píldoras, carrusel de servicios y
-// accesos a profesionales/residencias.
+// Tab "Inicio": hero con gradiente (marca + saludo + buscador), tarjeta
+// de resumen montada sobre ese hero con el próximo servicio, grilla de
+// servicios principales, carrusel de profesionales recomendados y banner
+// de ayuda. Es la pantalla que más toma del sistema visual de
+// docs/design.md §2.
 export default function InicioScreen() {
   const theme = useGerasTheme();
   const { user } = useUser();
   const servicesQuery = useServicesShowcase();
+  const professionalsQuery = usePublicProfessionals();
   const bootstrap = useFamilyBootstrap();
   const businessUserId = bootstrap.status === "ready" ? bootstrap.businessUser.id : undefined;
   const requestsQuery = useMyServiceRequests(businessUserId);
@@ -77,6 +84,14 @@ export default function InicioScreen() {
     [requests]
   );
 
+  // Recomendados = mejor evaluados primero. No hay motor de recomendación
+  // todavía, y decir "recomendados" sobre un orden arbitrario sería
+  // falso: el criterio real es la evaluación de otras familias.
+  const recommended = useMemo(() => {
+    const list = (professionalsQuery.data ?? []).filter((item) => item.id);
+    return [...list].sort((a, b) => (b.average_rating ?? 0) - (a.average_rating ?? 0)).slice(0, 6);
+  }, [professionalsQuery.data]);
+
   if (servicesQuery.isPending) {
     return (
       <Screen>
@@ -86,7 +101,8 @@ export default function InicioScreen() {
   }
 
   const services = servicesQuery.data ?? [];
-  const featured = services.slice(0, 8);
+  const featuredGrid = services.slice(0, 4);
+  const carouselServices = services.slice(0, 8);
   const firstName = user?.firstName ?? "";
   const activeBooking = activeRequest?.bookings?.[0];
 
@@ -103,134 +119,117 @@ export default function InicioScreen() {
     );
   }
 
-  // Tarjeta montada sobre el gradiente: si hay algo en curso muestra el
-  // resumen real; si no, un llamado a la acción para empezar.
+  // La tarjeta montada tiene dos caras y nunca se muestra vacía: resumen
+  // real si hay algo en curso, llamado a la acción si no hay nada.
   const summaryCard = activeRequest ? (
-    <Card emphasis="lifted" padded={false}>
-      {inProgressCount > 0 ? (
-        <Pressable
-          onPress={() => router.push("/actividad")}
-          accessibilityRole="button"
-          accessibilityLabel={`Tienes ${inProgressCount} ${inProgressCount === 1 ? "solicitud" : "solicitudes"} en curso. Ver actividad`}
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 10,
-            padding: 14,
-            borderBottomWidth: 1,
-            borderBottomColor: theme.borderSoft,
-          }}
-        >
-          <View
-            style={{
-              width: 30,
-              height: 30,
-              borderRadius: 15,
-              backgroundColor: theme.primary,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Text style={{ fontSize: 14, fontWeight: "700", color: theme.onPrimary }}>{inProgressCount}</Text>
-          </View>
-          <Text style={{ flex: 1, fontSize: 14, color: theme.textPrimary }}>
-            {inProgressCount === 1 ? "Tienes 1 solicitud en curso" : `Tienes ${inProgressCount} solicitudes en curso`}
-          </Text>
-          <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
-        </Pressable>
-      ) : null}
-
-      <View style={{ padding: 16, gap: 12 }}>
-        <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 12 }}>
-          <ServiceIcon service={{ name: activeRequest.services?.name }} size={40} />
-          <View style={{ flex: 1, gap: 3 }}>
-            <Text style={{ fontSize: 16, fontWeight: "700", color: theme.textPrimary }} numberOfLines={1}>
-              {activeRequest.services?.name ?? "Servicio"}
-            </Text>
-            {activeBooking?.scheduled_at ? (
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
-                <Ionicons name="calendar-outline" size={13} color={theme.textSecondary} />
-                <Text style={{ fontSize: 13, color: theme.textSecondary }}>
-                  {formatDateTimeCL(activeBooking.scheduled_at)}
-                </Text>
-              </View>
-            ) : (
-              <Text style={{ fontSize: 13, color: theme.textSecondary }}>Buscando profesionales para ti</Text>
-            )}
-          </View>
-          {activeBooking ? (
-            <StatusBadge kind="booking" value={activeBooking.status} />
-          ) : (
-            <StatusBadge kind="request" value={activeRequest.status} />
-          )}
-        </View>
-
+    <FloatingSummaryCard
+      eyebrow="Próximo servicio"
+      title={activeRequest.services?.name ?? "Servicio"}
+      lines={[
+        activeBooking?.scheduled_at ? formatDateTimeCL(activeBooking.scheduled_at) : "Buscando profesionales para ti",
+        inProgressCount > 1 ? `${inProgressCount} solicitudes en curso` : null,
+      ]}
+      icon="calendar"
+      badge={
+        activeBooking ? (
+          <StatusBadge kind="booking" value={activeBooking.status} />
+        ) : (
+          <StatusBadge kind="request" value={activeRequest.status} />
+        )
+      }
+      footer={
         <PrimaryButton
           label={activeBooking ? "Ver reserva" : "Ver solicitud"}
           size="compact"
           onPress={openActiveRequest}
           fullWidth
         />
-      </View>
-    </Card>
+      }
+    />
   ) : (
-    <Card emphasis="lifted" onPress={() => router.push("/explorar?segment=profesionales")} accessibilityLabel="Buscar profesionales verificados">
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-        <View
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: 24,
-            backgroundColor: theme.primarySoft,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Ionicons name="heart" size={24} color={theme.primary} />
-        </View>
-        <View style={{ flex: 1, gap: 2 }}>
-          <Text style={{ fontSize: 16, fontWeight: "700", color: theme.textPrimary }}>
-            Encuentra el cuidado que necesitas
-          </Text>
-          <Text style={{ fontSize: 13, color: theme.textSecondary }}>Profesionales verificados, listos para ayudar</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={22} color={theme.textSecondary} />
-      </View>
-    </Card>
+    <FloatingSummaryCard
+      eyebrow="Empieza aquí"
+      title="Encuentra el cuidado que necesitas"
+      lines={["Profesionales verificados, listos para ayudar"]}
+      icon="heart"
+      onPress={() => router.push("/explorar?segment=profesionales")}
+      accessibilityLabel="Buscar profesionales verificados"
+    />
   );
 
   return (
     <Screen scroll padded={false} contentContainerStyle={{ paddingBottom: 24 }}>
-      <HeroHeader overlap={summaryCard} overlapBy={activeRequest ? 56 : 44}>
-        <View style={{ gap: 16 }}>
-          <GerasBrand variant="horizontal" tone="light" size="sm" showTagline={false} />
-          <View style={{ gap: 4 }}>
-            <Text style={{ fontSize: 15, color: theme.accent }}>Bienvenido de vuelta</Text>
-            <Text style={{ fontSize: 26, fontWeight: "700", color: theme.white }}>
-              {firstName || "Hola"}
-            </Text>
-          </View>
-
-          <Pressable
-            onPress={() => router.push("/explorar")}
-            accessibilityRole="button"
-            accessibilityLabel="Buscar servicios, profesionales o residencias"
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 10,
-              minHeight: 48,
-              borderRadius: 999,
-              paddingHorizontal: 18,
-              backgroundColor: theme.white,
-            }}
-          >
-            <Ionicons name="search" size={19} color={theme.textSecondary} />
-            <Text style={{ fontSize: 15, color: theme.textSecondary, flex: 1 }} numberOfLines={1}>
-              Buscar servicios, profesionales o residencias
-            </Text>
-          </Pressable>
-        </View>
+      <HeroHeader
+        eyebrow="Tu tranquilidad también nos importa"
+        title={firstName ? `Hola, ${firstName}` : "Hola"}
+        image={null}
+        fallbackIcon="people"
+        overlap={summaryCard}
+        overlapBy={activeRequest ? 56 : 44}
+        topBar={
+          <>
+            <GerasBrand variant="horizontal" tone="light" size="sm" showTagline={false} />
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <Pressable
+                onPress={() => router.push("/actividad")}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  inProgressCount > 0 ? `Actividad, ${inProgressCount} en curso` : "Actividad"
+                }
+                style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
+              >
+                <Ionicons name="notifications-outline" size={24} color={theme.white} />
+                {inProgressCount > 0 ? (
+                  <View
+                    style={{
+                      position: "absolute",
+                      top: 2,
+                      right: 2,
+                      minWidth: 18,
+                      height: 18,
+                      paddingHorizontal: 4,
+                      borderRadius: 9,
+                      backgroundColor: theme.error,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Text style={{ fontSize: 11, fontWeight: "700", color: theme.white }}>{inProgressCount}</Text>
+                  </View>
+                ) : null}
+              </Pressable>
+              <Pressable
+                onPress={() => router.push("/perfil")}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Tu perfil"
+              >
+                <Avatar uri={user?.imageUrl} size={40} />
+              </Pressable>
+            </View>
+          </>
+        }
+      >
+        <Pressable
+          onPress={() => router.push("/explorar")}
+          accessibilityRole="button"
+          accessibilityLabel="Buscar servicios, profesionales o residencias"
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 10,
+            minHeight: 48,
+            borderRadius: 999,
+            paddingHorizontal: 18,
+            backgroundColor: theme.white,
+          }}
+        >
+          <Ionicons name="search" size={19} color={theme.textSecondary} />
+          <Text style={{ fontSize: 15, color: theme.textSecondary, flex: 1 }} numberOfLines={1}>
+            Buscar servicios, profesionales o residencias
+          </Text>
+        </Pressable>
       </HeroHeader>
 
       <View style={{ paddingHorizontal: EDGE, gap: 24 }}>
@@ -241,43 +240,81 @@ export default function InicioScreen() {
           />
         ) : null}
 
+        {/* Servicios principales: grilla de tarjetas grandes, no una fila
+            de opciones una debajo de la otra (guía §10). */}
+        {featuredGrid.length > 0 ? (
+          <View style={{ gap: 12 }}>
+            <SectionHeader
+              title="Servicios"
+              actionLabel="Ver todos"
+              onAction={() => router.push("/explorar?segment=servicios")}
+            />
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12 }}>
+              {featuredGrid.map((item) => (
+                <View key={item.id} style={{ width: "48%", flexGrow: 1 }}>
+                  <ServiceCard
+                    name={item.name}
+                    category={item.professions?.category}
+                    layout="grid"
+                    onPress={() => goToServiceDetail(item)}
+                  />
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : null}
+
+        {/* Profesionales recomendados, en carrusel. */}
+        {recommended.length > 0 ? (
+          <CarouselSection
+            title="Profesionales recomendados"
+            actionLabel="Ver todos"
+            onAction={() => router.push("/explorar?segment=profesionales")}
+            edgePadding={EDGE}
+            itemWidth={RECOMMENDED_CARD_WIDTH}
+          >
+            {recommended.map((item) => (
+              <View key={item.id} style={{ width: RECOMMENDED_CARD_WIDTH }}>
+                <RecommendedProfessional professional={item} />
+              </View>
+            ))}
+          </CarouselSection>
+        ) : null}
+
         {/* Accesos rápidos en píldoras */}
         <View style={{ gap: 12 }}>
           <SectionHeader title="Accesos rápidos" />
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
             <ActionPill icon="people" label="Profesionales" onPress={() => router.push("/explorar?segment=profesionales")} />
             <ActionPill icon="business" label="Residencias" onPress={() => router.push("/explorar?segment=residencias")} />
-            <ActionPill icon="grid" label="Servicios" onPress={() => router.push("/explorar?segment=servicios")} />
             <ActionPill icon="add-circle" label="Nueva solicitud" onPress={() => router.push("/requests/new")} />
             <ActionPill icon="pulse" label="Mi actividad" onPress={() => router.push("/actividad")} />
             <ActionPill icon="help-circle" label="Cómo funciona" onPress={() => router.push("/guia")} />
           </View>
         </View>
 
-        {/* Servicios destacados, en carrusel */}
-        {featured.length > 0 ? (
-          <CarouselSection
-            title="Servicios principales"
-            actionLabel="Ver todos"
-            onAction={() => router.push("/explorar?segment=servicios")}
-            edgePadding={EDGE}
-            itemWidth={SERVICE_CARD_WIDTH}
-          >
-            {featured.map((item) => (
-              <View key={item.id} style={{ width: SERVICE_CARD_WIDTH }}>
-                <Card onPress={() => goToServiceDetail(item)} accessibilityLabel={item.name}>
-                  <View style={{ gap: 10 }}>
-                    <ServiceIcon service={{ name: item.name, category: item.professions?.category }} size={44} />
-                    <Text style={{ fontSize: 15, fontWeight: "700", color: theme.textPrimary }} numberOfLines={2}>
-                      {item.name}
-                    </Text>
-                    {item.professions?.category ? <CategoryPill label={item.professions.category} /> : null}
-                  </View>
-                </Card>
-              </View>
+        {/* Más servicios: el formato de ancho fijo que "sangra" al borde y
+            deja asomar la tarjeta siguiente. */}
+        {carouselServices.length > 4 ? (
+          <CarouselSection title="Más servicios" edgePadding={EDGE} itemWidth={SERVICE_CARD_WIDTH}>
+            {carouselServices.map((item) => (
+              <ServiceCard
+                key={item.id}
+                name={item.name}
+                category={item.professions?.category}
+                onPress={() => goToServiceDetail(item)}
+              />
             ))}
           </CarouselSection>
         ) : null}
+
+        <HelpBanner
+          title="¿Necesitas ayuda para elegir?"
+          message="Te explicamos en pocos pasos cómo encontrar al profesional adecuado para tu familiar."
+          icon="help-buoy-outline"
+          actionLabel="Ver la guía"
+          onAction={() => router.push("/guia")}
+        />
 
         {/* Explorar por tipo */}
         <View style={{ gap: 12 }}>
@@ -291,7 +328,7 @@ export default function InicioScreen() {
               <View style={{ gap: 8 }}>
                 <Ionicons name="people" size={28} color={theme.primary} />
                 <Text style={{ fontSize: 15, fontWeight: "700", color: theme.textPrimary }}>Profesionales</Text>
-                <Text style={{ fontSize: 12, color: theme.textSecondary }}>Verificados y evaluados</Text>
+                <Text style={{ fontSize: 14, color: theme.textSecondary }}>Verificados y evaluados</Text>
               </View>
             </Card>
             <Card
@@ -302,7 +339,7 @@ export default function InicioScreen() {
               <View style={{ gap: 8 }}>
                 <Ionicons name="business" size={28} color={theme.primary} />
                 <Text style={{ fontSize: 15, fontWeight: "700", color: theme.textPrimary }}>Residencias</Text>
-                <Text style={{ fontSize: 12, color: theme.textSecondary }}>Opciones verificadas</Text>
+                <Text style={{ fontSize: 14, color: theme.textSecondary }}>Opciones verificadas</Text>
               </View>
             </Card>
           </View>
@@ -311,5 +348,23 @@ export default function InicioScreen() {
         <BrandFooter version={Constants.expoConfig?.version} />
       </View>
     </Screen>
+  );
+}
+
+// Tarjeta de recomendado: la misma ProfessionalCard de los resultados de
+// búsqueda, sin cobertura — acá todavía no hay comuna elegida, así que
+// afirmar "atiende en tu comuna" sería inventar un dato.
+function RecommendedProfessional({ professional }: { professional: PublicProfessionalView }) {
+  return (
+    <ProfessionalCard
+      name={professional.full_name ?? "Profesional"}
+      profession={professional.profession_name}
+      avatarUri={professional.profile_photo_url}
+      rating={professional.average_rating}
+      reviewCount={professional.total_reviews}
+      priceFrom={minPriceOf(professional)}
+      nextAvailability={nextAvailabilityFromView(professional)}
+      onPress={() => router.push(`/professionals/${professional.id}`)}
+    />
   );
 }

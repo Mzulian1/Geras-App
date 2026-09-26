@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { UserButton } from "@clerk/clerk-react";
 import {
   LayoutDashboard,
@@ -13,11 +13,16 @@ import {
   MessageSquareText,
   PanelLeftClose,
   PanelLeftOpen,
+  BarChart3,
+  Bell,
+  Search,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useAdminNotifications, useMarkNotificationsRead } from "@/hooks/useAdminNotifications";
 
 interface NavItem {
   to: string;
@@ -39,7 +44,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: "Operación",
     items: [
-      { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
+      { to: "/", label: "Inicio", icon: LayoutDashboard, end: true },
       { to: "/solicitudes", label: "Solicitudes", icon: ClipboardList },
       { to: "/reservas", label: "Reservas", icon: CalendarCheck },
       { to: "/solicitudes-residencias", label: "Solicitudes de residencias", icon: MessageSquareText },
@@ -57,6 +62,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Plataforma",
     items: [
       { to: "/usuarios", label: "Usuarios", icon: UserCog },
+      { to: "/reportes", label: "Reportes", icon: BarChart3 },
       { to: "/configuracion", label: "Configuración", icon: Settings },
     ],
   },
@@ -142,8 +148,13 @@ export function AdminLayout() {
 
       <div className="flex flex-1 flex-col overflow-hidden">
         <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b bg-background px-6">
-          <span className="text-sm font-medium text-muted-foreground">{currentSectionLabel(location.pathname)}</span>
-          <div className="flex items-center gap-3">
+          <span className="shrink-0 text-sm font-medium text-muted-foreground">
+            {currentSectionLabel(location.pathname)}
+          </span>
+
+          <div className="flex flex-1 items-center justify-end gap-3">
+            <GlobalSearch />
+            <NotificationsBell />
             {currentUser && <Badge variant="secondary">{currentUser.role}</Badge>}
             <UserButton afterSignOutUrl="/login" />
           </div>
@@ -152,6 +163,98 @@ export function AdminLayout() {
           <Outlet />
         </main>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Búsqueda del header. No es un adorno: envía el término a la lista de
+ * profesionales por `?q=`, que ProfessionalsListPage lee para precargar
+ * su propio buscador.
+ *
+ * Se limita a profesionales a propósito. Una búsqueda global sobre seis
+ * tablas necesita un índice de texto en Postgres que hoy no existe, y un
+ * campo que promete buscar "todo" pero encuentra solo una parte es peor
+ * que uno que dice qué busca.
+ */
+function GlobalSearch() {
+  const navigate = useNavigate();
+  const [term, setTerm] = useState("");
+
+  return (
+    <form
+      role="search"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const query = term.trim();
+        if (!query) return;
+        navigate(`/profesionales?q=${encodeURIComponent(query)}`);
+      }}
+      className="relative hidden max-w-xs flex-1 md:block"
+    >
+      <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <Input
+        value={term}
+        onChange={(event) => setTerm(event.target.value)}
+        placeholder="Buscar profesional..."
+        aria-label="Buscar un profesional por nombre"
+        className="h-9 pl-8"
+      />
+    </form>
+  );
+}
+
+/**
+ * Campana de notificaciones. Muestra las filas reales de `notifications`
+ * de este admin; si no hay ninguna, lo dice en vez de inventar avisos.
+ * Abrir el panel marca como leídas las que se muestran.
+ */
+function NotificationsBell() {
+  const { data: notifications = [] } = useAdminNotifications();
+  const markRead = useMarkNotificationsRead();
+  const [open, setOpen] = useState(false);
+
+  const unread = useMemo(() => notifications.filter((item) => !item.read), [notifications]);
+
+  function toggle() {
+    const next = !open;
+    setOpen(next);
+    if (next && unread.length > 0) markRead.mutate(unread.map((item) => item.id));
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={toggle}
+        aria-label={unread.length > 0 ? `Notificaciones: ${unread.length} sin leer` : "Notificaciones"}
+        aria-expanded={open}
+        className="relative flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+      >
+        <Bell className="h-4 w-4" />
+        {unread.length > 0 && (
+          <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+            {unread.length}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-11 z-50 w-80 rounded-md border bg-popover p-2 shadow-lg">
+          {notifications.length === 0 ? (
+            <p className="px-2 py-3 text-sm text-muted-foreground">No tienes notificaciones.</p>
+          ) : (
+            <ul className="max-h-80 space-y-1 overflow-y-auto">
+              {notifications.map((item) => (
+                <li key={item.id} className="rounded-sm px-2 py-2 hover:bg-accent">
+                  <p className="text-sm font-medium">{item.title}</p>
+                  <p className="text-xs text-muted-foreground">{item.body}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 }

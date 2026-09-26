@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Link } from "react-router-dom";
 import { Eye } from "lucide-react";
 import { useProfessionals } from "@/hooks/useProfessionals";
@@ -34,7 +35,12 @@ export function ProfessionalsListPage() {
   const [category, setCategory] = useState<string>("all");
   const [comunaName, setComunaName] = useState<string>("all");
   const [serviceId, setServiceId] = useState<string>("all");
-  const [search, setSearch] = useState("");
+  // `?q=` lo escribe la búsqueda del header (AdminLayout). Se usa como
+  // valor inicial y no como estado controlado: después de llegar, el
+  // buscador de esta pantalla manda, y así escribir acá no reescribe la
+  // URL en cada tecla.
+  const [searchParams] = useSearchParams();
+  const [search, setSearch] = useState(() => searchParams.get("q") ?? "");
 
   const { data: professionals, isLoading } = useProfessionals({
     verificationStatus: status,

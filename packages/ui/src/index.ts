@@ -53,5 +53,15 @@ export * from "./components/ActionPill";
 export * from "./components/MediaListCard";
 export * from "./components/CarouselSection";
 export * from "./components/CircleIconButton";
+export * from "./components/FloatingSummaryCard";
+export * from "./components/CoverageBadge";
+export * from "./components/ProfessionalCard";
+export * from "./components/ServiceCard";
+export * from "./components/MetricCard";
+export * from "./components/BookingCard";
+export * from "./components/ActivityCard";
+export * from "./components/PaymentSummaryCard";
+export * from "./components/SegmentedControl";
+export * from "./components/SkeletonList";
 
 export * from "./icons/serviceIconMap";

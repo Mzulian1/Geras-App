@@ -26,7 +26,8 @@ Autenticación (Clerk, email + Google), onboarding profesional, servicios, profe
 residencias, solicitudes, matching, reservas, ciclo completo de atención, reseñas,
 administración, Panel Admin — todo funcionando y probado. **No reconstruir nada de esto.**
 
-Servidor: 135 tests en verde (`cd server && npm test`).
+Servidor: 195 tests en verde (`cd server && npm test`; otros 40 quedan saltados — son de
+integración y solo corren con `RUN_REMOTE_INTEGRATION=true`).
 
 ## Librerías (decisión tomada, ver §24 de UI_UX_GERAS.md)
 
@@ -61,7 +62,7 @@ npx expo start --go --clear --tunnel --port 8094   # Profesional
 ## Archivos principales
 
 - `packages/ui/src/tokens/` — colores, tipografía, espaciado, radios.
-- `packages/ui/src/components/` — sistema visual compartido (~28 componentes).
+- `packages/ui/src/components/` — sistema visual compartido (~50 componentes).
 - `packages/shared/src/dates/` — formato de fecha/hora centralizado (es-CL).
 - `packages/shared/src/legal/content.ts` — contenido legal (borrador).
 - `server/scripts/` — seed de datos de demostración.
@@ -107,6 +108,23 @@ Detalle completo de estas trampas en `../HANDOFF.md`.
   generada con `process_request_matches` (no se re-ejecutó `seed:showcase`, se ajustó con SQL
   dirigido — ver el commit `feat: complete Geras availability and booking flow`).
 
+## Reserva directa con pago (2026-09-25)
+
+Camino distinto del wizard `requests/new`: arranca en "Reservar atención" del perfil de un
+profesional y pasa por tres pantallas de `apps/mobile-familia/app/(protected)/booking/` —
+`schedule` → `summary` → `payment`. Contra endpoints que **ya existían**:
+`POST /api/v1/bookings/direct` (crea la reserva provisional en `awaiting_payment` y devuelve su id
+real) y `POST /api/v1/bookings/:id/pay`. El contexto viaja en `directBookingStore` (Zustand), no
+por query string, para que precio y duración no se puedan editar desde la URL.
+
+**El proveedor de pago activo es un simulador** (`MockPaymentProvider`). Ninguna pantalla puede
+decir que hay dinero retenido: la de pago abre con un banner "MODO SIMULACIÓN". Si alguna vez se
+conecta un proveedor real, esos textos se revisan antes de publicar.
+
+Las reservas directas tienen `request_id` NULL y **no guardan comuna** (`bookings` no tiene
+`comuna_id`). Por eso Actividad lee reservas por dos caminos —vía `service_requests` y
+directamente de `bookings`— y deduplica por id.
+
 ## Siguiente tarea
 
 Pendientes reales:
@@ -121,6 +139,12 @@ Pendientes reales:
 5. **Prueba en dispositivo físico real** (Expo Go): verificado que ambos Metro arrancan y
    responden por LAN; el flujo completo (agenda → reserva → confirmación → correo) se verificó a
    nivel de datos/API, no con la UI tocada a mano en un teléfono.
+6. **Pasada visual con sesión iniciada.** Los dos login están verificados en navegador a
+   360/390/393/430 px. Las pantallas protegidas y el Panel Admin están verificados por typecheck,
+   `expo export` y build, pero no comparados a ojo: entrar exige credenciales de Clerk.
+7. **Fotografías reales**: `apps/*/assets/images/` tiene la estructura y un README con los nombres
+   que las pantallas ya esperan. Mientras no existan, los hero usan formas orgánicas y un medallón
+   con ícono.
 
 ## Último commit
 

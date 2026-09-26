@@ -53,6 +53,8 @@ export const semanticColors = {
   warning: "#B7791F",
   warningSoft: "#FBF0DD",
   error: "#D14343",
+  /** Estado presionado de la acción destructiva (el mismo error, un paso más oscuro). */
+  errorPressed: "#B33333",
   errorSoft: "#FBE7E7",
   info: "#2F6FED",
   infoSoft: "#E6EEFD",
@@ -101,6 +103,18 @@ export const brandPalettes = {
 export const gradients = {
   primary: [brandColors.bgDeep, brandColors.bgBase, brandColors.oliveGreen, brandColors.bgLit],
   soft: [brandColors.oliveGreen, brandColors.bgLit],
+} as const;
+
+// Colores de marca de TERCEROS. No son parte de la identidad de Geras y
+// no se eligen: los fija el dueño de la marca. Viven acá igual, porque la
+// regla del proyecto es que ningún hex se escriba dentro de una pantalla
+// — ni los propios ni los ajenos.
+//
+// El azul de Google es el que exigen sus lineamientos de marca para el
+// botón "Continuar con Google"; cambiarlo por un verde de Geras
+// incumpliría esos lineamientos.
+export const externalBrandColors = {
+  google: "#4285F4",
 } as const;
 
 /** Identificador de la app cuya paleta se está usando. No confundir con el
