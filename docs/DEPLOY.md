@@ -258,7 +258,7 @@ despliegue no se justifica. Queda anotado como deuda en §11.
 | Nombre | `geras-api-staging` | |
 | Runtime | Node nativo (**sin Docker**) | El monorepo se construye bien con npm workspaces; Docker sería una capa más que mantener. |
 | Root Directory | **la raíz del repo**, no `server/` | `server` depende del workspace `@geras/shared`; instalar solo dentro de `server/` no lo resolvería. |
-| Build | `npm ci && npm run build --workspace=server` | |
+| Build | `npm ci --include=dev --legacy-peer-deps && npm run build --workspace=server` | `--include=dev` porque Render exporta `NODE_ENV=production` y npm omitiría las devDependencies que necesita `tsc`. `--legacy-peer-deps` por el conflicto React 18/19 del monorepo. |
 | Start | `npm start --workspace=server` | |
 | Node | 22 (`.node-version` + `NODE_VERSION`) | La que ya usa el proyecto. `engines` de la raíz pide `>=20`. |
 | Health check | `GET /health` | Ya existía, sin auth y sin secretos. Se reutiliza. |

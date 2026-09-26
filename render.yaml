@@ -39,7 +39,18 @@ services:
       # con la región del proyecto de Supabase: verificarlo
       # en el dashboard de Supabase antes de crear el servicio.
     branch: deploy/geras-staging
-    buildCommand: npm ci --legacy-peer-deps && npm run build --workspace=server
+    # `--include=dev` es obligatorio: Render exporta NODE_ENV=production, y
+    # con eso npm omite las devDependencies. El paso de build es
+    # `tsc --noEmit`, que necesita @types/node, @types/express, vitest y
+    # supertest — todas dev. Sin el flag, el typecheck falla con ~120
+    # errores de "Cannot find module" que no tienen nada que ver con el
+    # código.
+    #
+    # Se conserva el typecheck en el deploy a propósito: el servicio corre
+    # TypeScript con tsx, que transpila SIN chequear tipos. Si se quitara
+    # esta puerta, un error de tipos llegaría a producción y recién se
+    # vería al reventar en runtime.
+    buildCommand: npm ci --include=dev --legacy-peer-deps && npm run build --workspace=server
     startCommand: npm start --workspace=server
     healthCheckPath: /health
     autoDeployTrigger: off # El deploy se dispara a mano mientras esto sea staging.
