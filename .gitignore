@@ -17,6 +17,10 @@ dist/
 .env
 .env.local
 .env.*.local
+# El sufijo abierto es a proposito: `.env.*.local` NO cubre un
+# `.env.qa-staging.local.tmp`, y durante el armado de staging quedo un
+# archivo asi, con contraseñas QA en claro y rastreable por git.
+.env.*.local.*
 
 # IDE
 .vscode/
