@@ -42,19 +42,64 @@ export default function SignInScreen() {
   const [emailFormVisible, setEmailFormVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Cuando Clerk pide un segundo paso, acá queda a qué correo mandó el
+  // código, para poder decírselo a la persona.
+  const [codeSentTo, setCodeSentTo] = useState<string | null>(null);
+  const [code, setCode] = useState("");
 
+  // Clerk no siempre completa el ingreso con la contraseña: puede
+  // responder `needs_second_factor` y mandar un código al correo (lo hace
+  // según el riesgo del intento, no solo si alguien activó 2FA a mano).
+  // Antes esa rama caía en "No pudimos completar el inicio de sesión",
+  // que es un callejón sin salida: la contraseña era correcta y la
+  // persona no tenía forma de entrar. Verificado en staging.
   async function onSubmit() {
     if (!isLoaded || submitting) return;
     setError(null);
     setSubmitting(true);
     try {
       const attempt = await signIn.create({ identifier: email.trim(), password });
+
       if (attempt.status === "complete") {
         await setActive({ session: attempt.createdSessionId });
         router.replace("/");
-      } else {
-        setError("No pudimos completar el inicio de sesión. Intenta nuevamente.");
+        return;
       }
+
+      if (attempt.status === "needs_second_factor") {
+        const factor = attempt.supportedSecondFactors?.find(
+          (f): f is Extract<typeof f, { strategy: "email_code" }> => f.strategy === "email_code"
+        );
+        if (factor) {
+          await signIn.prepareSecondFactor({
+            strategy: "email_code",
+            emailAddressId: factor.emailAddressId,
+          });
+          setCodeSentTo(factor.safeIdentifier);
+          return;
+        }
+      }
+
+      setError("No pudimos completar el inicio de sesión. Intenta nuevamente.");
+    } catch (err) {
+      setError(getClerkErrorMessage(err));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function onSubmitCode() {
+    if (!isLoaded || submitting) return;
+    setError(null);
+    setSubmitting(true);
+    try {
+      const attempt = await signIn.attemptSecondFactor({ strategy: "email_code", code: code.trim() });
+      if (attempt.status === "complete") {
+        await setActive({ session: attempt.createdSessionId });
+        router.replace("/");
+        return;
+      }
+      setError("No pudimos completar el inicio de sesión. Intenta nuevamente.");
     } catch (err) {
       setError(getClerkErrorMessage(err));
     } finally {
@@ -109,7 +154,36 @@ export default function SignInScreen() {
                 <View style={{ height: 1, flex: 1, backgroundColor: theme.borderSoft }} />
               </View>
 
-              {emailFormVisible ? (
+              {codeSentTo ? (
+                <View style={{ gap: 16 }}>
+                  <Text style={{ fontSize: 15, color: theme.textSecondary }}>
+                    Por seguridad te enviamos un código a {codeSentTo}. Escríbelo para terminar de entrar.
+                  </Text>
+                  <View style={{ gap: 6 }}>
+                    <Text style={{ fontSize: 15, fontWeight: "600", color: theme.textPrimary }}>
+                      Código de 6 dígitos
+                    </Text>
+                    <TextInput
+                      style={inputStyle}
+                      placeholder="123456"
+                      placeholderTextColor={theme.textDisabled}
+                      keyboardType="number-pad"
+                      autoComplete="one-time-code"
+                      autoFocus
+                      value={code}
+                      onChangeText={setCode}
+                      accessibilityLabel="Código de verificación"
+                    />
+                  </View>
+                  <PrimaryButton
+                    label="Confirmar código"
+                    onPress={onSubmitCode}
+                    loading={submitting}
+                    disabled={!code}
+                    fullWidth
+                  />
+                </View>
+              ) : emailFormVisible ? (
                 <View style={{ gap: 16 }}>
                   <View style={{ gap: 6 }}>
                     <Text style={{ fontSize: 15, fontWeight: "600", color: theme.textPrimary }}>
