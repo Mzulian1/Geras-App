@@ -55,6 +55,18 @@ Con Google: usa el botón de Google en Familia o Profesional. No te pide contras
 Si el navegador bloquea la ventana de Google, GERAS te lo dice en castellano y te explica que
 tienes que permitir las ventanas emergentes para este sitio.
 
+### Si al entrar te pide un código
+
+Algunas veces, después de escribir bien tu contraseña, la pantalla te pide **un código de 6
+dígitos** que llega a tu correo. No es un error ni significa que la contraseña esté mal: es una
+verificación extra que el sistema de cuentas aplica cuando el intento le parece inusual (por
+ejemplo desde una red nueva). Escribe el código y entras.
+
+### Si creaste la cuenta y la app se queda "sincronizando"
+
+Espera un minuto y recarga. El servidor se apaga cuando nadie lo usa y tarda en despertar; tu
+cuenta se termina de crear sola cuando vuelve.
+
 ## 4. Qué esperar en cada app
 
 **Familia.** Puedes usarla de inmediato: buscar servicios, ver profesionales y residencias,
