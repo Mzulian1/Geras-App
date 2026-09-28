@@ -118,6 +118,27 @@ export default function SignUpScreen() {
         {submitting ? <ActivityIndicator color={semanticColors.white} /> : <Text className="font-semibold text-white">Crear cuenta</Text>}
       </Pressable>
 
+      {/*
+        Punto de montaje del desafío antibots de Clerk (Turnstile).
+
+        La instancia tiene la protección en modo "smart": normalmente
+        resuelve sola y en silencio, pero cuando decide que hace falta un
+        desafío necesita un elemento con id `clerk-captcha` donde
+        dibujarlo. Si no existe, Clerk avisa por consola, cae a modo
+        invisible y `signUp.create()` se queda esperando un token que
+        nunca llega: la pantalla muestra el botón girando para siempre,
+        SIN mensaje de error, y no se crea ninguna cuenta. Verificado en
+        staging con el registro por correo.
+
+        Le pasa a quien navegue desde una VPN, un navegador endurecido o
+        cualquier contexto que Turnstile juzgue sospechoso — no es un
+        caso de laboratorio.
+
+        En React Native Web `nativeID` se emite como `id` del DOM, que es
+        lo que Clerk busca. En iOS/Android es una View vacía sin efecto.
+      */}
+      <View nativeID="clerk-captcha" />
+
       <View className="flex-row items-center gap-3 py-1">
         <View className="h-px flex-1 bg-gray-200" />
         <Text className="text-xs uppercase text-gray-400">o</Text>

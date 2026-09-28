@@ -116,6 +116,17 @@ export default function SignUpScreen() {
         {submitting ? <ActivityIndicator color={semanticColors.white} /> : <Text className="font-semibold text-white">Crear cuenta</Text>}
       </Pressable>
 
+      {/*
+        Punto de montaje del desafío antibots de Clerk (Turnstile).
+        Mismo caso que en mobile-familia: sin un elemento con id
+        `clerk-captcha`, cuando Turnstile pide desafío no tiene dónde
+        dibujarlo y `signUp.create()` queda esperando un token que nunca
+        llega — botón girando para siempre, sin mensaje y sin cuenta
+        creada. En React Native Web `nativeID` se emite como `id`; en
+        nativo es una View vacía.
+      */}
+      <View nativeID="clerk-captcha" />
+
       <View className="flex-row items-center gap-3 py-1">
         <View className="h-px flex-1 bg-gray-200" />
         <Text className="text-xs uppercase text-gray-400">o</Text>
