@@ -355,6 +355,27 @@ guía. Lo específico de una app se queda en `apps/<app>/src/components/`.
 - Focus visible en todo control interactivo.
 - Sin dependencias de gestos táctiles exclusivos.
 
+### Las apps móviles en pantalla grande
+
+**No se rediseñan para escritorio.** Se presentan a su ancho de teléfono, centradas, mediante
+`MobileWebFrame` (`packages/ui`), que ya está montado en el layout raíz de ambas apps.
+
+| Ancho de ventana | Qué pasa |
+|---|---|
+| < 620 px | Sin marco: la app usa todo el ancho (teléfono o ventana angosta) |
+| ≥ 620 px | Encuadrada a 480 px, centrada, sobre el fondo secundario |
+
+El motivo de no rediseñar: mantener dos layouts en paralelo cuesta el doble y se desincroniza
+al primer cambio, y el destino de estas apps sigue siendo el teléfono. El motivo de no
+encuadrar por debajo de 620 px: ahí el espacio es escaso y el público necesita áreas táctiles
+grandes (§16).
+
+En nativo el componente devuelve sus hijos tal cual — **ninguna pantalla de iOS o Android se ve
+afectada por esto.**
+
+Una pantalla nueva no necesita hacer nada especial: hereda el encuadre. Lo que sí debe seguir
+cumpliendo es no asumir un ancho fijo en píxeles.
+
 ## 24. Decisiones técnicas tomadas
 
 1. **Se conserva el sistema visual existente de `packages/ui`** (22 componentes + tokens +
