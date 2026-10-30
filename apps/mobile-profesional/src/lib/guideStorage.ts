@@ -1,18 +1,18 @@
-import * as SecureStore from "expo-secure-store";
+import { getStoredValue, removeStoredValue, setStoredValue } from "./localStorage";
 
 const GUIDE_SEEN_KEY = "geras_guide_seen";
 
 export async function hasSeenGuide(): Promise<boolean> {
-  const value = await SecureStore.getItemAsync(GUIDE_SEEN_KEY);
+  const value = await getStoredValue(GUIDE_SEEN_KEY);
   return value === "1";
 }
 
 export async function markGuideSeen(): Promise<void> {
-  await SecureStore.setItemAsync(GUIDE_SEEN_KEY, "1");
+  await setStoredValue(GUIDE_SEEN_KEY, "1");
 }
 
 // Solo para desarrollo: "olvidar" que ya se vio, para poder probarla
 // de nuevo sin desinstalar la app.
 export async function resetGuideSeen(): Promise<void> {
-  await SecureStore.deleteItemAsync(GUIDE_SEEN_KEY);
+  await removeStoredValue(GUIDE_SEEN_KEY);
 }
