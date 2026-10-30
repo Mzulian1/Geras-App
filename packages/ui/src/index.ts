@@ -7,6 +7,7 @@ export * from "./theme/GerasThemeProvider";
 export * from "./brand/GerasBrand";
 
 export * from "./components/Screen";
+export * from "./components/MobileWebFrame";
 export * from "./components/AppHeader";
 export * from "./components/SectionHeader";
 
